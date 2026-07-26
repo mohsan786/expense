@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Ledger — Partner Business & Payroll</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Source+Serif+4:ital,wght@0,600;0,700;1,600&family=JetBrains+Mono:wght@500;600&display=swap');
@@ -32,7 +34,30 @@
     -webkit-font-smoothing: antialiased;
   }
   
-  .wrap { max-width: 920px; margin: 0 auto; padding: 28px 16px 60px; }
+  .wrap { width: 100%; max-width: 1600px; margin: 0 auto; padding: 24px 16px 60px; }
+  .serif { font-family: 'Source Serif 4', Georgia, serif; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+  .strong { font-weight: 700; }
+  .muted { color: var(--muted); }
+  .small { font-size: 13px; }
+  .gold { color: var(--gold); }
+  .teal-text { color: var(--teal); }
+  .rust-text { color: var(--rust); }
+  
+  /* Flex Form Grids — Never Cut Off Any Field */
+  .form-grid-expense, .form-grid-income, .form-grid-emp, .form-grid-item, .form-grid-work, .form-grid-adv, .form-grid-pay, .form-grid-partner {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+    align-items: center !important;
+  }
+  .form-grid-expense > *, .form-grid-income > *, .form-grid-emp > *, .form-grid-item > *, .form-grid-work > *, .form-grid-adv > *, .form-grid-pay > *, .form-grid-partner > * {
+    flex: 1 1 150px;
+    min-width: 0;
+  }
+  .form-grid-expense > button, .form-grid-income > button, .form-grid-emp > button, .form-grid-item > button, .form-grid-work > button, .form-grid-adv > button, .form-grid-pay > button, .form-grid-partner > button {
+    flex: 0 0 auto !important;
+  }
   .serif { font-family: 'Source Serif 4', Georgia, serif; }
   .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
   .strong { font-weight: 700; }
@@ -1186,7 +1211,7 @@ function render() {
   else if (state.tab === "employees") content = renderEmployees();
   else if (state.tab === "vendors") content = renderVendors();
   else if (state.tab === "settings") content = renderSettings();
-  app.innerHTML = `<div class="wrap">${renderHeader()}${renderTabs()}${content}</div>`;
+  app.innerHTML = `<div class="container-fluid px-3 px-md-4 py-4" style="max-width:1600px;margin:0 auto;">${renderHeader()}${renderTabs()}${content}</div>`;
 }
 
 function toggleEmpTypeUI() {
