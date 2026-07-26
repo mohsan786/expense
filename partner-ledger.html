@@ -311,7 +311,8 @@ async function showEditVendorModal(id) {
     html:
       `<div style="text-align:left;display:flex;flex-direction:column;gap:10px;">` +
       `<div><label style="font-size:12px;font-weight:600;">Vendor / Supplier Name</label><input id="swal-v-name" class="swal2-input" value="${esc(vendor.name||'')}" style="margin:4px 0 0 0;width:100%;"></div>` +
-      `<div><label style="font-size:12px;font-weight:600;">Note / Phone / Address</label><input id="swal-v-note" class="swal2-input" value="${esc(vendor.note||'')}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Phone Number</label><input id="swal-v-phone" class="swal2-input" value="${esc(vendor.phone||'')}" placeholder="e.g. 0300-9876543" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Note / Address</label><input id="swal-v-note" class="swal2-input" value="${esc(vendor.note||'')}" style="margin:4px 0 0 0;width:100%;"></div>` +
       `</div>`,
     focusConfirm: false,
     showCancelButton: true,
@@ -320,18 +321,20 @@ async function showEditVendorModal(id) {
     color: '#23302B',
     preConfirm: () => {
       const name = document.getElementById('swal-v-name').value.trim();
+      const phone = document.getElementById('swal-v-phone').value.trim();
       const note = document.getElementById('swal-v-note').value.trim();
       if (!name) {
         Swal.showValidationMessage('Please enter vendor name');
         return false;
       }
-      return { name, note };
+      return { name, phone, note };
     }
   });
 
   if (formValues) {
     mutate(() => {
       vendor.name = formValues.name;
+      vendor.phone = formValues.phone;
       vendor.note = formValues.note;
     });
   }
@@ -644,20 +647,23 @@ function renderEmployees() {
     <div class="panel">
       <div class="serif strong" style="margin-bottom:4px">Add Employee Profile</div>
       <div class="muted small" style="margin-bottom:12px">Register workers with contact phone numbers for weekly salary or piece-rate work.</div>
-      <div class="form-grid-emp">
+      <div class="form-grid-expense" style="grid-template-columns: 1fr 1fr 160px; margin-bottom:8px;">
         <input class="led-input" id="new-emp-name" placeholder="Full Name (e.g. Ali Raza)">
         <input class="led-input" id="new-emp-phone" placeholder="Phone (e.g. 0300-1234567)">
         <select class="led-input" id="new-emp-type" onchange="toggleEmpTypeUI()">
           <option value="weekly">Weekly salary</option>
           <option value="workbased">Work-based (piece rate)</option>
         </select>
-        <button class="led-btn" data-act="add-employee">👤 + Add</button>
       </div>
-      <div id="new-emp-weekly-wrap" style="margin-top:8px">
-        <input class="led-input" id="new-emp-weekly" type="number" placeholder="Weekly salary amount" style="max-width:220px">
+      <div id="new-emp-weekly-wrap" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <input class="led-input" id="new-emp-weekly" type="number" placeholder="Weekly salary amount" style="max-width:240px">
+        <button class="led-btn" data-act="add-employee">👤 + Add Employee</button>
       </div>
-      <div id="new-emp-work-wrap" style="display:none;margin-top:8px" class="muted small">
-        You'll add their piece-rate work items (e.g. cutting, stitching) with prices after creating their profile.
+      <div id="new-emp-work-wrap" style="display:none;margin-top:8px;" class="muted small">
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+          <span>You'll add their piece-rate work items (e.g. cutting, stitching) with prices after creating their profile.</span>
+          <button class="led-btn" data-act="add-employee">👤 + Add Employee</button>
+        </div>
       </div>
     </div>
     ${state.config.employees.length===0 ? `<div class="empty-msg">No employees yet — add one above.</div>` : empHtml}
@@ -832,9 +838,10 @@ function renderVendors() {
   return `
     <div class="panel">
       <div class="serif strong" style="margin-bottom:10px">Add a vendor</div>
-      <div class="form-grid-emp" style="grid-template-columns:1fr 1fr auto">
+      <div class="form-grid-emp" style="grid-template-columns:1fr 1fr 1fr auto">
         <input class="led-input" id="new-vendor-name" placeholder="Vendor name (e.g. leather supplier)">
-        <input class="led-input" id="new-vendor-note" placeholder="Note (optional)">
+        <input class="led-input" id="new-vendor-phone" placeholder="Phone (e.g. 0300-9876543)">
+        <input class="led-input" id="new-vendor-note" placeholder="Note / Address (optional)">
         <button class="led-btn" data-act="add-vendor">+ Add</button>
       </div>
     </div>
@@ -906,7 +913,8 @@ function renderVendorCard(vendor, partners) {
         <div class="emp-head-left">
           <span>${expanded?"▾":"▸"}</span>
           <span class="serif strong">${esc(vendor.name)}</span>
-          ${vendor.note ? `<span class="muted small">${esc(vendor.note)}</span>` : ""}
+          ${vendor.phone ? `<span class="muted small" style="margin-left:4px;">📞 ${esc(vendor.phone)}</span>` : ""}
+          ${vendor.note ? `<span class="muted small">— ${esc(vendor.note)}</span>` : ""}
         </div>
         <div class="emp-head-right">
           ${outstanding>0.005 ? `<span class="mono small strong" style="color:var(--rust)">owe ${fmt(outstanding)}</span>` : `<span class="mono small strong" style="color:var(--teal)">settled</span>`}
@@ -1179,9 +1187,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (act === "add-vendor") {
       const name = document.getElementById("new-vendor-name").value.trim();
+      const phone = document.getElementById("new-vendor-phone")?.value.trim() || "";
       const note = document.getElementById("new-vendor-note").value.trim();
       if (!name) return;
-      mutate(() => { state.config.vendors.push({ id: uid(), name, note }); });
+      mutate(() => { state.config.vendors.push({ id: uid(), name, phone, note }); });
       return;
     }
     if (act === "edit-vendor") {
