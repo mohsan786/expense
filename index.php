@@ -169,7 +169,7 @@
   
   /* Form Grids */
   .form-grid-expense { display: grid; grid-template-columns: 120px 1fr 100px 170px auto; gap: 10px; }
-  .form-grid-income { display: grid; grid-template-columns: 120px 1fr 75px 100px 150px auto; gap: 10px; }
+  .form-grid-income { display: grid; grid-template-columns: 110px 1fr 65px 95px 95px 140px auto; gap: 8px; }
   .form-grid-emp { display: grid; grid-template-columns: 1fr 1fr 160px auto; gap: 10px; align-items: center; }
   .form-grid-item { display: grid; grid-template-columns: 1fr 120px auto; gap: 10px; margin-bottom: 8px; }
   .form-grid-work { display: grid; grid-template-columns: 120px 1fr 90px 1fr auto; gap: 10px; margin-bottom: 8px; }
@@ -181,7 +181,7 @@
   .table-panel { padding: 0; overflow: hidden; }
   .table-head { padding: 10px 16px; font-size: 11.5px; font-weight: 700; color: #64748B; border-bottom: 1px solid var(--rule); background: #F8FAFC; text-transform: uppercase; letter-spacing: 0.5px; }
   .expense-row { display: grid; grid-template-columns: 85px 1fr 95px 150px 56px; gap: 8px; align-items: center; }
-  .income-row { display: grid; grid-template-columns: 85px 1fr 55px 85px 110px 56px; gap: 8px; align-items: center; }
+  .income-row { display: grid; grid-template-columns: 80px 1fr 45px 80px 80px 130px 110px 90px; gap: 6px; align-items: center; }
   @media (max-width: 560px) {
     .table-head { display: none; }
     .expense-row, .income-row { display: flex; flex-wrap: wrap; gap: 6px 10px; justify-content: space-between; }
@@ -220,6 +220,12 @@
   .modal-backdrop { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 9999; }
   .modal-card { background: #FFFFFF; border: 1px solid var(--rule); border-radius: 16px; padding: 32px 28px; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.25); }
   .pin-input { font-size: 26px; letter-spacing: 8px; text-align: center; padding: 12px; margin: 18px 0; font-family: 'JetBrains Mono', monospace; border-radius: 10px; }
+
+  @media print {
+    .tabs, .header, button:not(.no-hide-print), input[type="search"], .icon-btn { display: none !important; }
+    body { background: #fff !important; }
+    .panel { box-shadow: none !important; border: 1px solid #ccc !important; page-break-inside: avoid; }
+  }
 </style>
 </head>
 <body>
@@ -396,6 +402,81 @@ async function showEditIncomeModal(id) {
   }
 }
 
+async function showReceiveIncomePaymentModal(id) {
+  const sale = state.income.find(x => x.id === id);
+  if (!sale) return;
+  const partners = state.config.partners;
+  const employees = state.config.employees;
+  const paidAmt = getIncomePaid(sale);
+  const remaining = getIncomeBalance(sale);
+  const totalAmt = Number(sale.amount || 0);
+
+  const optionsHtml = `
+    <optgroup label="Partner">${partners.map(p=>`<option value="partner:${p.id}">${esc(p.name)}</option>`).join("")}</optgroup>
+    ${employees.length ? `<optgroup label="Worker (holding cash)">${employees.map(emp=>`<option value="employee:${emp.id}">${esc(emp.name)}</option>`).join("")}</optgroup>` : ""}
+  `;
+
+  const { value: formValues } = await Swal.fire({
+    title: 'Receive Remaining Payment',
+    html:
+      `<div style="text-align:left;display:flex;flex-direction:column;gap:10px;">` +
+      `<div style="background:#F1F5F9;padding:10px 12px;border-radius:6px;font-size:13px;" class="mono">` +
+      `<div><strong>Item:</strong> ${esc(sale.item)}</div>` +
+      `<div><strong>Total Price:</strong> ${fmt(totalAmt)}</div>` +
+      `<div><strong>Paid So Far:</strong> ${fmt(paidAmt)}</div>` +
+      `<div style="color:var(--rust);font-weight:700;">Remaining Due: ${fmt(remaining)}</div>` +
+      `</div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Payment Date</label><input id="swal-pay-date" class="swal2-input" type="date" value="${today()}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Amount Received</label><input id="swal-pay-amount" type="number" class="swal2-input" value="${remaining}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Received By</label><select id="swal-pay-receiver" class="swal2-input" style="margin:4px 0 0 0;width:100%;">${optionsHtml}</select></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Note / Reference (optional)</label><input id="swal-pay-note" class="swal2-input" placeholder="e.g. Order pickup remaining balance" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `</div>`,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonColor: '#2F6F63',
+    background: '#FCFAF4',
+    color: '#23302B',
+    preConfirm: () => {
+      const date = document.getElementById('swal-pay-date').value || today();
+      const amount = Number(document.getElementById('swal-pay-amount').value);
+      const receiverVal = document.getElementById('swal-pay-receiver').value;
+      const note = document.getElementById('swal-pay-note').value.trim();
+      if (!amount || amount <= 0) {
+        Swal.showValidationMessage('Please enter a valid amount');
+        return false;
+      }
+      return { date, amount, receiverVal, note };
+    }
+  });
+
+  if (formValues) {
+    const [receiverType, receiverId] = formValues.receiverVal.split(':');
+    mutate(() => {
+      if (!Array.isArray(sale.payments) || sale.payments.length === 0) {
+        sale.payments = [{
+          id: uid(),
+          date: sale.date,
+          amount: Number(sale.amount || 0),
+          receivedBy: sale.receivedBy,
+          receivedByEmployeeId: sale.receivedByEmployeeId,
+          note: sale.note || 'Initial payment',
+          settled: sale.settled || false
+        }];
+      }
+      sale.payments.push({
+        id: uid(),
+        date: formValues.date,
+        amount: formValues.amount,
+        receivedBy: receiverType === 'partner' ? receiverId : undefined,
+        receivedByEmployeeId: receiverType === 'employee' ? receiverId : undefined,
+        settled: false,
+        note: formValues.note
+      });
+    });
+    toast('💵 Payment collected successfully!');
+  }
+}
+
 async function showEditEmployeeModal(id) {
   const emp = state.config.employees.find(e => e.id === id);
   if (!emp) return;
@@ -407,6 +488,7 @@ async function showEditEmployeeModal(id) {
       `<div><label style="font-size:12px;font-weight:600;">Phone Number</label><input id="swal-emp-phone" class="swal2-input" value="${esc(emp.phone||'')}" placeholder="e.g. 0300-1234567" style="margin:4px 0 0 0;width:100%;"></div>` +
       `<div><label style="font-size:12px;font-weight:600;">Payment Type</label><select id="swal-emp-type" class="swal2-input" style="margin:4px 0 0 0;width:100%;"><option value="weekly" ${emp.type==='weekly'?'selected':''}>Weekly Rate</option><option value="workbased" ${emp.type==='workbased'?'selected':''}>Piece-Rate (Work Based)</option></select></div>` +
       `<div><label style="font-size:12px;font-weight:600;">Weekly Rate (if applicable)</label><input id="swal-emp-weekly" type="number" class="swal2-input" value="${emp.weeklyRate||0}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Working Days / Week (for absence deduction)</label><input id="swal-emp-workdays" type="number" class="swal2-input" value="${emp.workingDays||6}" style="margin:4px 0 0 0;width:100%;"></div>` +
       `</div>`,
     focusConfirm: false,
     showCancelButton: true,
@@ -418,11 +500,12 @@ async function showEditEmployeeModal(id) {
       const phone = document.getElementById('swal-emp-phone').value.trim();
       const type = document.getElementById('swal-emp-type').value;
       const weeklyRate = Number(document.getElementById('swal-emp-weekly').value || 0);
+      const workingDays = Number(document.getElementById('swal-emp-workdays').value || 6);
       if (!name) {
         Swal.showValidationMessage('Please enter employee name');
         return false;
       }
-      return { name, phone, type, weeklyRate };
+      return { name, phone, type, weeklyRate, workingDays };
     }
   });
 
@@ -432,6 +515,7 @@ async function showEditEmployeeModal(id) {
       emp.phone = formValues.phone;
       emp.type = formValues.type;
       emp.weeklyRate = formValues.weeklyRate;
+      emp.workingDays = formValues.workingDays;
       if (emp.type === 'workbased' && !emp.items) emp.items = [];
     });
   }
@@ -518,11 +602,13 @@ let state = {
   salaryPayments: [],
   advances: [],
   vendorPayments: [],
+  attendanceLogs: [],
   tab: "overview",
   expandedEmp: null,
   deductAdvance: {},
   includeReimbursement: {},
   deductHeldIncome: {},
+  deductAttendance: {},
   expandedVendor: null,
   incomeSearch: "",
   expenseSearch: "",
@@ -572,6 +658,7 @@ async function loadData() {
       if (d.salaryPayments) state.salaryPayments = d.salaryPayments;
       if (d.advances) state.advances = d.advances;
       if (d.vendorPayments) state.vendorPayments = d.vendorPayments;
+      if (d.attendanceLogs) state.attendanceLogs = d.attendanceLogs;
       if (!state.config.vendors) state.config.vendors = [];
       state.config.employees = state.config.employees.map(e => {
         if (e.type === "workbased" && !e.items) {
@@ -597,7 +684,8 @@ async function persist() {
       workLogs: state.workLogs,
       salaryPayments: state.salaryPayments,
       advances: state.advances,
-      vendorPayments: state.vendorPayments
+      vendorPayments: state.vendorPayments,
+      attendanceLogs: state.attendanceLogs
     };
     const res = await apiCall('save', { data: payload });
     state.saveErr = !res.success;
@@ -608,8 +696,31 @@ async function persist() {
 
 function mutate(fn) { fn(); persist(); render(); }
 
+function getSalePayments(sale) {
+  if (Array.isArray(sale.payments) && sale.payments.length > 0) {
+    return sale.payments;
+  }
+  return [{
+    id: sale.id + '-p0',
+    date: sale.date,
+    amount: Number(sale.amount || 0),
+    receivedBy: sale.receivedBy,
+    receivedByEmployeeId: sale.receivedByEmployeeId,
+    note: sale.note || '',
+    settled: sale.settled || false
+  }];
+}
+
+function getIncomePaid(sale) {
+  return getSalePayments(sale).reduce((sum, p) => sum + Number(p.amount || 0), 0);
+}
+
+function getIncomeBalance(sale) {
+  return Math.max(0, Number(sale.amount || 0) - getIncomePaid(sale));
+}
+
 function totalRatio() { return state.config.partners.reduce((s, p) => s + Number(p.ratio || 0), 0); }
-function totalIncome() { return state.income.reduce((s, x) => s + Number(x.amount || 0), 0); }
+function totalIncome() { return state.income.reduce((s, x) => s + getIncomePaid(x), 0); }
 function totalOutflow() {
   const exp = state.expenses.reduce((s, x) => s + Number(x.amount || 0), 0);
   const sal = state.salaryPayments.reduce((s, x) => s + Number(x.amount || 0), 0);
@@ -628,7 +739,10 @@ function partnerStats() {
     const advPaid = state.advances.filter(x => x.paidBy === p.id).reduce((s, x) => s + Number(x.amount || 0), 0);
     const vendPaid = state.vendorPayments.filter(x => x.paidBy === p.id).reduce((s, x) => s + Number(x.amount || 0), 0);
     const paid = opCap + expPaid + salPaid + advPaid + vendPaid;
-    const received = state.income.filter(x => x.receivedBy === p.id).reduce((s, x) => s + Number(x.amount || 0), 0);
+    const received = state.income.reduce((s, sale) => {
+      const pms = getSalePayments(sale);
+      return s + pms.filter(x => x.receivedBy === p.id).reduce((sum, x) => sum + Number(x.amount || 0), 0);
+    }, 0);
     const fairShare = tr > 0 ? (np * Number(p.ratio || 0)) / tr : 0;
     const balance = paid - received + fairShare;
     return { ...p, paid, received, fairShare, balance, opCap };
@@ -641,8 +755,38 @@ function empAdvances(id) { return state.advances.filter(a => a.employeeId === id
 function empOutstandingAdvance(id) { return empAdvances(id).filter(a => !a.settled).reduce((s, a) => s + a.amount, 0); }
 function empCoveredExpenses(id) { return state.expenses.filter(x => x.payerEmployeeId === id); }
 function empOutstandingReimbursement(id) { return empCoveredExpenses(id).filter(x => !x.settled).reduce((s, x) => s + Number(x.amount || 0), 0); }
-function empHeldIncome(id) { return state.income.filter(x => x.receivedByEmployeeId === id); }
+function empHeldIncome(id) {
+  const list = [];
+  state.income.forEach(sale => {
+    const pms = getSalePayments(sale);
+    pms.forEach(p => {
+      if (p.receivedByEmployeeId === id) {
+        list.push({
+          id: p.id,
+          saleId: sale.id,
+          item: sale.item,
+          date: p.date,
+          amount: Number(p.amount || 0),
+          settled: p.settled || false
+        });
+      }
+    });
+  });
+  return list;
+}
 function empOutstandingHeldIncome(id) { return empHeldIncome(id).filter(x => !x.settled).reduce((s, x) => s + Number(x.amount || 0), 0); }
+function empAttendanceLogs(id) { return (state.attendanceLogs || []).filter(a => a.employeeId === id); }
+function empUnsettledAbsences(id) { return empAttendanceLogs(id).filter(a => !a.settled); }
+function empAbsenceDeduction(emp) {
+  const unsettled = empUnsettledAbsences(emp.id);
+  const wDays = Number(emp.workingDays || 6);
+  const dailyRate = Number(emp.weeklyRate || 0) / (wDays > 0 ? wDays : 6);
+  return unsettled.reduce((sum, a) => {
+    if (a.deductSalary === false) return sum;
+    const mult = a.status === 'halfday' ? 0.5 : 1.0;
+    return sum + (dailyRate * mult);
+  }, 0);
+}
 function vendorPurchases(id) { return state.expenses.filter(x => x.vendorId === id); }
 function vendorPaymentsFor(id) { return state.vendorPayments.filter(x => x.vendorId === id); }
 function vendorCreditTotal(id) { return vendorPurchases(id).filter(x => x.onCredit).reduce((s, x) => s + Number(x.amount || 0), 0); }
@@ -661,7 +805,7 @@ function renderHeader() {
 }
 
 function renderTabs() {
-  const items = [["overview","Overview"],["income","Income"],["expenses","Expenses"],["employees","Employees"],["vendors","Vendors"],["settings","Settings"]];
+  const items = [["overview","Overview"],["income","Income"],["expenses","Expenses"],["employees","Employees"],["vendors","Vendors"],["reports","Reports 📊"],["settings","Settings"]];
   return `<div class="tabs">${items.map(([id,label]) => `<button class="tab-btn ${state.tab===id?"active":""}" data-act="switch-tab" data-tab="${id}">${label}</button>`).join("")}</div>`;
 }
 
@@ -741,8 +885,9 @@ function renderIncome() {
   const q = (state.incomeSearch || "").toLowerCase().trim();
   const filtered = state.income.filter(e => {
     if (!q) return true;
-    const receiver = e.receivedByEmployeeId ? (employees.find(x => x.id === e.receivedByEmployeeId)?.name || "") : (partners.find(p => p.id === e.receivedBy)?.name || "");
-    return (e.item||"").toLowerCase().includes(q) || (e.note||"").toLowerCase().includes(q) || (e.date||"").includes(q) || receiver.toLowerCase().includes(q) || String(e.amount||"").includes(q);
+    const pms = getSalePayments(e);
+    const receivers = pms.map(p => p.receivedByEmployeeId ? (employees.find(x => x.id === p.receivedByEmployeeId)?.name || "") : (partners.find(x => x.id === p.receivedBy)?.name || "")).join(" ");
+    return (e.item||"").toLowerCase().includes(q) || (e.note||"").toLowerCase().includes(q) || (e.date||"").includes(q) || receivers.toLowerCase().includes(q) || String(e.amount||"").includes(q);
   });
   
   const pageSize = 10;
@@ -752,21 +897,41 @@ function renderIncome() {
   const paged = filtered.slice((state.incomePage - 1) * pageSize, state.incomePage * pageSize);
 
   const rows = paged.map(e => {
-    let receiverLabel, tag = "";
-    if (e.receivedByEmployeeId) {
-      const emp = employees.find(x => x.id === e.receivedByEmployeeId);
-      receiverLabel = esc(emp?.name || "—");
-      tag = e.settled ? `<span class="tag tag-done">settled</span>` : `<span class="tag tag-wait">holding</span>`;
+    const totalAmt = Number(e.amount || 0);
+    const paidAmt = getIncomePaid(e);
+    const balance = getIncomeBalance(e);
+    const payments = getSalePayments(e);
+
+    let statusTag = "";
+    if (balance <= 0) {
+      statusTag = `<span class="tag tag-done">Paid</span>`;
+    } else if (paidAmt > 0) {
+      statusTag = `<span class="tag tag-wait">Advance (${fmt(paidAmt)} paid / ${fmt(balance)} due)</span>`;
     } else {
-      receiverLabel = esc(partners.find(p=>p.id===e.receivedBy)?.name || "—");
+      statusTag = `<span class="tag tag-rust">Unpaid (${fmt(balance)} due)</span>`;
     }
+
+    const receiversList = payments.map(p => {
+      if (p.receivedByEmployeeId) {
+        const emp = employees.find(x => x.id === p.receivedByEmployeeId);
+        return `${esc(emp?.name || "Worker")}${p.settled ? '' : ' (holding)'}`;
+      } else {
+        const prt = partners.find(x => x.id === p.receivedBy);
+        return esc(prt?.name || "Partner");
+      }
+    });
+    const uniqueReceivers = Array.from(new Set(receiversList)).join(", ") || "—";
+
     return `<div class="row-line income-row">
       <div class="mono small">${esc(e.date)}</div>
       <div>${esc(e.item)}${e.note ? ` <span class="muted small">— ${esc(e.note)}</span>` : ""}</div>
       <div class="mono small">${e.quantity||"—"}</div>
-      <div class="mono">${fmt(e.amount)}</div>
-      <div class="small">${receiverLabel} ${tag}</div>
+      <div class="mono strong">${fmt(totalAmt)}</div>
+      <div class="mono ${paidAmt < totalAmt ? 'gold' : 'teal-text'}">${fmt(paidAmt)}</div>
+      <div class="small">${statusTag}</div>
+      <div class="small">${uniqueReceivers}</div>
       <div style="display:flex;align-items:center;gap:4px;justify-content:flex-end">
+        ${balance > 0 ? `<button class="led-btn secondary" style="padding:2px 8px;font-size:12px;" data-act="pay-income-balance" data-id="${e.id}" title="Collect Remaining Payment">💵 Pay</button>` : ''}
         <button class="icon-btn" data-act="edit-income" data-id="${e.id}" title="Edit Sale">✏️</button>
         <button class="icon-btn" data-act="delete-income" data-id="${e.id}" title="Delete Sale" style="color:var(--rust)">🗑️</button>
       </div>
@@ -779,14 +944,15 @@ function renderIncome() {
   return `
     <div class="panel">
       <div class="serif strong" style="margin-bottom:4px">Log a sale</div>
-      <div class="muted small" style="margin-bottom:10px">E.g. leather shoes sold — pick a quantity and price, or just enter the total. If a worker collected the payment themselves, select their name — it'll show as cash they're holding until it's settled.</div>
+      <div class="muted small" style="margin-bottom:10px">Log sales and advance payments. If customer gives partial/advance payment, enter Total price &amp; Advance paid. Remaining due balance can be collected when order is picked up.</div>
       <div class="form-grid-income">
         <input class="led-input" type="date" id="inc-date" value="${today()}">
         <input class="led-input" id="inc-item" placeholder="Item (e.g. Men's loafers)">
         <input class="led-input" id="inc-qty" type="number" placeholder="Qty">
-        <input class="led-input" id="inc-amount" type="number" placeholder="Total amount">
+        <input class="led-input" id="inc-amount" type="number" placeholder="Total price">
+        <input class="led-input" id="inc-paid-amount" type="number" placeholder="Advance / Paid">
         <select class="led-input" id="inc-receivedby">${receiverOptions}</select>
-        <button class="led-btn" data-act="add-income">+ Add</button>
+        <button class="led-btn" data-act="add-income">+ Add Sale</button>
       </div>
       <input class="led-input" id="inc-note" placeholder="Note / customer (optional)" style="margin-top:8px">
     </div>
@@ -794,7 +960,7 @@ function renderIncome() {
       <div style="padding:8px 14px;border-bottom:1px solid var(--rule);background:#fff">
         <input class="led-input" id="inc-search" placeholder="🔍 Search sales by item, customer, date..." value="${esc(state.incomeSearch)}" data-act="search-income">
       </div>
-      <div class="mono table-head income-row"><div>DATE</div><div>ITEM</div><div>QTY</div><div>AMOUNT</div><div>RECEIVED</div><div></div></div>
+      <div class="mono table-head income-row"><div>DATE</div><div>ITEM</div><div>QTY</div><div>TOTAL</div><div>PAID</div><div>STATUS</div><div>RECEIVED</div><div></div></div>
       ${state.income.length===0 ? `<div class="empty-msg">No sales logged yet.</div>` : (filtered.length===0 ? `<div class="empty-msg">No sales match your search.</div>` : rows)}
       ${renderPagination(state.incomePage, totalItems, pageSize, 'set-income-page')}
     </div>
@@ -906,6 +1072,9 @@ function renderEmployeeCard(emp, partners) {
   const advances = empAdvances(emp.id);
   const coveredExpenses = empCoveredExpenses(emp.id);
   const heldIncome = empHeldIncome(emp.id);
+  const attLogs = empAttendanceLogs(emp.id);
+  const unsettledAbs = empUnsettledAbsences(emp.id);
+  const absenceDeductionVal = empAbsenceDeduction(emp);
   const totalEarned = workLogs.reduce((s, w) => s + w.amount, 0);
   const totalWagePaid = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
   const outstandingAdv = empOutstandingAdvance(emp.id);
@@ -915,15 +1084,18 @@ function renderEmployeeCard(emp, partners) {
   const deductAdv = state.deductAdvance[emp.id] !== false;
   const includeReimb = state.includeReimbursement[emp.id] !== false;
   const deductHeld = state.deductHeldIncome[emp.id] !== false;
+  const deductAtt = state.deductAttendance[emp.id] !== false;
 
   const unpaidWorkEarned = Math.max(0, totalEarned - totalWagePaid);
   const suggestedWage = emp.type === "weekly"
-    ? Math.max(emp.weeklyRate - (deductAdv ? outstandingAdv : 0) - (deductHeld ? outstandingHeld : 0), 0)
+    ? Math.max(emp.weeklyRate - (deductAdv ? outstandingAdv : 0) - (deductHeld ? outstandingHeld : 0) - (deductAtt ? absenceDeductionVal : 0), 0)
     : Math.max(unpaidWorkEarned - (deductAdv ? outstandingAdv : 0) - (deductHeld ? outstandingHeld : 0), 0);
   const suggestedTotal = suggestedWage + (includeReimb ? outstandingReimb : 0);
   const items = emp.items || [];
+  const wDays = emp.workingDays || 6;
+  const dailyRate = Number(emp.weeklyRate || 0) / wDays;
 
-  const headSub = emp.type === "weekly" ? `weekly · ${fmt(emp.weeklyRate)}` : (items.length ? `work-based · ${items.length} item type${items.length>1?"s":""}` : "work-based · no items yet");
+  const headSub = emp.type === "weekly" ? `weekly · ${fmt(emp.weeklyRate)} (${wDays}d/wk)` : (items.length ? `work-based · ${items.length} item type${items.length>1?"s":""}` : "work-based · no items yet");
 
   let body = "";
   if (expanded) {
@@ -953,6 +1125,46 @@ function renderEmployeeCard(emp, partners) {
       `;
     }
 
+    let attendanceSection = "";
+    if (emp.type === "weekly") {
+      const attListHtml = unsettledAbs.length ? `
+        <div style="margin:8px 0 12px 0;">
+          <div class="muted small strong" style="margin-bottom:4px;">Unsettled Absences Logged:</div>
+          ${unsettledAbs.map(a => {
+            const isDeduct = a.deductSalary !== false;
+            const mult = a.status === 'halfday' ? 0.5 : 1;
+            const loss = dailyRate * mult;
+            const tag = isDeduct ? `<span class="tag tag-rust">Deduct -${fmt(loss)}</span>` : `<span class="tag tag-done">Paid Leave ($0)</span>`;
+            return `<div class="history-row" style="align-items:center;">
+              <span class="mono muted" style="width:90px">${esc(a.date)}</span>
+              <span style="flex:1">${a.status === 'halfday' ? 'Half Day' : 'Full Day'} ${a.note ? `— ${esc(a.note)}` : ''} ${tag}</span>
+              <button data-act="delete-attendance" data-id="${a.id}" style="border:none;background:none;cursor:pointer;color:var(--rust);font-size:12px;" title="Delete Absence Record">🗑️</button>
+            </div>`;
+          }).join("")}
+        </div>
+      ` : `<div class="muted small" style="margin-bottom:10px">No absences logged for this period.</div>`;
+
+      attendanceSection = `
+        <div class="serif small-title">📅 Attendance &amp; Absences</div>
+        <div class="muted small" style="margin-bottom:8px">Daily Rate: <span class="mono strong">${fmt(dailyRate)}</span> (${wDays} working days/week). Log absent days and choose whether to deduct salary or count as paid leave.</div>
+        <div class="form-grid-adv" style="margin-bottom:8px;">
+          <input class="led-input" type="date" id="att-date-${emp.id}" value="${today()}">
+          <select class="led-input" id="att-status-${emp.id}">
+            <option value="absent">Full Day Absent</option>
+            <option value="halfday">Half Day</option>
+          </select>
+          <select class="led-input" id="att-deduct-${emp.id}">
+            <option value="yes">Deduct Salary (Unpaid)</option>
+            <option value="no">Paid Leave (No Deduct)</option>
+          </select>
+          <input class="led-input" id="att-note-${emp.id}" placeholder="Reason / Note (optional)">
+          <button class="led-btn secondary" data-act="add-attendance" data-emp="${emp.id}">+ Log Absence</button>
+        </div>
+        ${attListHtml}
+        <div class="divider"></div>
+      `;
+    }
+
     const advanceSection = `
       <div class="serif small-title">Money given during the week (advance)</div>
       <div class="form-grid-adv">
@@ -977,6 +1189,9 @@ function renderEmployeeCard(emp, partners) {
       <div style="margin-bottom:14px"></div>
     ` : "";
 
+    let deductAttRow = (emp.type === "weekly" && unsettledAbs.length > 0) ? `
+      <label class="checkbox-row"><input type="checkbox" ${deductAtt?"checked":""} data-act="toggle-attendance" data-emp="${emp.id}"> Deduct ${fmt(absenceDeductionVal)} for ${unsettledAbs.length} absence record(s)</label>
+    ` : "";
     let deductAdvRow = outstandingAdv>0 ? `
       <label class="checkbox-row"><input type="checkbox" ${deductAdv?"checked":""} data-act="toggle-deduct" data-emp="${emp.id}"> Deduct the ${fmt(outstandingAdv)} advance from this payment</label>
     ` : "";
@@ -989,6 +1204,7 @@ function renderEmployeeCard(emp, partners) {
     let payNote = "";
     if (emp.type === "weekly") {
       const parts = [`Weekly rate ${fmt(emp.weeklyRate)}`];
+      if (unsettledAbs.length > 0) parts.push(`${deductAtt ? "− absence penalty " + fmt(absenceDeductionVal) : "(absence penalty waived)"}`);
       if (outstandingAdv>0) parts.push(`${deductAdv?"− advance "+fmt(outstandingAdv):"(advance not deducted)"}`);
       if (outstandingHeld>0) parts.push(`${deductHeld?"− collected "+fmt(outstandingHeld):"(collected cash not deducted)"}`);
       if (outstandingReimb>0) parts.push(`${includeReimb?"+ reimbursement "+fmt(outstandingReimb):"(reimbursement not included)"}`);
@@ -1011,7 +1227,7 @@ function renderEmployeeCard(emp, partners) {
         <input class="led-input" id="pay-note-${emp.id}" placeholder="Note (optional)">
         <button class="led-btn" data-act="add-payment" data-emp="${emp.id}">+ Pay</button>
       </div>
-      ${deductAdvRow}${deductHeldRow}${includeReimbRow}
+      ${deductAttRow}${deductAdvRow}${deductHeldRow}${includeReimbRow}
       ${payNote ? `<div class="muted small" style="margin-bottom:14px">${payNote}</div>` : `<div style="margin-bottom:14px"></div>`}
     `;
 
@@ -1019,6 +1235,7 @@ function renderEmployeeCard(emp, partners) {
       ...workLogs.map(w => ({ ...w, kind: "work" })),
       ...payments.map(p => ({ ...p, kind: "pay" })),
       ...advances.map(a => ({ ...a, kind: "advance" })),
+      ...attLogs.map(a => ({ ...a, kind: "attendance" })),
     ].sort((a, b) => (a.date < b.date ? 1 : -1));
 
     const activeTab = (state.cardTab && state.cardTab[emp.id]) || (historyItems.length ? "history" : "form");
@@ -1029,7 +1246,7 @@ function renderEmployeeCard(emp, partners) {
           📜 History &amp; Ledger (${historyItems.length})
         </button>
         <button class="tab-btn ${activeTab==='form'?'active':''}" data-act="set-card-tab" data-id="${emp.id}" data-tab="form">
-          ✍️ Log Work, Advance &amp; Payments
+          ✍️ Log Work, Attendance &amp; Payments
         </button>
       </div>
     `;
@@ -1045,17 +1262,22 @@ function renderEmployeeCard(emp, partners) {
         let label = "";
         if (r.kind === "work") label = `Work: ${esc(r.itemLabel||"Work")} × ${r.quantity}${r.note?" — "+esc(r.note):""}`;
         else if (r.kind === "pay") label = `Salary Payment: Paid by ${esc(partners.find(p=>p.id===r.paidBy)?.name||"—")}${r.deductedAdvances?` (− ${fmt(r.deductedAdvances)} advance)`:""}${r.deductedHeld?` (− ${fmt(r.deductedHeld)} collected)`:""}${r.reimbursedAmount?` (+ ${fmt(r.reimbursedAmount)} reimb.)`:""}${r.note?" — "+esc(r.note):""}`;
-        else label = `Advance Given: Paid by ${esc(partners.find(p=>p.id===r.paidBy)?.name||"—")}${r.note?" — "+esc(r.note):""}`;
-        const color = r.kind==="work" ? "var(--teal)" : (r.kind==="advance" ? "var(--gold)" : "var(--rust)");
+        else if (r.kind === "advance") label = `Advance Given: Paid by ${esc(partners.find(p=>p.id===r.paidBy)?.name||"—")}${r.note?" — "+esc(r.note):""}`;
+        else if (r.kind === "attendance") {
+          const isD = r.deductSalary !== false;
+          const loss = dailyRate * (r.status === 'halfday' ? 0.5 : 1);
+          label = `Absence (${r.status === 'halfday' ? 'Half Day' : 'Full Day'}): ${r.note ? esc(r.note) + " — " : ""}${isD ? `Salary Deducted (-${fmt(loss)})` : 'Paid Leave (No Deduct)'}`;
+        }
+        const color = r.kind==="work" ? "var(--teal)" : (r.kind==="advance" ? "var(--gold)" : (r.kind==="attendance" ? "var(--rust)" : "var(--rust)"));
         const sign = r.kind==="work" ? "+" : "-";
-        const amt = r.kind==="pay" ? (r.amount + (r.reimbursedAmount||0)) : r.amount;
+        const amt = r.kind==="pay" ? (r.amount + (r.reimbursedAmount||0)) : (r.kind==="attendance" ? (r.deductSalary !== false ? dailyRate * (r.status === 'halfday' ? 0.5 : 1) : 0) : r.amount);
         return `<div class="history-row"><span class="mono muted" style="width:95px">${esc(r.date)}</span><span style="flex:1">${label}</span><span class="mono strong" style="color:${color}">${sign}${fmt(amt)}</span></div>`;
       }).join("")}
     ` : `
       <div class="empty-msg">No work or payment history yet. Use the tab above to log work or payments.</div>
     `;
 
-    const formsContent = `<div style="display:flex;flex-direction:column;gap:14px;">${workSection}${advanceSection}${coveredList}${heldList}${paySection}</div>`;
+    const formsContent = `<div style="display:flex;flex-direction:column;gap:14px;">${workSection}${attendanceSection}${advanceSection}${coveredList}${heldList}${paySection}</div>`;
 
     const tabContent = activeTab === "history" ? historyHtml : formsContent;
 
@@ -1073,6 +1295,7 @@ function renderEmployeeCard(emp, partners) {
         </div>
         <div class="emp-head-right">
           ${emp.type==="workbased" ? `<span class="mono small strong" style="color:${owed>0?"var(--rust)":"var(--teal)"}">${owed>0?`owes ${fmt(owed)}`:"settled"}</span>` : ""}
+          ${unsettledAbs.length>0 ? `<span class="mono small strong" style="color:var(--rust)">absent ${unsettledAbs.length}d (${fmt(absenceDeductionVal)})</span>` : ""}
           ${outstandingAdv>0 ? `<span class="mono small strong gold">advance ${fmt(outstandingAdv)}</span>` : ""}
           ${outstandingReimb>0 ? `<span class="mono small strong" style="color:var(--rust)">reimburse ${fmt(outstandingReimb)}</span>` : ""}
           ${outstandingHeld>0 ? `<span class="mono small strong" style="color:var(--rust)">holding ${fmt(outstandingHeld)}</span>` : ""}
@@ -1241,6 +1464,161 @@ function renderSettings() {
   `;
 }
 
+function renderReports() {
+  const range = state.reportRange || "all";
+  let startDate = state.reportStart || "";
+  let endDate = state.reportEnd || "";
+
+  const now = new Date();
+  if (range === "this_month") {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    startDate = start.toISOString().slice(0, 10);
+    endDate = today();
+  } else if (range === "last_month") {
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const end = new Date(now.getFullYear(), now.getMonth(), 0);
+    startDate = start.toISOString().slice(0, 10);
+    endDate = end.toISOString().slice(0, 10);
+  } else if (range === "this_week") {
+    const day = now.getDay() || 7;
+    const start = new Date(now);
+    start.setDate(now.getDate() - day + 1);
+    startDate = start.toISOString().slice(0, 10);
+    endDate = today();
+  }
+
+  const inRange = (dateStr) => {
+    if (!dateStr) return true;
+    if (range === "all") return true;
+    if (startDate && dateStr < startDate) return false;
+    if (endDate && dateStr > endDate) return false;
+    return true;
+  };
+
+  const repSales = state.income.filter(s => inRange(s.date));
+  const repExpenses = state.expenses.filter(e => inRange(e.date));
+  const repSalaryPayments = state.salaryPayments.filter(p => inRange(p.date));
+  const repAdvances = state.advances.filter(a => inRange(a.date));
+  const repAttendance = (state.attendanceLogs || []).filter(a => inRange(a.date));
+
+  const totalOrderValue = repSales.reduce((s, x) => s + Number(x.amount || 0), 0);
+  const totalIncomeCollected = repSales.reduce((s, sale) => {
+    const pms = getSalePayments(sale);
+    return s + pms.filter(p => inRange(p.date)).reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  }, 0);
+  const totalPendingReceivables = Math.max(0, totalOrderValue - totalIncomeCollected);
+
+  const totalDirectExpenses = repExpenses.reduce((s, x) => s + Number(x.amount || 0), 0);
+  const totalSalariesPaid = repSalaryPayments.reduce((s, x) => s + Number(x.amount || 0) + Number(x.reimbursedAmount || 0), 0);
+  const totalAdvancesGiven = repAdvances.reduce((s, a) => s + Number(a.amount || 0), 0);
+  const totalOutflows = totalDirectExpenses + totalSalariesPaid + totalAdvancesGiven;
+  const netProfitPeriod = totalIncomeCollected - totalOutflows;
+
+  const itemSummary = {};
+  repSales.forEach(s => {
+    const key = (s.item || "Unspecified Item").trim();
+    if (!itemSummary[key]) itemSummary[key] = { qty: 0, total: 0, paid: 0 };
+    itemSummary[key].qty += Number(s.quantity || 1);
+    itemSummary[key].total += Number(s.amount || 0);
+    itemSummary[key].paid += getIncomePaid(s);
+  });
+  const sortedItems = Object.entries(itemSummary).sort((a, b) => b[1].total - a[1].total);
+
+  const empReportRows = state.config.employees.map(emp => {
+    const empPays = repSalaryPayments.filter(p => p.employeeId === emp.id);
+    const empAdvs = repAdvances.filter(a => a.employeeId === emp.id);
+    const empAtts = repAttendance.filter(a => a.employeeId === emp.id);
+    const wagePaid = empPays.reduce((s, p) => s + Number(p.amount || 0), 0);
+    const advGiven = empAdvs.reduce((s, a) => s + Number(a.amount || 0), 0);
+    const absCount = empAtts.length;
+    const absLoss = empAbsenceDeduction(emp);
+    return { emp, wagePaid, advGiven, absCount, absLoss };
+  });
+
+  return `
+    <div class="panel" style="margin-bottom:16px;">
+      <div style="display:flex;justify-space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div class="serif strong" style="font-size:18px;">📊 Financial &amp; Operational Reports</div>
+          <div class="muted small">Detailed breakdown of Income, Salaries, Attendance, Expenses, and Profit.</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <select class="led-input" id="rep-range" data-act="set-report-range" style="width:140px;">
+            <option value="all" ${range==='all'?'selected':''}>All Time</option>
+            <option value="this_month" ${range==='this_month'?'selected':''}>This Month</option>
+            <option value="last_month" ${range==='last_month'?'selected':''}>Last Month</option>
+            <option value="this_week" ${range==='this_week'?'selected':''}>This Week</option>
+            <option value="custom" ${range==='custom'?'selected':''}>Custom Range</option>
+          </select>
+          ${range === 'custom' ? `
+            <input class="led-input" type="date" id="rep-start" value="${startDate}" data-act="set-report-start" style="width:130px;">
+            <span class="muted small">to</span>
+            <input class="led-input" type="date" id="rep-end" value="${endDate}" data-act="set-report-end" style="width:130px;">
+          ` : ''}
+          <button class="led-btn secondary no-hide-print" onclick="window.print()">🖨️ Print / Save PDF</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid3" style="margin-bottom:16px;">
+      <div class="panel total-box">
+        <div class="muted serif" style="font-size:13px">Total Revenue Collected</div>
+        <div class="mono teal-text" style="font-size:22px;font-weight:700">${fmt(totalIncomeCollected)}</div>
+        <div class="muted small" style="margin-top:4px;">Total Sales Value: <span class="mono">${fmt(totalOrderValue)}</span></div>
+      </div>
+      <div class="panel total-box">
+        <div class="muted serif" style="font-size:13px">Total Outflows &amp; Payroll</div>
+        <div class="mono rust-text" style="font-size:22px;font-weight:700">${fmt(totalOutflows)}</div>
+        <div class="muted small" style="margin-top:4px;">Expenses: <span class="mono">${fmt(totalDirectExpenses)}</span> | Salaries: <span class="mono">${fmt(totalSalariesPaid)}</span></div>
+      </div>
+      <div class="panel total-box">
+        <div class="muted serif" style="font-size:13px">Period Net Profit</div>
+        <div class="mono" style="font-size:22px;font-weight:700;color:${netProfitPeriod>=0?'var(--teal)':'var(--rust)'}">${fmt(netProfitPeriod)}</div>
+        <div class="muted small" style="margin-top:4px;">Pending Sales Due: <span class="mono gold">${fmt(totalPendingReceivables)}</span></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:16px;">
+      <div class="serif strong" style="margin-bottom:10px;">📦 Sales &amp; Item Breakdown</div>
+      ${sortedItems.length === 0 ? `<div class="empty-msg">No sales found in selected date range.</div>` : `
+        <div class="table-panel">
+          <div class="mono table-head" style="display:grid;grid-template-columns:1fr 80px 110px 110px 110px;gap:8px;">
+            <div>ITEM / PRODUCT</div><div>QTY</div><div>TOTAL PRICE</div><div>PAID CASH</div><div>DUE BALANCE</div>
+          </div>
+          ${sortedItems.map(([item, data]) => {
+            const due = Math.max(0, data.total - data.paid);
+            return `<div class="row-line" style="display:grid;grid-template-columns:1fr 80px 110px 110px 110px;gap:8px;align-items:center;">
+              <div class="strong">${esc(item)}</div>
+              <div class="mono small">${data.qty}</div>
+              <div class="mono strong">${fmt(data.total)}</div>
+              <div class="mono teal-text">${fmt(data.paid)}</div>
+              <div class="mono ${due>0?'gold':''}">${fmt(due)}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      `}
+    </div>
+
+    <div class="panel" style="margin-bottom:16px;">
+      <div class="serif strong" style="margin-bottom:10px;">👥 Employee Payroll &amp; Attendance Report</div>
+      <div class="table-panel">
+        <div class="mono table-head" style="display:grid;grid-template-columns:1fr 110px 110px 110px 130px;gap:8px;">
+          <div>EMPLOYEE</div><div>TYPE</div><div>WAGES PAID</div><div>ADVANCES</div><div>ABSENCE DEDUCTIONS</div>
+        </div>
+        ${empReportRows.map(r => `
+          <div class="row-line" style="display:grid;grid-template-columns:1fr 110px 110px 110px 130px;gap:8px;align-items:center;">
+            <div class="strong">${esc(r.emp.name)} ${r.emp.phone?`<span class="muted small">(${esc(r.emp.phone)})</span>`:''}</div>
+            <div class="small">${r.emp.type==='weekly'?'Weekly Salary':'Piece-Rate'}</div>
+            <div class="mono strong teal-text">${fmt(r.wagePaid)}</div>
+            <div class="mono gold">${fmt(r.advGiven)}</div>
+            <div class="mono rust-text">${r.absCount}d (${fmt(r.absLoss)})</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
 function render() {
   const app = document.getElementById("app");
   if (!state.loaded && state.authenticated) { app.innerHTML = `<div class="loading">Loading ledger…</div>`; return; }
@@ -1251,6 +1629,7 @@ function render() {
   else if (state.tab === "expenses") content = renderExpenses();
   else if (state.tab === "employees") content = renderEmployees();
   else if (state.tab === "vendors") content = renderVendors();
+  else if (state.tab === "reports") content = renderReports();
   else if (state.tab === "settings") content = renderSettings();
   app.innerHTML = `<div class="container-fluid px-3 px-md-4 py-4" style="max-width:1600px;margin:0 auto;">${renderHeader()}${renderTabs()}${content}</div>`;
 }
@@ -1359,15 +1738,38 @@ document.addEventListener("DOMContentLoaded", () => {
       const date = document.getElementById("inc-date").value || today();
       const item = document.getElementById("inc-item").value.trim();
       const quantity = document.getElementById("inc-qty").value ? Number(document.getElementById("inc-qty").value) : null;
-      const amount = Number(document.getElementById("inc-amount").value);
+      const totalAmount = Number(document.getElementById("inc-amount").value);
+      const paidInput = document.getElementById("inc-paid-amount").value;
+      const paidAmount = paidInput !== "" ? Number(paidInput) : totalAmount;
       const receiverVal = document.getElementById("inc-receivedby").value;
       const [receiverType, receiverId] = receiverVal.split(":");
       const note = document.getElementById("inc-note").value.trim();
-      if (!item || !amount) return;
-      const entry = { id: uid(), date, item, quantity, amount, note };
-      if (receiverType === "employee") { entry.receivedByEmployeeId = receiverId; entry.settled = false; }
-      else { entry.receivedBy = receiverId; }
+      if (!item || !totalAmount) return;
+      const entry = {
+        id: uid(),
+        date,
+        item,
+        quantity,
+        amount: totalAmount,
+        note,
+        payments: [
+          {
+            id: uid(),
+            date,
+            amount: paidAmount,
+            receivedBy: receiverType === "partner" ? receiverId : undefined,
+            receivedByEmployeeId: receiverType === "employee" ? receiverId : undefined,
+            settled: false,
+            note: paidAmount < totalAmount ? "Advance payment" : "Full payment"
+          }
+        ]
+      };
       mutate(() => state.income.unshift(entry));
+      toast(paidAmount < totalAmount ? "💵 Advance sale logged!" : "🎉 Sale logged successfully!");
+      return;
+    }
+    if (act === "pay-income-balance") {
+      showReceiveIncomePaymentModal(el.dataset.id);
       return;
     }
     if (act === "edit-income") {
@@ -1388,7 +1790,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const type = document.getElementById("new-emp-type").value;
       if (!name) return;
       const weeklyRate = Number(document.getElementById("new-emp-weekly")?.value || 0);
-      const emp = { id: uid(), name, phone, type, weeklyRate, items: type === "workbased" ? [] : undefined };
+      const emp = { id: uid(), name, phone, type, weeklyRate, workingDays: 6, items: type === "workbased" ? [] : undefined };
       mutate(() => { state.config.employees.push(emp); });
       return;
     }
@@ -1405,6 +1807,7 @@ document.addEventListener("DOMContentLoaded", () => {
         state.workLogs = state.workLogs.filter(w => w.employeeId !== id);
         state.salaryPayments = state.salaryPayments.filter(s => s.employeeId !== id);
         state.advances = state.advances.filter(a => a.employeeId !== id);
+        state.attendanceLogs = (state.attendanceLogs || []).filter(a => a.employeeId !== id);
         state.expenses = state.expenses.map(x => x.payerEmployeeId === id ? { ...x, payerEmployeeId: undefined } : x);
         state.income = state.income.map(x => x.receivedByEmployeeId === id ? { ...x, receivedByEmployeeId: undefined } : x);
         if (state.expandedEmp === id) state.expandedEmp = null;
@@ -1415,6 +1818,31 @@ document.addEventListener("DOMContentLoaded", () => {
       const id = el.dataset.id;
       state.expandedEmp = state.expandedEmp === id ? null : id;
       render();
+      return;
+    }
+
+    if (act === "add-attendance") {
+      const empId = el.dataset.emp;
+      const date = document.getElementById(`att-date-${empId}`).value || today();
+      const status = document.getElementById(`att-status-${empId}`).value;
+      const deductVal = document.getElementById(`att-deduct-${empId}`).value;
+      const deductSalary = deductVal === "yes";
+      const note = document.getElementById(`att-note-${empId}`).value.trim();
+      state.cardTab = state.cardTab || {};
+      state.cardTab[empId] = "history";
+      mutate(() => {
+        state.attendanceLogs = state.attendanceLogs || [];
+        state.attendanceLogs.unshift({ id: uid(), employeeId: empId, date, status, deductSalary, note, settled: false });
+      });
+      toast("📅 Absence logged!");
+      return;
+    }
+    if (act === "delete-attendance") {
+      const id = el.dataset.id;
+      mutate(() => {
+        state.attendanceLogs = (state.attendanceLogs || []).filter(a => a.id !== id);
+      });
+      toast("Deleted absence record.");
       return;
     }
 
@@ -1492,9 +1920,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const outstandingAdv = empOutstandingAdvance(empId);
       const outstandingReimb = empOutstandingReimbursement(empId);
       const outstandingHeld = empOutstandingHeldIncome(empId);
+      const unsettledAbs = empUnsettledAbsences(empId);
+      const absenceDeductionVal = empAbsenceDeduction(emp);
       const deductAdv = (state.deductAdvance[empId] !== false) && outstandingAdv > 0;
       const includeReimb = (state.includeReimbursement[empId] !== false) && outstandingReimb > 0;
       const deductHeld = (state.deductHeldIncome[empId] !== false) && outstandingHeld > 0;
+      const deductAtt = (state.deductAttendance[empId] !== false) && unsettledAbs.length > 0;
       const date = document.getElementById(`pay-date-${empId}`).value || today();
       const amountInput = document.getElementById(`pay-amount-${empId}`).value;
 
@@ -1505,7 +1936,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const unpaidWorkEarned = Math.max(0, totalEarned - totalWagePaid);
 
       const suggestedWage = emp.type === "weekly"
-        ? Math.max(emp.weeklyRate - (deductAdv ? outstandingAdv : 0) - (deductHeld ? outstandingHeld : 0), 0)
+        ? Math.max(emp.weeklyRate - (deductAdv ? outstandingAdv : 0) - (deductHeld ? outstandingHeld : 0) - (deductAtt ? absenceDeductionVal : 0), 0)
         : Math.max(unpaidWorkEarned - (deductAdv ? outstandingAdv : 0) - (deductHeld ? outstandingHeld : 0), 0);
 
       let wageAmount, reimbursedAmount;
@@ -1523,10 +1954,21 @@ document.addEventListener("DOMContentLoaded", () => {
       state.cardTab = state.cardTab || {};
       state.cardTab[empId] = "history";
       mutate(() => {
-        state.salaryPayments.unshift({ id: uid(), employeeId: empId, date, amount: wageAmount, reimbursedAmount, paidBy, note, deductedAdvances: deductAdv ? outstandingAdv : 0, deductedHeld: deductHeld ? outstandingHeld : 0 });
+        state.salaryPayments.unshift({ id: uid(), employeeId: empId, date, amount: wageAmount, reimbursedAmount, paidBy, note, deductedAdvances: deductAdv ? outstandingAdv : 0, deductedHeld: deductHeld ? outstandingHeld : 0, deductedAbsences: deductAtt ? absenceDeductionVal : 0 });
         if (deductAdv) state.advances = state.advances.map(a => (a.employeeId === empId && !a.settled ? { ...a, settled: true } : a));
         if (includeReimb) state.expenses = state.expenses.map(x => (x.payerEmployeeId === empId && !x.settled ? { ...x, settled: true, settledBy: paidBy } : x));
-        if (deductHeld) state.income = state.income.map(x => (x.receivedByEmployeeId === empId && !x.settled ? { ...x, settled: true, settledBy: paidBy } : x));
+        if (deductHeld) {
+          state.income.forEach(sale => {
+            if (sale.payments) {
+              sale.payments.forEach(p => { if (p.receivedByEmployeeId === empId) p.settled = true; });
+            } else if (sale.receivedByEmployeeId === empId) {
+              sale.settled = true;
+            }
+          });
+        }
+        if (state.attendanceLogs) {
+          state.attendanceLogs = state.attendanceLogs.map(a => (a.employeeId === empId && !a.settled ? { ...a, settled: true } : a));
+        }
       });
       toast("🎉 Payment recorded successfully!");
       return;
@@ -1660,6 +2102,19 @@ document.addEventListener("DOMContentLoaded", () => {
         const empId = el.dataset.emp;
         state.deductHeldIncome[empId] = el.checked;
         render();
+      } else if (act === "toggle-attendance") {
+        const empId = el.dataset.emp;
+        state.deductAttendance[empId] = el.checked;
+        render();
+      } else if (act === "set-report-range") {
+        state.reportRange = el.value;
+        render();
+      } else if (act === "set-report-start") {
+        state.reportStart = el.value;
+        render();
+      } else if (act === "set-report-end") {
+        state.reportEnd = el.value;
+        render();
       }
     }
 
@@ -1681,6 +2136,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (d.salaryPayments) state.salaryPayments = d.salaryPayments;
                 if (d.advances) state.advances = d.advances;
                 if (d.vendorPayments) state.vendorPayments = d.vendorPayments;
+                if (d.attendanceLogs) state.attendanceLogs = d.attendanceLogs;
               });
               swalAlert("Import Successful!", "Backup restored successfully.", "success");
             }
