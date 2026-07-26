@@ -220,6 +220,18 @@ const swalConfirm = async (title, text = "This action cannot be undone.") => {
   return res.isConfirmed;
 };
 
+const toast = (title) => {
+  Swal.fire({
+    toast: true,
+    position: 'top-end',
+    icon: 'success',
+    title,
+    showConfirmButton: false,
+    timer: 2200,
+    timerProgressBar: true
+  });
+};
+
 const swalAlert = (title, text = "", icon = "info") => {
   return Swal.fire({
     title,
@@ -911,21 +923,45 @@ function renderEmployeeCard(emp, partners) {
       ...advances.map(a => ({ ...a, kind: "advance" })),
     ].sort((a, b) => (a.date < b.date ? 1 : -1));
 
+    const activeTab = (state.cardTab && state.cardTab[emp.id]) || (historyItems.length ? "history" : "form");
+
+    const tabHeader = `
+      <div style="display:flex;gap:8px;margin-bottom:18px;border-bottom:1px solid var(--rule);padding-bottom:10px;">
+        <button class="tab-btn ${activeTab==='history'?'active':''}" data-act="set-card-tab" data-id="${emp.id}" data-tab="history">
+          📜 History &amp; Ledger (${historyItems.length})
+        </button>
+        <button class="tab-btn ${activeTab==='form'?'active':''}" data-act="set-card-tab" data-id="${emp.id}" data-tab="form">
+          ✍️ Log Work, Advance &amp; Payments
+        </button>
+      </div>
+    `;
+
     const historyHtml = historyItems.length ? `
-      <div class="mono muted" style="font-size:11px;margin-bottom:6px">HISTORY</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span class="mono muted" style="font-size:11.5px;font-weight:700;">TRANSACTION HISTORY</span>
+        <button class="led-btn secondary" style="font-size:12.5px;padding:4px 12px;" data-act="set-card-tab" data-id="${emp.id}" data-tab="form">
+          + Log Entry
+        </button>
+      </div>
       ${historyItems.map(r => {
         let label = "";
-        if (r.kind === "work") label = `${esc(r.itemLabel||"Work")} × ${r.quantity}${r.note?" — "+esc(r.note):""}`;
-        else if (r.kind === "pay") label = `Paid by ${esc(partners.find(p=>p.id===r.paidBy)?.name||"—")}${r.deductedAdvances?` (− ${fmt(r.deductedAdvances)} advance)`:""}${r.deductedHeld?` (− ${fmt(r.deductedHeld)} collected)`:""}${r.reimbursedAmount?` (+ ${fmt(r.reimbursedAmount)} reimb.)`:""}${r.note?" — "+esc(r.note):""}`;
-        else label = `Advance given by ${esc(partners.find(p=>p.id===r.paidBy)?.name||"—")}${r.note?" — "+esc(r.note):""}`;
+        if (r.kind === "work") label = `Work: ${esc(r.itemLabel||"Work")} × ${r.quantity}${r.note?" — "+esc(r.note):""}`;
+        else if (r.kind === "pay") label = `Salary Payment: Paid by ${esc(partners.find(p=>p.id===r.paidBy)?.name||"—")}${r.deductedAdvances?` (− ${fmt(r.deductedAdvances)} advance)`:""}${r.deductedHeld?` (− ${fmt(r.deductedHeld)} collected)`:""}${r.reimbursedAmount?` (+ ${fmt(r.reimbursedAmount)} reimb.)`:""}${r.note?" — "+esc(r.note):""}`;
+        else label = `Advance Given: Paid by ${esc(partners.find(p=>p.id===r.paidBy)?.name||"—")}${r.note?" — "+esc(r.note):""}`;
         const color = r.kind==="work" ? "var(--teal)" : (r.kind==="advance" ? "var(--gold)" : "var(--rust)");
         const sign = r.kind==="work" ? "+" : "-";
         const amt = r.kind==="pay" ? (r.amount + (r.reimbursedAmount||0)) : r.amount;
-        return `<div class="history-row"><span class="mono muted" style="width:90px">${esc(r.date)}</span><span style="flex:1">${label}</span><span class="mono strong" style="color:${color}">${sign}${fmt(amt)}</span></div>`;
+        return `<div class="history-row"><span class="mono muted" style="width:95px">${esc(r.date)}</span><span style="flex:1">${label}</span><span class="mono strong" style="color:${color}">${sign}${fmt(amt)}</span></div>`;
       }).join("")}
-    ` : "";
+    ` : `
+      <div class="empty-msg">No work or payment history yet. Use the tab above to log work or payments.</div>
+    `;
 
-    body = `<div class="card-body">${workSection}${advanceSection}${coveredList}${heldList}${paySection}${historyHtml}</div>`;
+    const formsContent = `<div style="display:flex;flex-direction:column;gap:14px;">${workSection}${advanceSection}${coveredList}${heldList}${paySection}</div>`;
+
+    const tabContent = activeTab === "history" ? historyHtml : formsContent;
+
+    body = `<div class="card-body">${tabHeader}${tabContent}</div>`;
   }
 
   return `
@@ -976,9 +1012,27 @@ function renderVendorCard(vendor, partners) {
 
   let body = "";
   if (expanded) {
+    const historyItems = [
+      ...purchases.map(x => ({ ...x, kind: "purchase" })),
+      ...payments.map(x => ({ ...x, kind: "vpay" })),
+    ].sort((a, b) => (a.date < b.date ? 1 : -1));
+
+    const activeTab = (state.cardTab && state.cardTab[vendor.id]) || (historyItems.length ? "history" : "form");
+
+    const tabHeader = `
+      <div style="display:flex;gap:8px;margin-bottom:18px;border-bottom:1px solid var(--rule);padding-bottom:10px;">
+        <button class="tab-btn ${activeTab==='history'?'active':''}" data-act="set-card-tab" data-id="${vendor.id}" data-tab="history">
+          📜 History &amp; Ledger (${historyItems.length})
+        </button>
+        <button class="tab-btn ${activeTab==='form'?'active':''}" data-act="set-card-tab" data-id="${vendor.id}" data-tab="form">
+          ➕ Log Purchase or Payment
+        </button>
+      </div>
+    `;
+
     const purchaseSection = `
-      <div class="serif small-title">Log a purchase</div>
-      <div class="form-grid-income" style="grid-template-columns:110px 1fr 100px 150px auto">
+      <div class="serif small-title">Log a Purchase</div>
+      <div class="form-grid-income" style="grid-template-columns:120px 1fr 100px 150px auto">
         <input class="led-input" type="date" id="vp-date-${vendor.id}" value="${today()}">
         <input class="led-input" id="vp-desc-${vendor.id}" placeholder="What was bought (e.g. leather hides)">
         <input class="led-input" type="number" id="vp-amount-${vendor.id}" placeholder="Amount">
@@ -986,44 +1040,48 @@ function renderVendorCard(vendor, partners) {
           ${partners.map(p=>`<option value="partner:${p.id}">Paid now by ${esc(p.name)}</option>`).join("")}
           <option value="credit">On credit (pay later)</option>
         </select>
-        <button class="led-btn" data-act="add-purchase" data-vendor="${vendor.id}">+ Log</button>
+        <button class="led-btn" data-act="add-purchase" data-vendor="${vendor.id}">+ Log Purchase</button>
       </div>
-      <div style="margin-bottom:14px"></div>
+      <div style="margin-bottom:16px"></div>
     `;
 
-    const paySection = outstanding > 0.005 ? `
-      <div class="serif small-title">Pay this vendor</div>
+    const paySection = `
+      <div class="serif small-title">Pay this Vendor</div>
       <div class="form-grid-adv">
         <input class="led-input" type="date" id="vpay-date-${vendor.id}" value="${today()}">
-        <input class="led-input" type="number" id="vpay-amount-${vendor.id}" placeholder="${outstanding.toFixed(2)}">
+        <input class="led-input" type="number" id="vpay-amount-${vendor.id}" placeholder="${outstanding > 0 ? outstanding.toFixed(2) : 'Amount'}">
         <select class="led-input" id="vpay-paidby-${vendor.id}">${partners.map(p=>`<option value="${p.id}">Paid by ${esc(p.name)}</option>`).join("")}</select>
         <input class="led-input" id="vpay-note-${vendor.id}" placeholder="Note (optional)">
-        <button class="led-btn" data-act="pay-vendor" data-vendor="${vendor.id}">+ Pay</button>
+        <button class="led-btn" data-act="pay-vendor" data-vendor="${vendor.id}">+ Record Payment</button>
       </div>
-      <div class="muted small" style="margin-bottom:14px">Currently owe ${fmt(outstanding)} — leave amount blank to pay it in full, or enter a partial amount.</div>
-    ` : `<div style="margin-bottom:6px"></div>`;
-
-    const historyItems = [
-      ...purchases.map(x => ({ ...x, kind: "purchase" })),
-      ...payments.map(x => ({ ...x, kind: "vpay" })),
-    ].sort((a, b) => (a.date < b.date ? 1 : -1));
+      ${outstanding > 0.005 ? `<div class="muted small" style="margin-top:6px">Currently owe ${fmt(outstanding)} — leave amount blank for full payment or enter partial amount.</div>` : ''}
+    `;
 
     const historyHtml = historyItems.length ? `
-      <div class="mono muted" style="font-size:11px;margin-bottom:6px">HISTORY</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span class="mono muted" style="font-size:11.5px;font-weight:700;">TRANSACTION LOG</span>
+        <button class="led-btn secondary" style="font-size:12.5px;padding:4px 12px;" data-act="set-card-tab" data-id="${vendor.id}" data-tab="form">
+          + Log New Purchase / Payment
+        </button>
+      </div>
       ${historyItems.map(r => {
         let label, color, sign;
         if (r.kind === "purchase") {
-          label = `${esc(r.description)}${r.onCredit ? ` <span class="tag tag-wait">on credit</span>` : ` <span class="tag tag-done">paid by ${esc(partners.find(p=>p.id===r.paidBy)?.name||"—")}</span>`}`;
+          label = `Purchase: ${esc(r.description)}${r.onCredit ? ` <span class="tag tag-wait">on credit</span>` : ` <span class="tag tag-done">paid by ${esc(partners.find(p=>p.id===r.paidBy)?.name||"—")}</span>`}`;
           color = "var(--rust)"; sign = "-";
         } else {
           label = `Payment by ${esc(partners.find(p=>p.id===r.paidBy)?.name||"—")}${r.note?" — "+esc(r.note):""}`;
           color = "var(--teal)"; sign = "-";
         }
-        return `<div class="history-row"><span class="mono muted" style="width:90px">${esc(r.date)}</span><span style="flex:1">${label}</span><span class="mono strong" style="color:${color}">${sign}${fmt(r.amount)}</span></div>`;
+        return `<div class="history-row"><span class="mono muted" style="width:95px">${esc(r.date)}</span><span style="flex:1">${label}</span><span class="mono strong" style="color:${color}">${sign}${fmt(r.amount)}</span></div>`;
       }).join("")}
-    ` : "";
+    ` : `
+      <div class="empty-msg">No transaction history yet. Use the tab above to log your first purchase or payment.</div>
+    `;
 
-    body = `<div class="card-body">${purchaseSection}${paySection}${historyHtml}</div>`;
+    const tabContent = activeTab === "history" ? historyHtml : `<div style="display:flex;flex-direction:column;gap:14px;">${purchaseSection}${paySection}</div>`;
+
+    body = `<div class="card-body">${tabHeader}${tabContent}</div>`;
   }
 
   return `
@@ -1237,6 +1295,15 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    if (act === "set-card-tab") {
+      const id = el.dataset.id;
+      const tab = el.dataset.tab;
+      state.cardTab = state.cardTab || {};
+      state.cardTab[id] = tab;
+      render();
+      return;
+    }
+
     if (act === "add-work") {
       const empId = el.dataset.emp;
       const emp = state.config.employees.find(e => e.id === empId);
@@ -1247,7 +1314,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const note = document.getElementById(`work-note-${empId}`).value.trim();
       if (!quantity || !item) return;
       const amount = quantity * item.rate;
+      state.cardTab = state.cardTab || {};
+      state.cardTab[empId] = "history";
       mutate(() => state.workLogs.unshift({ id: uid(), employeeId: empId, itemId: item.id, itemLabel: item.label, rate: item.rate, date, quantity, note, amount }));
+      toast("🔨 Work logged successfully!");
       return;
     }
 
@@ -1258,7 +1328,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const paidBy = document.getElementById(`adv-paidby-${empId}`).value;
       const note = document.getElementById(`adv-note-${empId}`).value.trim();
       if (!amount) return;
+      state.cardTab = state.cardTab || {};
+      state.cardTab[empId] = "history";
       mutate(() => state.advances.unshift({ id: uid(), employeeId: empId, date, amount, paidBy, note, settled: false }));
+      toast("💵 Advance recorded!");
       return;
     }
 
@@ -1296,12 +1369,15 @@ document.addEventListener("DOMContentLoaded", () => {
       const note = document.getElementById(`pay-note-${empId}`).value.trim();
       if (!wageAmount && wageAmount !== 0 && !reimbursedAmount) return;
       if (wageAmount === 0 && reimbursedAmount === 0 && emp.type !== "weekly" && unpaidWorkEarned === 0) return;
+      state.cardTab = state.cardTab || {};
+      state.cardTab[empId] = "history";
       mutate(() => {
         state.salaryPayments.unshift({ id: uid(), employeeId: empId, date, amount: wageAmount, reimbursedAmount, paidBy, note, deductedAdvances: deductAdv ? outstandingAdv : 0, deductedHeld: deductHeld ? outstandingHeld : 0 });
         if (deductAdv) state.advances = state.advances.map(a => (a.employeeId === empId && !a.settled ? { ...a, settled: true } : a));
         if (includeReimb) state.expenses = state.expenses.map(x => (x.payerEmployeeId === empId && !x.settled ? { ...x, settled: true, settledBy: paidBy } : x));
         if (deductHeld) state.income = state.income.map(x => (x.receivedByEmployeeId === empId && !x.settled ? { ...x, settled: true, settledBy: paidBy } : x));
       });
+      toast("🎉 Payment recorded successfully!");
       return;
     }
     if (act === "add-vendor") {
@@ -1310,6 +1386,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const note = document.getElementById("new-vendor-note").value.trim();
       if (!name) return;
       mutate(() => { state.config.vendors.push({ id: uid(), name, phone, note }); });
+      toast("Vendor profile created!");
       return;
     }
     if (act === "edit-vendor") {
@@ -1344,7 +1421,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const entry = { id: uid(), date, description, amount, vendorId };
       if (paymentVal === "credit") { entry.onCredit = true; }
       else { const [, partnerId] = paymentVal.split(":"); entry.paidBy = partnerId; entry.onCredit = false; }
+      state.cardTab = state.cardTab || {};
+      state.cardTab[vendorId] = "history";
       mutate(() => state.expenses.unshift(entry));
+      toast("📦 Purchase logged successfully!");
       return;
     }
     if (act === "pay-vendor") {
@@ -1356,7 +1436,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const paidBy = document.getElementById(`vpay-paidby-${vendorId}`).value;
       const note = document.getElementById(`vpay-note-${vendorId}`).value.trim();
       if (!amount) return;
+      state.cardTab = state.cardTab || {};
+      state.cardTab[vendorId] = "history";
       mutate(() => state.vendorPayments.unshift({ id: uid(), vendorId, date, amount, paidBy, note }));
+      toast("💰 Vendor payment recorded!");
       return;
     }
   });
