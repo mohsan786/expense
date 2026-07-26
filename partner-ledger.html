@@ -336,7 +336,7 @@
   .table-panel { padding: 0; overflow: hidden; }
   .table-head { padding: 10px 16px; font-size: 11.5px; font-weight: 700; color: #64748B; border-bottom: 1px solid var(--rule); background: #F8FAFC; text-transform: uppercase; letter-spacing: 0.5px; }
   .expense-row { display: grid; grid-template-columns: 85px 1fr 95px 150px 56px; gap: 8px; align-items: center; }
-  .income-row { display: grid; grid-template-columns: 80px 1fr 45px 80px 80px 130px 110px 90px; gap: 6px; align-items: center; }
+  .income-row { display: grid; grid-template-columns: 85px 1fr 45px 95px 95px 140px 110px 110px; gap: 8px; align-items: center; }
   @media (max-width: 560px) {
     .table-head { display: none; }
     .expense-row, .income-row { display: flex; flex-wrap: wrap; gap: 6px 10px; justify-content: space-between; }
@@ -1375,7 +1375,7 @@ function renderIncome() {
     if (balance <= 0) {
       statusTag = `<span class="badge bg-success">Paid</span>`;
     } else if (paidAmt > 0) {
-      statusTag = `<span class="badge bg-warning text-dark">Advance (${fmt(paidAmt)} paid / ${fmt(balance)} due)</span>`;
+      statusTag = `<span class="badge bg-warning text-dark" title="Paid ${fmt(paidAmt)} / Total ${fmt(totalAmt)}">Advance (${fmt(balance)} due)</span>`;
     } else {
       statusTag = `<span class="badge bg-danger">Unpaid (${fmt(balance)} due)</span>`;
     }
