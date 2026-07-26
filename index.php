@@ -168,8 +168,8 @@
   .icon-btn:hover { color: var(--ink); background: #F1F5F9; }
   
   /* Form Grids */
-  .form-grid-expense { display: grid; grid-template-columns: 120px 1fr 100px 170px auto; gap: 10px; }
-  .form-grid-income { display: grid; grid-template-columns: 110px 1fr 65px 95px 95px 140px auto; gap: 8px; }
+  .form-grid-expense { display: grid; grid-template-columns: 105px 1fr 85px 140px 130px 130px auto; gap: 8px; }
+  .form-grid-income { display: grid; grid-template-columns: 110px 1fr 50px 85px 85px 130px 120px auto; gap: 6px; }
   .form-grid-emp { display: grid; grid-template-columns: 1fr 1fr 160px auto; gap: 10px; align-items: center; }
   .form-grid-item { display: grid; grid-template-columns: 1fr 120px auto; gap: 10px; margin-bottom: 8px; }
   .form-grid-work { display: grid; grid-template-columns: 120px 1fr 90px 1fr auto; gap: 10px; margin-bottom: 8px; }
@@ -180,8 +180,8 @@
   /* Tables */
   .table-panel { padding: 0; overflow: hidden; }
   .table-head { padding: 10px 16px; font-size: 11.5px; font-weight: 700; color: #64748B; border-bottom: 1px solid var(--rule); background: #F8FAFC; text-transform: uppercase; letter-spacing: 0.5px; }
-  .expense-row { display: grid; grid-template-columns: 85px 1fr 95px 150px 56px; gap: 8px; align-items: center; }
-  .income-row { display: grid; grid-template-columns: 80px 1fr 45px 80px 80px 130px 110px 90px; gap: 6px; align-items: center; }
+  .expense-row { display: grid; grid-template-columns: 80px 1fr 110px 85px 120px 110px 75px; gap: 6px; align-items: center; }
+  .income-row { display: grid; grid-template-columns: 75px 1fr 45px 75px 75px 120px 100px 110px; gap: 6px; align-items: center; }
   @media (max-width: 560px) {
     .table-head { display: none; }
     .expense-row, .income-row { display: flex; flex-wrap: wrap; gap: 6px 10px; justify-content: space-between; }
@@ -660,6 +660,8 @@ async function loadData() {
       if (d.vendorPayments) state.vendorPayments = d.vendorPayments;
       if (d.attendanceLogs) state.attendanceLogs = d.attendanceLogs;
       if (!state.config.vendors) state.config.vendors = [];
+      if (!state.config.customers) state.config.customers = [];
+      if (!state.config.budgets) state.config.budgets = { "Raw Materials": 5000, "Shop Rent": 1000, "Utilities / Bills": 500, "Packaging": 300, "Worker Food & Tea": 300 };
       state.config.employees = state.config.employees.map(e => {
         if (e.type === "workbased" && !e.items) {
           const items = (e.unitRate) ? [{ id: uid(), label: e.unitLabel || "unit", rate: e.unitRate }] : [];
@@ -695,6 +697,76 @@ async function persist() {
 }
 
 function mutate(fn) { fn(); persist(); render(); }
+
+function getPaymentMethodLabel(pm) {
+  if (pm === 'bank') return '🏦 Bank';
+  if (pm === 'wallet') return '📱 Mobile Wallet';
+  if (pm === 'card') return '💳 Card';
+  return '💵 Cash';
+}
+
+function showReceiptModal(expenseId) {
+  const exp = state.expenses.find(x => x.id === expenseId);
+  if (!exp || !exp.receiptUrl) {
+    swalAlert("No Receipt", "No receipt image attached to this expense.", "info");
+    return;
+  }
+  Swal.fire({
+    title: 'Receipt Attachment',
+    html: `
+      <div style="text-align:center;">
+        <p><strong>${esc(exp.description)}</strong> — ${fmt(exp.amount)} (${esc(exp.date)})</p>
+        <img src="${exp.receiptUrl}" style="max-width:100%;max-height:380px;border-radius:8px;border:1px solid #ccc;margin-bottom:12px;" alt="Receipt">
+        <div>
+          <a href="${exp.receiptUrl}" download="receipt-${exp.id}.png" class="swal2-confirm swal2-styled" style="text-decoration:none;display:inline-block;">Download Image</a>
+        </div>
+      </div>
+    `,
+    showConfirmButton: false,
+    showCloseButton: true,
+    background: '#FCFAF4',
+    color: '#23302B'
+  });
+}
+
+function sendWhatsAppReminder(saleId) {
+  const sale = state.income.find(x => x.id === saleId);
+  if (!sale) return;
+  const customers = state.config.customers || [];
+  const cust = customers.find(c => c.id === sale.customerId);
+  let phone = cust?.phone || sale.customerPhone || "";
+  let name = cust?.name || sale.customerName || "Valued Customer";
+  
+  if (!phone) {
+    Swal.fire({
+      title: 'Customer Phone Number',
+      input: 'text',
+      inputLabel: 'Enter customer WhatsApp phone number (with country code, e.g., 923001234567):',
+      showCancelButton: true,
+      confirmButtonColor: '#2F6F63',
+      preConfirm: (val) => {
+        if (!val) { Swal.showValidationMessage('Please enter a phone number'); return false; }
+        return val.replace(/[^0-9]/g, '');
+      }
+    }).then(res => {
+      if (res.value) {
+        openWa(res.value, name, sale);
+      }
+    });
+  } else {
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    openWa(cleanPhone, name, sale);
+  }
+}
+
+function openWa(phone, name, sale) {
+  const total = Number(sale.amount || 0);
+  const paid = getIncomePaid(sale);
+  const due = getIncomeBalance(sale);
+  const msg = `Assalamu Alaikum ${name},\n\nYour order for "${sale.item}" (Qty: ${sale.quantity||1}) is ready.\nTotal Amount: ${state.config.currency}${total}\nPaid Amount: ${state.config.currency}${paid}\nRemaining Balance Due: ${state.config.currency}${due}\n\nThank you!`;
+  const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+}
 
 function getSalePayments(sale) {
   if (Array.isArray(sale.payments) && sale.payments.length > 0) {
@@ -805,8 +877,92 @@ function renderHeader() {
 }
 
 function renderTabs() {
-  const items = [["overview","Overview"],["income","Income"],["expenses","Expenses"],["employees","Employees"],["vendors","Vendors"],["reports","Reports 📊"],["settings","Settings"]];
+  const items = [["overview","Overview"],["income","Income"],["expenses","Expenses"],["employees","Employees"],["vendors","Vendors"],["customers","Customers 👥"],["reports","Reports 📊"],["settings","Settings"]];
   return `<div class="tabs">${items.map(([id,label]) => `<button class="tab-btn ${state.tab===id?"active":""}" data-act="switch-tab" data-tab="${id}">${label}</button>`).join("")}</div>`;
+}
+
+function renderCategoryBudgets() {
+  const budgets = state.config.budgets || {};
+  const currentMonthPrefix = today().slice(0, 7);
+  const thisMonthExpenses = state.expenses.filter(e => e.date && e.date.startsWith(currentMonthPrefix));
+
+  const categoryTotals = {};
+  thisMonthExpenses.forEach(e => {
+    const cat = e.category || "Raw Materials";
+    categoryTotals[cat] = (categoryTotals[cat] || 0) + Number(e.amount || 0);
+  });
+
+  const entries = Object.entries(budgets);
+  if (entries.length === 0) return "";
+
+  const cards = entries.map(([cat, limit]) => {
+    const spent = categoryTotals[cat] || 0;
+    const pct = Math.min(100, limit > 0 ? Math.round((spent / limit) * 100) : 0);
+    const color = pct >= 95 ? "var(--rust)" : (pct >= 75 ? "var(--gold)" : "var(--teal)");
+    return `
+      <div style="background:#fff;border:1px solid var(--rule);border-radius:10px;padding:10px 14px;flex:1;min-width:160px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <span class="strong small">${esc(cat)}</span>
+          <span class="mono small" style="color:${color};font-weight:700;">${pct}%</span>
+        </div>
+        <div style="background:#E2E8F0;border-radius:10px;height:6px;overflow:hidden;margin-bottom:6px;">
+          <div style="width:${pct}%;background:${color};height:100%;border-radius:10px;transition:width 0.3s;"></div>
+        </div>
+        <div class="muted small" style="font-size:11px;">Spent: <span class="mono strong">${fmt(spent)}</span> / ${fmt(limit)}</div>
+      </div>
+    `;
+  }).join("");
+
+  return `<div style="margin-bottom:14px;"><div class="serif small-title" style="margin-bottom:6px;">🎯 Monthly Category Budgets</div><div style="display:flex;gap:10px;flex-wrap:wrap;">${cards}</div></div>`;
+}
+
+function renderCustomers() {
+  const customers = state.config.customers || [];
+  const sales = state.income;
+
+  const rows = customers.map(c => {
+    const custSales = sales.filter(s => s.customerId === c.id || (s.note && s.note.toLowerCase().includes(c.name.toLowerCase())));
+    const totalBilled = custSales.reduce((s, x) => s + Number(x.amount || 0), 0);
+    const totalPaid = custSales.reduce((s, x) => s + getIncomePaid(x), 0);
+    const pendingDue = custSales.reduce((s, x) => s + getIncomeBalance(x), 0);
+
+    return `
+      <div class="panel emp-card" style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+          <div>
+            <span class="serif strong" style="font-size:16px;">👤 ${esc(c.name)}</span>
+            ${c.phone ? `<span class="muted small" style="margin-left:6px;">📞 ${esc(c.phone)}</span>` : ""}
+            ${c.address ? `<div class="muted small">📍 ${esc(c.address)}</div>` : ""}
+            ${c.notes ? `<div class="muted small">📝 ${esc(c.notes)}</div>` : ""}
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+            <div class="mono small">Orders: <strong>${custSales.length}</strong></div>
+            <div class="mono small teal-text">Paid: <strong>${fmt(totalPaid)}</strong></div>
+            <div class="mono small ${pendingDue>0?'gold':''}">Due: <strong>${fmt(pendingDue)}</strong></div>
+            ${c.phone ? `<button class="led-btn secondary" style="padding:3px 10px;font-size:12px;" data-act="wa-direct" data-phone="${c.phone}" data-name="${c.name}" data-due="${pendingDue}">📲 WhatsApp</button>` : ''}
+            <button class="icon-btn" data-act="edit-customer" data-id="${c.id}" title="Edit Customer">✏️</button>
+            <button class="icon-btn" data-act="delete-customer" data-id="${c.id}" style="color:var(--rust);" title="Delete Customer">🗑️</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="panel">
+      <div class="serif strong" style="margin-bottom:10px;">Add Customer Profile</div>
+      <div class="form-grid-emp" style="grid-template-columns:1fr 1fr 1fr auto;">
+        <input class="led-input" id="cust-name" placeholder="Customer Name">
+        <input class="led-input" id="cust-phone" placeholder="WhatsApp / Phone (e.g. 923001234567)">
+        <input class="led-input" id="cust-address" placeholder="City / Address (optional)">
+        <button class="led-btn" data-act="add-customer">+ Add Customer</button>
+      </div>
+    </div>
+    <div class="panel table-panel">
+      <div class="serif strong" style="padding:12px 14px 4px;">Customer Database (${customers.length})</div>
+      ${customers.length === 0 ? `<div class="empty-msg">No customers created yet. Add one above or link when logging sales.</div>` : rows}
+    </div>
+  `;
 }
 
 function renderOverview() {
@@ -931,7 +1087,8 @@ function renderIncome() {
       <div class="small">${statusTag}</div>
       <div class="small">${uniqueReceivers}</div>
       <div style="display:flex;align-items:center;gap:4px;justify-content:flex-end">
-        ${balance > 0 ? `<button class="led-btn secondary" style="padding:2px 8px;font-size:12px;" data-act="pay-income-balance" data-id="${e.id}" title="Collect Remaining Payment">💵 Pay</button>` : ''}
+        <button class="led-btn secondary" style="padding:2px 6px;font-size:11.5px;" data-act="wa-sale" data-id="${e.id}" title="Send WhatsApp Payment Reminder">📲 WA</button>
+        ${balance > 0 ? `<button class="led-btn secondary" style="padding:2px 6px;font-size:11.5px;" data-act="pay-income-balance" data-id="${e.id}" title="Collect Remaining Payment">💵 Pay</button>` : ''}
         <button class="icon-btn" data-act="edit-income" data-id="${e.id}" title="Edit Sale">✏️</button>
         <button class="icon-btn" data-act="delete-income" data-id="${e.id}" title="Delete Sale" style="color:var(--rust)">🗑️</button>
       </div>
@@ -974,7 +1131,8 @@ function renderExpenses() {
   const filtered = state.expenses.filter(e => {
     if (!q) return true;
     const payer = e.payerEmployeeId ? (employees.find(x => x.id === e.payerEmployeeId)?.name || "") : (partners.find(p => p.id === e.paidBy)?.name || "");
-    return (e.description||"").toLowerCase().includes(q) || (e.date||"").includes(q) || payer.toLowerCase().includes(q) || String(e.amount||"").includes(q);
+    const cat = e.category || "";
+    return (e.description||"").toLowerCase().includes(q) || cat.toLowerCase().includes(q) || (e.date||"").includes(q) || payer.toLowerCase().includes(q) || String(e.amount||"").includes(q);
   });
 
   const pageSize = 10;
@@ -997,38 +1155,67 @@ function renderExpenses() {
       payerLabel = esc(partners.find(p=>p.id===e.paidBy)?.name || "—");
       if (e.vendorId) { const vend = state.config.vendors.find(v => v.id === e.vendorId); tag = vend ? `<span class="tag tag-done">${esc(vend.name)}</span>` : ""; }
     }
+    const categoryTag = `<span class="tag tag-done" style="background:#F1F5F9;color:#334155;border:1px solid #CBD5E1;">${esc(e.category || 'Raw Materials')}</span>`;
+    const pmLabel = getPaymentMethodLabel(e.paymentMethod || 'cash');
+
     return `<div class="row-line expense-row">
       <div class="mono small">${esc(e.date)}</div>
       <div>${esc(e.description)}</div>
-      <div class="mono">${fmt(e.amount)}</div>
+      <div>${categoryTag}</div>
+      <div class="mono strong">${fmt(e.amount)}</div>
+      <div class="small mono">${pmLabel}</div>
       <div class="small">${payerLabel} ${tag}</div>
       <div style="display:flex;align-items:center;gap:4px;justify-content:flex-end">
+        ${e.receiptUrl ? `<button class="icon-btn" data-act="view-receipt" data-id="${e.id}" title="View Attached Receipt Bill">🧾</button>` : ''}
         <button class="icon-btn" data-act="edit-expense" data-id="${e.id}" title="Edit Expense">✏️</button>
         <button class="icon-btn" data-act="delete-expense" data-id="${e.id}" title="Delete Expense" style="color:var(--rust)">🗑️</button>
       </div>
     </div>`;
   }).join("");
+
   const payerOptions = `
     <optgroup label="Partner">${partners.map(p=>`<option value="partner:${p.id}">${esc(p.name)}</option>`).join("")}</optgroup>
     ${employees.length ? `<optgroup label="Employee (reimbursable)">${employees.map(e=>`<option value="employee:${e.id}">${esc(e.name)}</option>`).join("")}</optgroup>` : ""}
   `;
+
   return `
+    ${renderCategoryBudgets()}
     <div class="panel">
       <div class="serif strong" style="margin-bottom:4px">Add an expense</div>
-      <div class="muted small" style="margin-bottom:10px">If a worker paid out of pocket, choose their name — it'll show as owed to them until you reimburse it (see their Employees card).</div>
+      <div class="muted small" style="margin-bottom:10px">Categorize expenses, select payment method (Cash, Bank, Mobile Wallet), and attach receipt photos/bills.</div>
       <div class="form-grid-expense">
         <input class="led-input" type="date" id="exp-date" value="${today()}">
-        <input class="led-input" id="exp-desc" placeholder="Description">
+        <input class="led-input" id="exp-desc" placeholder="Description (e.g. Leather soles)">
         <input class="led-input" id="exp-amount" type="number" placeholder="Amount">
+        <select class="led-input" id="exp-category">
+          <option value="Raw Materials">Raw Materials</option>
+          <option value="Shop Rent">Shop Rent</option>
+          <option value="Utilities / Bills">Utilities / Bills</option>
+          <option value="Packaging">Packaging</option>
+          <option value="Worker Food & Tea">Worker Food &amp; Tea</option>
+          <option value="Machinery & Repairs">Machinery &amp; Repairs</option>
+          <option value="Transport">Transport</option>
+          <option value="Miscellaneous">Miscellaneous</option>
+        </select>
+        <select class="led-input" id="exp-pm">
+          <option value="cash">💵 Cash in Hand</option>
+          <option value="bank">🏦 Bank Transfer</option>
+          <option value="wallet">📱 Mobile Wallet (JazzCash/Easypaisa)</option>
+          <option value="card">💳 Credit/Debit Card</option>
+        </select>
         <select class="led-input" id="exp-payer">${payerOptions}</select>
-        <button class="led-btn" data-act="add-expense">+ Add</button>
+        <button class="led-btn" data-act="add-expense">+ Add Expense</button>
+      </div>
+      <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+        <label style="font-size:12px;font-weight:600;" class="muted">📷 Attach Bill / Receipt Image:</label>
+        <input class="led-input" type="file" id="exp-receipt-file" accept="image/*" style="font-size:12px;padding:4px;max-width:280px;">
       </div>
     </div>
     <div class="panel table-panel">
       <div style="padding:8px 14px;border-bottom:1px solid var(--rule);background:#fff">
-        <input class="led-input" id="exp-search" placeholder="🔍 Search expenses by description, payer, date..." value="${esc(state.expenseSearch)}" data-act="search-expense">
+        <input class="led-input" id="exp-search" placeholder="🔍 Search expenses by description, category, payer, date..." value="${esc(state.expenseSearch)}" data-act="search-expense">
       </div>
-      <div class="mono table-head expense-row"><div>DATE</div><div>DESC</div><div>AMOUNT</div><div>PAID BY</div><div></div></div>
+      <div class="mono table-head expense-row"><div>DATE</div><div>DESC</div><div>CATEGORY</div><div>AMOUNT</div><div>METHOD</div><div>PAID BY</div><div></div></div>
       ${state.expenses.length===0 ? `<div class="empty-msg">No expenses logged yet.</div>` : (filtered.length===0 ? `<div class="empty-msg">No expenses match your search.</div>` : rows)}
       ${renderPagination(state.expensePage, totalItems, pageSize, 'set-expense-page')}
     </div>
@@ -1629,6 +1816,7 @@ function render() {
   else if (state.tab === "expenses") content = renderExpenses();
   else if (state.tab === "employees") content = renderEmployees();
   else if (state.tab === "vendors") content = renderVendors();
+  else if (state.tab === "customers") content = renderCustomers();
   else if (state.tab === "reports") content = renderReports();
   else if (state.tab === "settings") content = renderSettings();
   app.innerHTML = `<div class="container-fluid px-3 px-md-4 py-4" style="max-width:1600px;margin:0 auto;">${renderHeader()}${renderTabs()}${content}</div>`;
@@ -1713,13 +1901,34 @@ document.addEventListener("DOMContentLoaded", () => {
       const date = document.getElementById("exp-date").value || today();
       const description = document.getElementById("exp-desc").value.trim();
       const amount = Number(document.getElementById("exp-amount").value);
+      const category = document.getElementById("exp-category").value;
+      const paymentMethod = document.getElementById("exp-pm").value;
       const payerVal = document.getElementById("exp-payer").value;
       const [payerType, payerId] = payerVal.split(":");
+      const fileInput = document.getElementById("exp-receipt-file");
       if (!description || !amount) return;
-      const entry = { id: uid(), date, description, amount };
-      if (payerType === "employee") { entry.payerEmployeeId = payerId; entry.settled = false; }
-      else { entry.paidBy = payerId; }
-      mutate(() => state.expenses.unshift(entry));
+
+      const createAndSave = (receiptUrl = null) => {
+        const entry = { id: uid(), date, description, amount, category, paymentMethod, receiptUrl };
+        if (payerType === "employee") { entry.payerEmployeeId = payerId; entry.settled = false; }
+        else { entry.paidBy = payerId; }
+        mutate(() => state.expenses.unshift(entry));
+        toast("💸 Expense logged successfully!");
+      };
+
+      if (fileInput && fileInput.files && fileInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          createAndSave(evt.target.result);
+        };
+        reader.readAsDataURL(fileInput.files[0]);
+      } else {
+        createAndSave(null);
+      }
+      return;
+    }
+    if (act === "view-receipt") {
+      showReceiptModal(el.dataset.id);
       return;
     }
     if (act === "edit-expense") {
@@ -1731,6 +1940,74 @@ document.addEventListener("DOMContentLoaded", () => {
       const confirmDelete = await swalConfirm("Delete Expense?", "Are you sure you want to delete this expense entry?");
       if (!confirmDelete) return;
       mutate(() => { state.expenses = state.expenses.filter(x => x.id !== id); });
+      return;
+    }
+    if (act === "wa-sale") {
+      sendWhatsAppReminder(el.dataset.id);
+      return;
+    }
+    if (act === "wa-direct") {
+      const phone = el.dataset.phone.replace(/[^0-9]/g, '');
+      const name = el.dataset.name;
+      const due = el.dataset.due;
+      const msg = `Assalamu Alaikum ${name},\n\nThis is a friendly reminder regarding your pending balance of ${state.config.currency}${due}.\n\nThank you!`;
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+      return;
+    }
+
+    if (act === "add-customer") {
+      const name = document.getElementById("cust-name").value.trim();
+      const phone = document.getElementById("cust-phone").value.trim();
+      const address = document.getElementById("cust-address").value.trim();
+      if (!name) return;
+      mutate(() => {
+        state.config.customers = state.config.customers || [];
+        state.config.customers.unshift({ id: uid(), name, phone, address });
+      });
+      toast("👤 Customer profile created!");
+      return;
+    }
+    if (act === "edit-customer") {
+      const id = el.dataset.id;
+      const cust = (state.config.customers || []).find(c => c.id === id);
+      if (!cust) return;
+      const { value: formValues } = await Swal.fire({
+        title: 'Edit Customer Profile',
+        html:
+          `<div style="text-align:left;display:flex;flex-direction:column;gap:10px;">` +
+          `<div><label style="font-size:12px;font-weight:600;">Customer Name</label><input id="swal-cust-name" class="swal2-input" value="${esc(cust.name||'')}" style="margin:4px 0 0 0;width:100%;"></div>` +
+          `<div><label style="font-size:12px;font-weight:600;">Phone / WhatsApp</label><input id="swal-cust-phone" class="swal2-input" value="${esc(cust.phone||'')}" style="margin:4px 0 0 0;width:100%;"></div>` +
+          `<div><label style="font-size:12px;font-weight:600;">Address</label><input id="swal-cust-address" class="swal2-input" value="${esc(cust.address||'')}" style="margin:4px 0 0 0;width:100%;"></div>` +
+          `</div>`,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonColor: '#2F6F63',
+        background: '#FCFAF4',
+        color: '#23302B',
+        preConfirm: () => {
+          const name = document.getElementById('swal-cust-name').value.trim();
+          const phone = document.getElementById('swal-cust-phone').value.trim();
+          const address = document.getElementById('swal-cust-address').value.trim();
+          if (!name) { Swal.showValidationMessage('Please enter customer name'); return false; }
+          return { name, phone, address };
+        }
+      });
+      if (formValues) {
+        mutate(() => {
+          cust.name = formValues.name;
+          cust.phone = formValues.phone;
+          cust.address = formValues.address;
+        });
+      }
+      return;
+    }
+    if (act === "delete-customer") {
+      const id = el.dataset.id;
+      const confirmDelete = await swalConfirm("Delete Customer?", "Are you sure you want to delete this customer profile?");
+      if (!confirmDelete) return;
+      mutate(() => {
+        state.config.customers = (state.config.customers || []).filter(c => c.id !== id);
+      });
       return;
     }
 
