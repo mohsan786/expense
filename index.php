@@ -7,80 +7,234 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Source+Serif+4:ital,wght@0,600;0,700;1,600&family=JetBrains+Mono:wght@500;600&display=swap');
-  
-  :root {
-    --paper: #F8FAFC;
-    --ink: #0F172A;
-    --rule: #E2E8F0;
-    --teal: #0D9488;
-    --teal-dark: #0F766E;
-    --teal-light: #CCFBF1;
-    --rust: #E11D48;
-    --rust-light: #FFE4E6;
-    --gold: #D97706;
-    --gold-light: #FEF3C7;
-    --panel: #FFFFFF;
-    --muted: #64748B;
+  /* Modern SaaS Left Sidebar & Layout Shell */
+  .app-shell {
+    display: flex;
+    min-height: 100vh;
+    background: #F8FAFC;
   }
-  
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--paper);
-    color: var(--ink);
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-    -webkit-font-smoothing: antialiased;
+  .app-sidebar {
+    width: 250px;
+    background: #0F172A;
+    color: #F8FAFC;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.08);
+    z-index: 100;
   }
-  
-  .wrap { width: 100%; max-width: 1600px; margin: 0 auto; padding: 24px 16px 60px; }
-  .serif { font-family: 'Source Serif 4', Georgia, serif; }
-  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
-  .strong { font-weight: 700; }
-  .muted { color: var(--muted); }
-  .small { font-size: 13px; }
-  .gold { color: var(--gold); }
-  .teal-text { color: var(--teal); }
-  .rust-text { color: var(--rust); }
-  
-  /* Flex Form Grids — Never Cut Off Any Field */
-  .form-grid-expense, .form-grid-income, .form-grid-emp, .form-grid-item, .form-grid-work, .form-grid-adv, .form-grid-pay, .form-grid-partner {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 10px !important;
-    align-items: center !important;
+  .sidebar-brand {
+    padding: 24px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid #1E293B;
   }
-  .form-grid-expense > *, .form-grid-income > *, .form-grid-emp > *, .form-grid-item > *, .form-grid-work > *, .form-grid-adv > *, .form-grid-pay > *, .form-grid-partner > * {
-    flex: 1 1 150px;
+  .brand-icon {
+    font-size: 24px;
+    background: linear-gradient(135deg, #0D9488 0%, #10B981 100%);
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.4);
+  }
+  .brand-title {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    color: #FFFFFF;
+  }
+  .brand-sub {
+    font-size: 11px;
+    color: #94A3B8;
+    font-weight: 500;
+  }
+  .sidebar-nav {
+    padding: 16px 12px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+  }
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 16px;
+    border: none;
+    background: transparent;
+    color: #94A3B8;
+    font-weight: 600;
+    font-size: 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    transition: all 0.2s ease;
+  }
+  .sidebar-item:hover {
+    background: #1E293B;
+    color: #F8FAFC;
+    transform: translateX(2px);
+  }
+  .sidebar-item.active {
+    background: linear-gradient(135deg, #0D9488 0%, #0F766E 100%);
+    color: #FFFFFF;
+    font-weight: 700;
+    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.35);
+  }
+  .sidebar-footer {
+    padding: 16px 20px;
+    border-top: 1px solid #1E293B;
+  }
+  .logout-btn {
+    background: #1E293B;
+    color: #F43F5E;
+    border: 1px solid #334155;
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .logout-btn:hover {
+    background: #E11D48;
+    color: #FFFFFF;
+  }
+
+  .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
     min-width: 0;
   }
-  .form-grid-expense > button, .form-grid-income > button, .form-grid-emp > button, .form-grid-item > button, .form-grid-work > button, .form-grid-adv > button, .form-grid-pay > button, .form-grid-partner > button {
-    flex: 0 0 auto !important;
-  }
-  .serif { font-family: 'Source Serif 4', Georgia, serif; }
-  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
-  .strong { font-weight: 700; }
-  .muted { color: var(--muted); }
-  .small { font-size: 13px; }
-  .gold { color: var(--gold); }
-  .teal-text { color: var(--teal); }
-  .rust-text { color: var(--rust); }
-  
-  /* Header */
-  .header {
-    margin-bottom: 24px;
+  .app-topbar {
     background: #FFFFFF;
-    border: 1px solid var(--rule);
-    border-radius: 14px;
-    padding: 20px 24px;
-    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04);
+    padding: 16px 28px;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
   }
-  .header-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-  .title { font-size: 26px; font-weight: 700; margin: 0; color: #0F172A; letter-spacing: -0.5px; }
-  .sub { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--teal); background: var(--teal-light); padding: 3px 8px; border-radius: 6px; }
-  .tagline { margin: 6px 0 0; font-size: 14px; color: #475569; }
-  .err { margin: 6px 0 0; font-size: 12.5px; color: var(--rust); font-weight: 500; }
+  .topbar-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0;
+    color: #0F172A;
+    letter-spacing: -0.3px;
+  }
+  .topbar-sub {
+    font-size: 13px;
+    color: #64748B;
+    margin: 2px 0 0 0;
+  }
+  .cloud-badge {
+    background: #ECFDF5;
+    color: #047857;
+    border: 1px solid #A7F3D0;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .quick-act-btn {
+    background: linear-gradient(135deg, #0D9488 0%, #10B981 100%);
+    color: #FFF;
+    border: none;
+    padding: 7px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(13, 148, 136, 0.3);
+    transition: transform 0.15s;
+  }
+  .quick-act-btn:hover { transform: scale(1.03); }
+
+  .view-container {
+    padding: 24px 28px;
+    max-width: 1500px;
+    width: 100%;
+    margin: 0 auto;
+    animation: fadeIn 0.25s ease-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* SaaS Gradient KPI Grid */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .kpi-card {
+    border-radius: 16px;
+    padding: 20px;
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 14px 30px -5px rgba(0, 0, 0, 0.15);
+  }
+  .kpi-income { background: linear-gradient(135deg, #059669 0%, #10B981 100%); }
+  .kpi-expense { background: linear-gradient(135deg, #E11D48 0%, #F43F5E 100%); }
+  .kpi-profit { background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%); }
+  .kpi-due { background: linear-gradient(135deg, #D97706 0%, #F59E0B 100%); }
+
+  .kpi-icon {
+    font-size: 28px;
+    background: rgba(255, 255, 255, 0.2);
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .kpi-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    opacity: 0.9;
+  }
+  .kpi-value {
+    font-size: 24px;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    line-height: 1.2;
+  }
+  .kpi-sub {
+    font-size: 11px;
+    opacity: 0.85;
+    margin-top: 2px;
+  }
+
+  @media (max-width: 900px) {
+    .app-shell { flex-direction: column; }
+    .app-sidebar { width: 100%; height: auto; position: static; }
+    .sidebar-nav { flex-direction: row; overflow-x: auto; padding: 10px; }
+    .sidebar-item { width: auto; font-size: 13px; padding: 8px 12px; }
+    .view-container { padding: 16px; }
+  }
   
   /* Tabs */
   .tabs {
@@ -866,19 +1020,77 @@ function vendorOutstanding(id) { return vendorCreditTotal(id) - vendorPaymentsFo
 function totalVendorOutstanding() { return state.config.vendors.reduce((s, v) => s + vendorOutstanding(v.id), 0); }
 
 function renderHeader() {
-  return `<div class="header">
-    <div class="header-top">
-      <h1 class="serif title">The Ledger</h1>
-      <span class="mono sub">☁️ Live Cloud Synced (MySQL) · <a href="#" data-act="logout" style="color:var(--rust);text-decoration:none">Lock / Exit</a></span>
-    </div>
-    <p class="tagline">Income, shared expenses, split by ratio, and payroll — kept in one place.</p>
-    ${state.saveErr ? `<p class="err">Couldn't connect to MySQL database just now. Check database configuration.</p>` : ""}
-  </div>`;
+  return `
+    <header class="app-topbar">
+      <div>
+        <h2 class="topbar-title">${getTabTitle(state.tab)}</h2>
+        <p class="topbar-sub">${getTabSubtitle(state.tab)}</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="quick-act-btn" data-act="quick-add-modal">⚡ Quick Add</button>
+        <span class="cloud-badge">☁️ MySQL Live</span>
+      </div>
+    </header>
+    ${state.saveErr ? `<div class="alert alert-danger py-2 px-3 mb-3 small" style="border-radius:10px;">⚠️ Couldn't connect to MySQL database just now. Check database configuration.</div>` : ""}
+  `;
+}
+
+function getTabTitle(tab) {
+  if (tab === "overview") return "Dashboard Overview";
+  if (tab === "income") return "Sales & Revenue Ledger";
+  if (tab === "expenses") return "Business Expense Tracker";
+  if (tab === "employees") return "Workers & Payroll Management";
+  if (tab === "vendors") return "Vendor Purchases & Accounts";
+  if (tab === "customers") return "Customer Directory & Ledger";
+  if (tab === "reports") return "Financial Analytics & Reports";
+  if (tab === "settings") return "System Settings & Configuration";
+  return "The Ledger";
+}
+
+function getTabSubtitle(tab) {
+  if (tab === "overview") return "Real-time summary of profit split, income, expenses, and pending balances.";
+  if (tab === "income") return "Log sales, track advance payments, and collect due pickup balances.";
+  if (tab === "expenses") return "Track operational expenses, budget limits, payment methods, and receipt bills.";
+  if (tab === "employees") return "Manage weekly salaries, piece rates, advances, and daily attendance logs.";
+  if (tab === "vendors") return "Monitor credit material purchases and record vendor repayments.";
+  if (tab === "customers") return "Maintain customer records, order totals, and send 1-click WhatsApp reminders.";
+  if (tab === "reports") return "Generate printable financial summaries, revenue breakdowns, and payroll reports.";
+  if (tab === "settings") return "Configure partners, profit split ratio, starting capital, and passcode.";
+  return "";
 }
 
 function renderTabs() {
-  const items = [["overview","Overview"],["income","Income"],["expenses","Expenses"],["employees","Employees"],["vendors","Vendors"],["customers","Customers 👥"],["reports","Reports 📊"],["settings","Settings"]];
-  return `<div class="tabs">${items.map(([id,label]) => `<button class="tab-btn ${state.tab===id?"active":""}" data-act="switch-tab" data-tab="${id}">${label}</button>`).join("")}</div>`;
+  const items = [
+    ["overview", "🏠 Dashboard"],
+    ["income", "💵 Income"],
+    ["expenses", "💸 Expenses"],
+    ["employees", "👥 Employees"],
+    ["vendors", "📦 Vendors"],
+    ["customers", "👤 Customers"],
+    ["reports", "📊 Reports"],
+    ["settings", "⚙️ Settings"]
+  ];
+  return `
+    <aside class="app-sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon">💼</div>
+        <div>
+          <div class="brand-title">The Ledger</div>
+          <div class="brand-sub">SaaS Financial Suite</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        ${items.map(([id, label]) => `
+          <button class="sidebar-item ${state.tab===id?"active":""}" data-act="switch-tab" data-tab="${id}">
+            ${label}
+          </button>
+        `).join("")}
+      </nav>
+      <div class="sidebar-footer">
+        <button class="logout-btn" data-act="logout">🔒 Lock / Exit</button>
+      </div>
+    </aside>
+  `;
 }
 
 function renderCategoryBudgets() {
@@ -982,30 +1194,95 @@ function renderOverview() {
       settlementHtml = `<div class="panel settled">Everything's settled — both partners are even on the ${state.config.partners.map(p=>p.ratio).join(":")} split.</div>`;
     }
   }
+  const totalPendingDue = state.income.reduce((s, x) => s + getIncomeBalance(x), 0);
+
   const cards = stats.map(p => `
-    <div class="panel">
-      <div class="pc-top"><span class="serif strong">${esc(p.name)}</span><span class="mono muted small">ratio ${p.ratio} share${p.ratio>1?'s':''}</span></div>
+    <div class="panel partner-card">
+      <div class="pc-top">
+        <span class="strong" style="font-size:16px;">👤 ${esc(p.name)}</span>
+        <span class="mono muted small" style="background:#F1F5F9;padding:2px 8px;border-radius:6px;">Ratio ${p.ratio} (${Math.round((p.ratio/tr)*100)}%)</span>
+      </div>
       ${p.opCap > 0 ? `<div class="muted small" style="margin-top:6px">Starting capital: <span class="mono strong gold">${fmt(p.opCap)}</span></div>` : ''}
-      <div class="muted small" style="margin-top:6px">Income received</div>
-      <div class="mono teal-text" style="font-size:16px;font-weight:600">+${fmt(p.received)}</div>
-      <div class="muted small" style="margin-top:6px">Expenses paid out of pocket</div>
-      <div class="mono rust-text" style="font-size:16px;font-weight:600">-${fmt(p.paid - p.opCap)}</div>
-      <div class="muted small" style="margin-top:8px">Fair share of profit (${p.ratio}/${tr})</div>
-      <div class="mono">${fmt(p.fairShare)}</div>
-      <div class="small strong" style="margin-top:8px;color:${p.balance>=0?"var(--teal)":"var(--rust)"}">
-        ${p.balance>=0? `Owed ${fmt(p.balance)}` : `Owes ${fmt(Math.abs(p.balance))}`}
+      <div class="stat-mini-grid" style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="background:#ECFDF5;padding:8px 10px;border-radius:8px;border:1px solid #A7F3D0;">
+          <div class="muted small" style="font-size:11px;color:#047857;">Income Received</div>
+          <div class="mono strong" style="font-size:15px;color:#059669;">+${fmt(p.received)}</div>
+        </div>
+        <div style="background:#FFF1F2;padding:8px 10px;border-radius:8px;border:1px solid #FECDD3;">
+          <div class="muted small" style="font-size:11px;color:#BE123C;">Expenses Paid</div>
+          <div class="mono strong" style="font-size:15px;color:#E11D48;">-${fmt(p.paid - p.opCap)}</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--rule);display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div class="muted small" style="font-size:11px;">Fair Profit Share</div>
+          <div class="mono strong">${fmt(p.fairShare)}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="small strong" style="padding:4px 10px;border-radius:6px;font-size:12px;background:${p.balance>=0?"#D1FAE5":"#FFE4E6"};color:${p.balance>=0?"#065F46":"#991B1B"};">
+            ${p.balance>=0? `Owed ${fmt(p.balance)}` : `Owes ${fmt(Math.abs(p.balance))}`}
+          </div>
+        </div>
       </div>
     </div>`).join("");
-  const scaleSegs = state.config.partners.map((p,i) => `<div class="scale-seg" style="width:${tr>0?(Number(p.ratio||0)/tr*100):0}%;background:${i===0?"var(--teal)":"var(--rust)"}">${esc(p.name)} · ${p.ratio}</div>`).join("");
+
+  const scaleSegs = state.config.partners.map((p,i) => `<div class="scale-seg" style="width:${tr>0?(Number(p.ratio||0)/tr*100):0}%;background:${i===0?"#10B981":"#EF4444"}">${esc(p.name)} (${p.ratio})</div>`).join("");
+
   return `
-    <div class="grid3">
-      <div class="panel total-box"><div class="muted serif" style="font-size:13px">Total income</div><div class="mono teal-text" style="font-size:24px;font-weight:600">${fmt(inc)}</div></div>
-      <div class="panel total-box"><div class="muted serif" style="font-size:13px">Total expenses</div><div class="mono rust-text" style="font-size:24px;font-weight:600">${fmt(out)}</div></div>
-      <div class="panel total-box"><div class="muted serif" style="font-size:13px">Net profit</div><div class="mono" style="font-size:24px;font-weight:600;color:${np>=0?"var(--ink)":"var(--rust)"}">${fmt(np)}</div></div>
+    <div class="kpi-grid">
+      <div class="kpi-card kpi-income">
+        <div class="kpi-icon">📈</div>
+        <div>
+          <div class="kpi-label">TOTAL INCOME</div>
+          <div class="kpi-value">${fmt(inc)}</div>
+          <div class="kpi-sub">Collected from sales</div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-expense">
+        <div class="kpi-icon">📉</div>
+        <div>
+          <div class="kpi-label">TOTAL OUTFLOWS</div>
+          <div class="kpi-value">${fmt(out)}</div>
+          <div class="kpi-sub">Expenses + Payroll</div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-profit">
+        <div class="kpi-icon">💰</div>
+        <div>
+          <div class="kpi-label">NET PROFIT</div>
+          <div class="kpi-value">${fmt(np)}</div>
+          <div class="kpi-sub">Business net gain</div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-due">
+        <div class="kpi-icon">⏳</div>
+        <div>
+          <div class="kpi-label">PENDING DUES</div>
+          <div class="kpi-value">${fmt(totalPendingDue)}</div>
+          <div class="kpi-sub">Customer receivables</div>
+        </div>
+      </div>
     </div>
-    <div class="grid2">${cards}</div>
-    <div class="panel"><div class="serif strong" style="margin-bottom:12px">Split scale</div><div class="scale-bar">${scaleSegs}</div></div>
-    ${totalVendorOutstanding() > 0.005 ? `<div class="panel" style="display:flex;justify-content:space-between;align-items:center"><span class="muted small">Owed to vendors (materials bought on credit)</span><span class="mono strong" style="color:var(--rust)">${fmt(totalVendorOutstanding())}</span></div>` : ""}
+
+    <div style="margin-bottom:16px;">
+      <div class="serif strong" style="font-size:16px;margin-bottom:8px;">👥 Partner Profit &amp; Expense Shares</div>
+      <div class="grid2">${cards}</div>
+    </div>
+
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span class="strong">⚖️ Partner Ratio Split Scale</span>
+        <span class="mono muted small">Ratio Split ${state.config.partners.map(p=>p.ratio).join(":")}</span>
+      </div>
+      <div class="scale-bar">${scaleSegs}</div>
+    </div>
+
+    ${totalVendorOutstanding() > 0.005 ? `
+      <div class="panel" style="display:flex;justify-content:space-between;align-items:center;background:#FFFBEB;border:1px solid #FCD34D;">
+        <span class="muted small" style="color:#92400E;font-weight:600;">📦 Owed to Vendors (Credit Material Purchases)</span>
+        <span class="mono strong" style="color:#B45309;font-size:16px;">${fmt(totalVendorOutstanding())}</span>
+      </div>
+    ` : ""}
     ${settlementHtml}
   `;
 }
@@ -1820,7 +2097,18 @@ function render() {
   else if (state.tab === "customers") content = renderCustomers();
   else if (state.tab === "reports") content = renderReports();
   else if (state.tab === "settings") content = renderSettings();
-  app.innerHTML = `<div class="container-fluid px-3 px-md-4 py-4" style="max-width:1600px;margin:0 auto;">${renderHeader()}${renderTabs()}${content}</div>`;
+
+  app.innerHTML = `
+    <div class="app-shell">
+      ${renderTabs()}
+      <main class="main-content">
+        ${renderHeader()}
+        <div class="view-container">
+          ${content}
+        </div>
+      </main>
+    </div>
+  `;
 }
 
 function toggleEmpTypeUI() {
@@ -1869,6 +2157,24 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (act === "switch-tab") { state.tab = el.dataset.tab; render(); return; }
+
+    if (act === "quick-add-modal") {
+      Swal.fire({
+        title: '⚡ Quick Shortcuts',
+        html: `
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <button class="led-btn" onclick="Swal.close(); state.tab='income'; render();">💵 + Log New Sale</button>
+            <button class="led-btn" style="background:#E11D48;" onclick="Swal.close(); state.tab='expenses'; render();">💸 + Add Business Expense</button>
+            <button class="led-btn secondary" onclick="Swal.close(); state.tab='customers'; render();">👤 + Create Customer Profile</button>
+          </div>
+        `,
+        showConfirmButton: false,
+        showCloseButton: true,
+        background: '#FCFAF4',
+        color: '#23302B'
+      });
+      return;
+    }
 
     if (act === "set-income-page") {
       state.incomePage = Number(el.dataset.page);
