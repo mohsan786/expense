@@ -661,7 +661,7 @@ async function loadData() {
       if (d.attendanceLogs) state.attendanceLogs = d.attendanceLogs;
       if (!state.config.vendors) state.config.vendors = [];
       if (!state.config.customers) state.config.customers = [];
-      if (!state.config.budgets) state.config.budgets = { "Raw Materials": 5000, "Shop Rent": 1000, "Utilities / Bills": 500, "Packaging": 300, "Worker Food & Tea": 300 };
+      if (!state.config.budgets) state.config.budgets = { "Raw Materials": 5000, "Factory Rent": 3000, "Shop Rent": 1000, "Utilities / Bills": 500, "Packaging": 300, "Worker Food & Tea": 300 };
       state.config.employees = state.config.employees.map(e => {
         if (e.type === "workbased" && !e.items) {
           const items = (e.unitRate) ? [{ id: uid(), label: e.unitLabel || "unit", rate: e.unitRate }] : [];
@@ -1189,6 +1189,7 @@ function renderExpenses() {
         <input class="led-input" id="exp-amount" type="number" placeholder="Amount">
         <select class="led-input" id="exp-category">
           <option value="Raw Materials">Raw Materials</option>
+          <option value="Factory Rent">Factory Rent</option>
           <option value="Shop Rent">Shop Rent</option>
           <option value="Utilities / Bills">Utilities / Bills</option>
           <option value="Packaging">Packaging</option>
