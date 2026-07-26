@@ -1697,6 +1697,17 @@ function renderIncome() {
       </div>
       <button class="btn btn-dark fw-bold px-4 py-2" data-act="open-add-sale-modal">+ Log New Sale</button>
     </div>
+    <div class="panel table-panel">
+      <div style="padding:8px 14px;border-bottom:1px solid var(--rule);background:#fff">
+        <input class="form-control" id="inc-search" placeholder="🔍 Search sales by item, customer, date..." value="${esc(state.incomeSearch)}" data-act="search-income">
+      </div>
+      <div class="mono table-head income-row"><div>DATE</div><div>ITEM</div><div>QTY</div><div>TOTAL</div><div>PAID</div><div>STATUS</div><div>RECEIVED</div><div></div></div>
+      ${state.income.length===0 ? `<div class="empty-msg">No sales logged yet. Click "+ Log New Sale" above to record a transaction.</div>` : (filtered.length===0 ? `<div class="empty-msg">No sales match your search.</div>` : rows)}
+      ${renderPagination(state.incomePage, totalItems, pageSize, 'set-income-page')}
+    </div>
+  `;
+}
+
 async function showAddExpenseModal() {
   const partners = state.config.partners;
   const employees = state.config.employees;
