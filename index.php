@@ -1226,7 +1226,7 @@ function renderCustomers() {
               ${c.phone ? `<span class="muted small" style="margin-left:6px;">📞 ${esc(c.phone)}</span>` : ""}
               ${c.address ? `<span class="muted small" style="margin-left:6px;">📍 ${esc(c.address)}</span>` : ""}
             </div>
-            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;" onclick="event.stopPropagation();">
+            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
               <div class="mono small">Orders: <strong>${custSales.length}</strong></div>
               <div class="mono small text-success">Paid: <strong>${fmt(totalPaid)}</strong></div>
               <div class="mono small ${pendingDue>0?'text-danger':'text-muted'}">Due: <strong>${fmt(pendingDue)}</strong></div>
@@ -1457,6 +1457,10 @@ function renderIncome() {
       </div>
     </div>`;
   }).join("");
+  const receiverOptions = `
+    <optgroup label="Partner">${partners.map(p=>`<option value="partner:${p.id}">${esc(p.name)}</option>`).join("")}</optgroup>
+    ${employees.length ? `<optgroup label="Worker (owes it back)">${employees.map(e=>`<option value="employee:${e.id}">${esc(e.name)}</option>`).join("")}</optgroup>` : ""}
+  `;
   const customerOptions = `<option value="">-- Select Customer (Optional) --</option>${(state.config.customers||[]).map(c=>`<option value="${c.id}">${esc(c.name)}${c.phone?` (${esc(c.phone)})`:''}</option>`).join("")}`;
   return `
     <div class="panel">
@@ -1667,7 +1671,7 @@ function renderEmployeeCard(emp, partners) {
         <div class="row g-2 align-items-center mb-2">
           <div class="col-md-5 col-12"><input class="form-control" id="item-label-${emp.id}" placeholder="Item name (e.g. Stitching)"></div>
           <div class="col-md-4 col-7"><input class="form-control" id="item-rate-${emp.id}" type="number" placeholder="Price per piece"></div>
-          <div class="col-md-3 col-5"><button class="btn btn-outline-dark fw-bold w-100" data-act="add-item" data-emp="${emp.id}">+ Add item</button></div>
+          <div class="col-md-3 col-5"><button class="btn btn-dark fw-bold w-100" data-act="add-item" data-emp="${emp.id}">+ Add item</button></div>
         </div>
         <div class="divider"></div>
         <div class="serif small-title">Log work</div>
@@ -1721,7 +1725,7 @@ function renderEmployeeCard(emp, partners) {
             </select>
           </div>
           <div class="col-md-2 col-6"><input class="form-control" id="att-note-${emp.id}" placeholder="Reason (optional)"></div>
-          <div class="col-md-2 col-12"><button class="btn btn-outline-dark fw-bold w-100" data-act="add-attendance" data-emp="${emp.id}">+ Log</button></div>
+          <div class="col-md-2 col-12"><button class="btn btn-dark fw-bold w-100" data-act="add-attendance" data-emp="${emp.id}">+ Log Absence</button></div>
         </div>
         ${attListHtml}
         <div class="divider"></div>
@@ -1735,7 +1739,7 @@ function renderEmployeeCard(emp, partners) {
         <div class="col-md-2 col-6"><input class="form-control" type="number" id="adv-amount-${emp.id}" placeholder="Amount"></div>
         <div class="col-md-3 col-6"><select class="form-select" id="adv-paidby-${emp.id}">${partners.map(p=>`<option value="${p.id}">Given by ${esc(p.name)}</option>`).join("")}</select></div>
         <div class="col-md-3 col-6"><input class="form-control" id="adv-note-${emp.id}" placeholder="Note (optional)"></div>
-        <div class="col-md-2 col-12"><button class="btn btn-outline-dark fw-bold w-100" data-act="add-advance" data-emp="${emp.id}">+ Log Advance</button></div>
+        <div class="col-md-2 col-12"><button class="btn btn-dark fw-bold w-100" data-act="add-advance" data-emp="${emp.id}">+ Log Advance</button></div>
       </div>
       ${outstandingAdv>0 ? `<div class="gold small" style="margin-bottom:14px">${fmt(outstandingAdv)} given this period — can be deducted automatically on payday below.</div>` : `<div style="margin-bottom:14px"></div>`}
     `;
@@ -1804,20 +1808,20 @@ function renderEmployeeCard(emp, partners) {
     const activeTab = (state.cardTab && state.cardTab[emp.id]) || (historyItems.length ? "history" : "form");
 
     const tabHeader = `
-      <div style="display:flex;gap:8px;margin-bottom:18px;border-bottom:1px solid var(--rule);padding-bottom:10px;">
-        <button class="tab-btn ${activeTab==='history'?'active':''}" data-act="set-card-tab" data-id="${emp.id}" data-tab="history">
+      <div class="d-flex gap-2 mb-3 pb-2 border-bottom">
+        <button class="btn btn-sm ${activeTab==='history'?'btn-dark':'btn-outline-dark'} fw-bold" data-act="set-card-tab" data-id="${emp.id}" data-tab="history">
           📜 History &amp; Ledger (${historyItems.length})
         </button>
-        <button class="tab-btn ${activeTab==='form'?'active':''}" data-act="set-card-tab" data-id="${emp.id}" data-tab="form">
+        <button class="btn btn-sm ${activeTab==='form'?'btn-dark':'btn-outline-dark'} fw-bold" data-act="set-card-tab" data-id="${emp.id}" data-tab="form">
           ✍️ Log Work, Attendance &amp; Payments
         </button>
       </div>
     `;
 
     const historyHtml = historyItems.length ? `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <span class="mono muted" style="font-size:11.5px;font-weight:700;">TRANSACTION HISTORY</span>
-        <button class="led-btn secondary" style="font-size:12.5px;padding:4px 12px;" data-act="set-card-tab" data-id="${emp.id}" data-tab="form">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="mono muted small fw-bold">TRANSACTION HISTORY</span>
+        <button class="btn btn-sm btn-outline-dark fw-bold" data-act="set-card-tab" data-id="${emp.id}" data-tab="form">
           + Log Entry
         </button>
       </div>
@@ -1857,11 +1861,11 @@ function renderEmployeeCard(emp, partners) {
           <span class="muted small">— ${headSub}</span>
         </div>
         <div class="emp-head-right">
-          ${emp.type==="workbased" ? `<span class="mono small strong" style="color:${owed>0?"var(--rust)":"var(--teal)"}">${owed>0?`owes ${fmt(owed)}`:"settled"}</span>` : ""}
-          ${unsettledAbs.length>0 ? `<span class="mono small strong" style="color:var(--rust)">absent ${unsettledAbs.length}d (${fmt(absenceDeductionVal)})</span>` : ""}
-          ${outstandingAdv>0 ? `<span class="mono small strong gold">advance ${fmt(outstandingAdv)}</span>` : ""}
-          ${outstandingReimb>0 ? `<span class="mono small strong" style="color:var(--rust)">reimburse ${fmt(outstandingReimb)}</span>` : ""}
-          ${outstandingHeld>0 ? `<span class="mono small strong" style="color:var(--rust)">holding ${fmt(outstandingHeld)}</span>` : ""}
+          ${emp.type==="workbased" ? `<span class="mono small strong ${owed>0?'text-danger':'text-success'}">${owed>0?`owes ${fmt(owed)}`:"settled"}</span>` : ""}
+          ${unsettledAbs.length>0 ? `<span class="mono small strong text-danger">absent ${unsettledAbs.length}d (${fmt(absenceDeductionVal)})</span>` : ""}
+          ${outstandingAdv>0 ? `<span class="mono small strong text-warning">advance ${fmt(outstandingAdv)}</span>` : ""}
+          ${outstandingReimb>0 ? `<span class="mono small strong text-danger">reimburse ${fmt(outstandingReimb)}</span>` : ""}
+          ${outstandingHeld>0 ? `<span class="mono small strong text-danger">holding ${fmt(outstandingHeld)}</span>` : ""}
           <button class="icon-btn" data-act="edit-employee" data-id="${emp.id}" title="Edit Employee">✏️</button>
           <button class="icon-btn" data-act="delete-employee" data-id="${emp.id}" title="Delete Employee" style="color:var(--rust);margin-left:4px">🗑️</button>
         </div>
@@ -1904,11 +1908,11 @@ function renderVendorCard(vendor, partners) {
     const activeTab = (state.cardTab && state.cardTab[vendor.id]) || (historyItems.length ? "history" : "form");
 
     const tabHeader = `
-      <div style="display:flex;gap:8px;margin-bottom:18px;border-bottom:1px solid var(--rule);padding-bottom:10px;">
-        <button class="tab-btn ${activeTab==='history'?'active':''}" data-act="set-card-tab" data-id="${vendor.id}" data-tab="history">
+      <div class="d-flex gap-2 mb-3 pb-2 border-bottom">
+        <button class="btn btn-sm ${activeTab==='history'?'btn-dark':'btn-outline-dark'} fw-bold" data-act="set-card-tab" data-id="${vendor.id}" data-tab="history">
           📜 History &amp; Ledger (${historyItems.length})
         </button>
-        <button class="tab-btn ${activeTab==='form'?'active':''}" data-act="set-card-tab" data-id="${vendor.id}" data-tab="form">
+        <button class="btn btn-sm ${activeTab==='form'?'btn-dark':'btn-outline-dark'} fw-bold" data-act="set-card-tab" data-id="${vendor.id}" data-tab="form">
           ➕ Log Purchase or Payment
         </button>
       </div>
@@ -2414,6 +2418,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (act === "toggle-customer") {
+      if (e.target.closest("button") || e.target.closest(".icon-btn")) return;
       const id = el.dataset.id;
       state.expandedCust = state.expandedCust === id ? null : id;
       render();

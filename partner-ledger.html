@@ -1400,10 +1400,11 @@ function renderIncome() {
     <optgroup label="Partner">${partners.map(p=>`<option value="partner:${p.id}">${esc(p.name)}</option>`).join("")}</optgroup>
     ${employees.length ? `<optgroup label="Worker (owes it back)">${employees.map(e=>`<option value="employee:${e.id}">${esc(e.name)}</option>`).join("")}</optgroup>` : ""}
   `;
+  const customerOptions = `<option value="">-- Select Customer (Optional) --</option>${(state.config.customers||[]).map(c=>`<option value="${c.id}">${esc(c.name)}${c.phone?` (${esc(c.phone)})`:''}</option>`).join("")}`;
   return `
     <div class="panel">
       <div class="serif strong" style="margin-bottom:4px">Log a sale</div>
-      <div class="muted small" style="margin-bottom:12px">Log sales and advance payments. Remaining due balance can be collected anytime.</div>
+      <div class="muted small" style="margin-bottom:12px">Log sales and advance payments. Link customer profile for full ledger tracking.</div>
       <div class="row g-2 align-items-center mb-2">
         <div class="col-md-2 col-6"><input class="form-control" type="date" id="inc-date" value="${today()}"></div>
         <div class="col-md-3 col-12"><input class="form-control" id="inc-item" placeholder="Item (e.g. Leather shoes)"></div>
@@ -1411,7 +1412,8 @@ function renderIncome() {
         <div class="col-md-2 col-6"><input class="form-control" id="inc-amount" type="number" placeholder="Total price"></div>
         <div class="col-md-2 col-6"><input class="form-control" id="inc-paid-amount" type="number" placeholder="Advance / Paid"></div>
         <div class="col-md-2 col-6"><select class="form-select" id="inc-receivedby">${receiverOptions}</select></div>
-        <div class="col-12"><input class="form-control" id="inc-note" placeholder="Note / customer name (optional)"></div>
+        <div class="col-md-4 col-12"><select class="form-select" id="inc-customer">${customerOptions}</select></div>
+        <div class="col-md-8 col-12"><input class="form-control" id="inc-note" placeholder="Note / order details (optional)"></div>
         <div class="col-12 text-end mt-2"><button class="btn btn-dark fw-bold px-4" data-act="add-income">+ Add Sale</button></div>
       </div>
     </div>
@@ -1622,24 +1624,22 @@ function renderEmployeeCard(emp, partners) {
   if (expanded) {
     let workSection = "";
     if (emp.type === "workbased") {
-      const itemChips = items.map(it => `<span class="item-chip">${esc(it.label)} · ${fmt(it.rate)}<button data-act="edit-item" data-emp="${emp.id}" data-item="${it.id}" style="border:none;background:none;cursor:pointer;padding:0 2px;" title="Edit Item">✏️</button><button data-act="delete-item" data-emp="${emp.id}" data-item="${it.id}" style="border:none;background:none;cursor:pointer;padding:0 2px;color:var(--rust);" title="Delete Item">🗑️</button></span>`).join("");
       workSection = `
-        <div class="serif small-title">Work items &amp; prices</div>
-        <div style="margin-bottom:8px">${itemChips || `<span class="muted small">No items yet — add one below.</span>`}</div>
-        <div class="form-grid-item">
-          <input class="led-input" id="item-label-${emp.id}" placeholder="Item name (e.g. Stitching)">
-          <input class="led-input" id="item-rate-${emp.id}" type="number" placeholder="Price per piece">
-          <button class="led-btn secondary" data-act="add-item" data-emp="${emp.id}">+ Add item</button>
+        <div class="serif small-title">Work items</div>
+        <div class="row g-2 align-items-center mb-2">
+          <div class="col-md-5 col-12"><input class="form-control" id="item-label-${emp.id}" placeholder="Item name (e.g. Stitching)"></div>
+          <div class="col-md-4 col-7"><input class="form-control" id="item-rate-${emp.id}" type="number" placeholder="Price per piece"></div>
+          <div class="col-md-3 col-5"><button class="btn btn-dark fw-bold w-100" data-act="add-item" data-emp="${emp.id}">+ Add item</button></div>
         </div>
         <div class="divider"></div>
         <div class="serif small-title">Log work</div>
         ${items.length ? `
-          <div class="form-grid-work">
-            <input class="led-input" type="date" id="work-date-${emp.id}" value="${today()}">
-            <select class="led-input" id="work-item-${emp.id}">${items.map(it=>`<option value="${it.id}">${esc(it.label)} · ${fmt(it.rate)}</option>`).join("")}</select>
-            <input class="led-input" type="number" id="work-qty-${emp.id}" placeholder="Qty">
-            <input class="led-input" id="work-note-${emp.id}" placeholder="Note (optional)">
-            <button class="led-btn" data-act="add-work" data-emp="${emp.id}">+ Log</button>
+          <div class="row g-2 align-items-center mb-2">
+            <div class="col-md-2 col-6"><input class="form-control" type="date" id="work-date-${emp.id}" value="${today()}"></div>
+            <div class="col-md-4 col-12"><select class="form-select" id="work-item-${emp.id}">${items.map(it=>`<option value="${it.id}">${esc(it.label)} · ${fmt(it.rate)}</option>`).join("")}</select></div>
+            <div class="col-md-2 col-6"><input class="form-control" type="number" id="work-qty-${emp.id}" placeholder="Qty"></div>
+            <div class="col-md-2 col-6"><input class="form-control" id="work-note-${emp.id}" placeholder="Note (optional)"></div>
+            <div class="col-md-2 col-12"><button class="btn btn-dark fw-bold w-100" data-act="add-work" data-emp="${emp.id}">+ Log</button></div>
           </div>
         ` : `<div class="muted small" style="margin-bottom:10px">Add a work item above first.</div>`}
         <div class="muted small" style="margin-bottom:14px">Total earned: <span class="mono strong">${fmt(totalEarned)}</span></div>
@@ -1655,7 +1655,7 @@ function renderEmployeeCard(emp, partners) {
             const isDeduct = a.deductSalary !== false;
             const mult = a.status === 'halfday' ? 0.5 : 1;
             const loss = dailyRate * mult;
-            const tag = isDeduct ? `<span class="tag tag-rust">Deduct -${fmt(loss)}</span>` : `<span class="tag tag-done">Paid Leave ($0)</span>`;
+            const tag = isDeduct ? `<span class="badge bg-danger">Deduct -${fmt(loss)}</span>` : `<span class="badge bg-success">Paid Leave ($0)</span>`;
             return `<div class="history-row" style="align-items:center;">
               <span class="mono muted" style="width:90px">${esc(a.date)}</span>
               <span style="flex:1">${a.status === 'halfday' ? 'Half Day' : 'Full Day'} ${a.note ? `— ${esc(a.note)}` : ''} ${tag}</span>
@@ -1668,18 +1668,22 @@ function renderEmployeeCard(emp, partners) {
       attendanceSection = `
         <div class="serif small-title">📅 Attendance &amp; Absences</div>
         <div class="muted small" style="margin-bottom:8px">Daily Rate: <span class="mono strong">${fmt(dailyRate)}</span> (${wDays} working days/week). Log absent days and choose whether to deduct salary or count as paid leave.</div>
-        <div class="form-grid-adv" style="margin-bottom:8px;">
-          <input class="led-input" type="date" id="att-date-${emp.id}" value="${today()}">
-          <select class="led-input" id="att-status-${emp.id}">
-            <option value="absent">Full Day Absent</option>
-            <option value="halfday">Half Day</option>
-          </select>
-          <select class="led-input" id="att-deduct-${emp.id}">
-            <option value="yes">Deduct Salary (Unpaid)</option>
-            <option value="no">Paid Leave (No Deduct)</option>
-          </select>
-          <input class="led-input" id="att-note-${emp.id}" placeholder="Reason / Note (optional)">
-          <button class="led-btn secondary" data-act="add-attendance" data-emp="${emp.id}">+ Log Absence</button>
+        <div class="row g-2 align-items-center mb-2">
+          <div class="col-md-2 col-6"><input class="form-control" type="date" id="att-date-${emp.id}" value="${today()}"></div>
+          <div class="col-md-3 col-6">
+            <select class="form-select" id="att-status-${emp.id}">
+              <option value="absent">Full Day Absent</option>
+              <option value="halfday">Half Day</option>
+            </select>
+          </div>
+          <div class="col-md-3 col-6">
+            <select class="form-select" id="att-deduct-${emp.id}">
+              <option value="yes">Deduct Salary (Unpaid)</option>
+              <option value="no">Paid Leave (No Deduct)</option>
+            </select>
+          </div>
+          <div class="col-md-2 col-6"><input class="form-control" id="att-note-${emp.id}" placeholder="Reason (optional)"></div>
+          <div class="col-md-2 col-12"><button class="btn btn-dark fw-bold w-100" data-act="add-attendance" data-emp="${emp.id}">+ Log Absence</button></div>
         </div>
         ${attListHtml}
         <div class="divider"></div>
@@ -1688,12 +1692,12 @@ function renderEmployeeCard(emp, partners) {
 
     const advanceSection = `
       <div class="serif small-title">Money given during the week (advance)</div>
-      <div class="form-grid-adv">
-        <input class="led-input" type="date" id="adv-date-${emp.id}" value="${today()}">
-        <input class="led-input" type="number" id="adv-amount-${emp.id}" placeholder="Amount">
-        <select class="led-input" id="adv-paidby-${emp.id}">${partners.map(p=>`<option value="${p.id}">Given by ${esc(p.name)}</option>`).join("")}</select>
-        <input class="led-input" id="adv-note-${emp.id}" placeholder="Note (optional)">
-        <button class="led-btn secondary" data-act="add-advance" data-emp="${emp.id}">+ Log advance</button>
+      <div class="row g-2 align-items-center mb-2">
+        <div class="col-md-2 col-6"><input class="form-control" type="date" id="adv-date-${emp.id}" value="${today()}"></div>
+        <div class="col-md-2 col-6"><input class="form-control" type="number" id="adv-amount-${emp.id}" placeholder="Amount"></div>
+        <div class="col-md-3 col-6"><select class="form-select" id="adv-paidby-${emp.id}">${partners.map(p=>`<option value="${p.id}">Given by ${esc(p.name)}</option>`).join("")}</select></div>
+        <div class="col-md-3 col-6"><input class="form-control" id="adv-note-${emp.id}" placeholder="Note (optional)"></div>
+        <div class="col-md-2 col-12"><button class="btn btn-dark fw-bold w-100" data-act="add-advance" data-emp="${emp.id}">+ Log Advance</button></div>
       </div>
       ${outstandingAdv>0 ? `<div class="gold small" style="margin-bottom:14px">${fmt(outstandingAdv)} given this period — can be deducted automatically on payday below.</div>` : `<div style="margin-bottom:14px"></div>`}
     `;
@@ -2332,6 +2336,45 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    if (act === "toggle-customer") {
+      if (e.target.closest("button") || e.target.closest(".icon-btn")) return;
+      const id = el.dataset.id;
+      state.expandedCust = state.expandedCust === id ? null : id;
+      render();
+      return;
+    }
+    if (act === "cust-add-order") {
+      const custId = el.dataset.id;
+      const cust = (state.config.customers || []).find(c => c.id === custId);
+      const item = document.getElementById(`cust-quick-item-${custId}`).value.trim();
+      const qty = Number(document.getElementById(`cust-quick-qty-${custId}`).value) || 1;
+      const amount = Number(document.getElementById(`cust-quick-amount-${custId}`).value) || 0;
+      const paid = Number(document.getElementById(`cust-quick-paid-${custId}`).value) || 0;
+      if (!item || !amount) { swalAlert("Required", "Please enter item name and amount", "warning"); return; }
+      const entry = {
+        id: uid(),
+        date: today(),
+        item,
+        quantity: qty,
+        amount,
+        customerId: custId,
+        note: cust ? `Order for ${cust.name}` : "",
+        payments: [
+          {
+            id: uid(),
+            date: today(),
+            amount: paid,
+            receivedBy: state.config.partners[0]?.id || "p1",
+            settled: false,
+            note: paid < amount ? "Advance payment" : "Full payment"
+          }
+        ]
+      };
+      mutate(() => state.income.unshift(entry));
+      toast("📦 Customer order logged successfully!");
+      return;
+    }
+
     if (act === "add-income") {
       const date = document.getElementById("inc-date").value || today();
       const item = document.getElementById("inc-item").value.trim();
@@ -2341,6 +2384,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const paidAmount = paidInput !== "" ? Number(paidInput) : totalAmount;
       const receiverVal = document.getElementById("inc-receivedby").value;
       const [receiverType, receiverId] = receiverVal.split(":");
+      const customerId = document.getElementById("inc-customer") ? document.getElementById("inc-customer").value : "";
       const note = document.getElementById("inc-note").value.trim();
       if (!item || !totalAmount) return;
       const entry = {
@@ -2349,6 +2393,7 @@ document.addEventListener("DOMContentLoaded", () => {
         item,
         quantity,
         amount: totalAmount,
+        customerId,
         note,
         payments: [
           {
