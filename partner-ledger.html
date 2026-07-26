@@ -865,13 +865,24 @@ function sendWhatsAppReminder(saleId) {
   
   if (!phone) {
     Swal.fire({
-      title: 'Customer Phone Number',
-      input: 'text',
-      inputLabel: 'Enter customer WhatsApp phone number (with country code, e.g., 923001234567):',
+      title: '📱 WhatsApp Payment Reminder',
+      html: `
+        <div class="text-start">
+          <p class="small text-muted mb-3">Sending invoice reminder for <strong>${esc(sale.item)}</strong> (Due: <strong>${fmt(getIncomeBalance(sale))}</strong>)</p>
+          <div class="mb-2">
+            <label class="form-label fw-bold small text-dark mb-1">Customer WhatsApp Number</label>
+            <input id="swal-wa-phone" class="form-control" placeholder="e.g. 923001234567" autofocus>
+            <div class="form-text small text-muted mt-1">Include country code without '+' (e.g. 923001234567).</div>
+          </div>
+        </div>
+      `,
       showCancelButton: true,
-      confirmButtonColor: '#2F6F63',
-      preConfirm: (val) => {
-        if (!val) { Swal.showValidationMessage('Please enter a phone number'); return false; }
+      confirmButtonText: '📲 Send WhatsApp',
+      confirmButtonColor: '#000000',
+      cancelButtonColor: '#64748B',
+      preConfirm: () => {
+        const val = document.getElementById('swal-wa-phone').value.trim();
+        if (!val) { Swal.showValidationMessage('Please enter a valid phone number'); return false; }
         return val.replace(/[^0-9]/g, '');
       }
     }).then(res => {

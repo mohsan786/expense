@@ -481,19 +481,20 @@ async function showEditExpenseModal(id) {
     ${employees.length ? `<optgroup label="Employee (reimbursable)">${employees.map(emp=>`<option value="employee:${emp.id}" ${payerVal==='employee:'+emp.id?'selected':''}>${esc(emp.name)}</option>`).join("")}</optgroup>` : ""}
   `;
   const { value: formValues } = await Swal.fire({
-    title: 'Edit Expense',
-    html:
-      `<div style="text-align:left;display:flex;flex-direction:column;gap:10px;">` +
-      `<div><label style="font-size:12px;font-weight:600;">Date</label><input id="swal-exp-date" class="swal2-input" type="date" value="${e.date||today()}" style="margin:4px 0 0 0;width:100%;"></div>` +
-      `<div><label style="font-size:12px;font-weight:600;">Description</label><input id="swal-exp-desc" class="swal2-input" value="${esc(e.description||'')}" style="margin:4px 0 0 0;width:100%;"></div>` +
-      `<div><label style="font-size:12px;font-weight:600;">Amount</label><input id="swal-exp-amount" type="number" class="swal2-input" value="${e.amount||''}" style="margin:4px 0 0 0;width:100%;"></div>` +
-      `<div><label style="font-size:12px;font-weight:600;">Paid By</label><select id="swal-exp-payer" class="swal2-input" style="margin:4px 0 0 0;width:100%;">${optionsHtml}</select></div>` +
-      `</div>`,
+    title: '✏️ Edit Expense Record',
+    html: `
+      <div class="text-start d-flex flex-column gap-2">
+        <div><label class="form-label fw-bold small text-dark mb-1">Date</label><input id="swal-exp-date" class="form-control" type="date" value="${e.date||today()}"></div>
+        <div><label class="form-label fw-bold small text-dark mb-1">Description</label><input id="swal-exp-desc" class="form-control" value="${esc(e.description||'')}"></div>
+        <div><label class="form-label fw-bold small text-dark mb-1">Amount</label><input id="swal-exp-amount" type="number" class="form-control" value="${e.amount||''}"></div>
+        <div><label class="form-label fw-bold small text-dark mb-1">Paid By</label><select id="swal-exp-payer" class="form-select">${optionsHtml}</select></div>
+      </div>
+    `,
     focusConfirm: false,
     showCancelButton: true,
-    confirmButtonColor: '#2F6F63',
-    background: '#FCFAF4',
-    color: '#23302B',
+    confirmButtonText: '💾 Save Changes',
+    confirmButtonColor: '#000000',
+    cancelButtonColor: '#64748B',
     preConfirm: () => {
       const date = document.getElementById('swal-exp-date').value || today();
       const description = document.getElementById('swal-exp-desc').value.trim();
@@ -535,21 +536,24 @@ async function showEditIncomeModal(id) {
     ${employees.length ? `<optgroup label="Worker (holding cash)">${employees.map(emp=>`<option value="employee:${emp.id}" ${receiverVal==='employee:'+emp.id?'selected':''}>${esc(emp.name)}</option>`).join("")}</optgroup>` : ""}
   `;
   const { value: formValues } = await Swal.fire({
-    title: 'Edit Sale / Income',
-    html:
-      `<div style="text-align:left;display:flex;flex-direction:column;gap:10px;">` +
-      `<div><label style="font-size:12px;font-weight:600;">Date</label><input id="swal-inc-date" class="swal2-input" type="date" value="${e.date||today()}" style="margin:4px 0 0 0;width:100%;"></div>` +
-      `<div><label style="font-size:12px;font-weight:600;">Item</label><input id="swal-inc-item" class="swal2-input" value="${esc(e.item||'')}" style="margin:4px 0 0 0;width:100%;"></div>` +
-      `<div><label style="font-size:12px;font-weight:600;">Quantity</label><input id="swal-inc-qty" type="number" class="swal2-input" value="${e.quantity||''}" style="margin:4px 0 0 0;width:100%;"></div>` +
-      `<div><label style="font-size:12px;font-weight:600;">Total Amount</label><input id="swal-inc-amount" type="number" class="swal2-input" value="${e.amount||''}" style="margin:4px 0 0 0;width:100%;"></div>` +
-      `<div><label style="font-size:12px;font-weight:600;">Received By</label><select id="swal-inc-receiver" class="swal2-input" style="margin:4px 0 0 0;width:100%;">${optionsHtml}</select></div>` +
-      `<div><label style="font-size:12px;font-weight:600;">Note / Customer</label><input id="swal-inc-note" class="swal2-input" value="${esc(e.note||'')}" style="margin:4px 0 0 0;width:100%;"></div>` +
-      `</div>`,
+    title: '✏️ Edit Sale Record',
+    html: `
+      <div class="text-start d-flex flex-column gap-2">
+        <div><label class="form-label fw-bold small text-dark mb-1">Date</label><input id="swal-inc-date" class="form-control" type="date" value="${e.date||today()}"></div>
+        <div><label class="form-label fw-bold small text-dark mb-1">Item Description</label><input id="swal-inc-item" class="form-control" value="${esc(e.item||'')}"></div>
+        <div class="row g-2">
+          <div class="col-6"><label class="form-label fw-bold small text-dark mb-1">Quantity</label><input id="swal-inc-qty" type="number" class="form-control" value="${e.quantity||''}"></div>
+          <div class="col-6"><label class="form-label fw-bold small text-dark mb-1">Total Amount</label><input id="swal-inc-amount" type="number" class="form-control" value="${e.amount||''}"></div>
+        </div>
+        <div><label class="form-label fw-bold small text-dark mb-1">Received By</label><select id="swal-inc-receiver" class="form-select">${optionsHtml}</select></div>
+        <div><label class="form-label fw-bold small text-dark mb-1">Note / Customer</label><input id="swal-inc-note" class="form-control" value="${esc(e.note||'')}"></div>
+      </div>
+    `,
     focusConfirm: false,
     showCancelButton: true,
-    confirmButtonColor: '#2F6F63',
-    background: '#FCFAF4',
-    color: '#23302B',
+    confirmButtonText: '💾 Save Changes',
+    confirmButtonColor: '#000000',
+    cancelButtonColor: '#64748B',
     preConfirm: () => {
       const date = document.getElementById('swal-inc-date').value || today();
       const item = document.getElementById('swal-inc-item').value.trim();
@@ -921,13 +925,24 @@ function sendWhatsAppReminder(saleId) {
   
   if (!phone) {
     Swal.fire({
-      title: 'Customer Phone Number',
-      input: 'text',
-      inputLabel: 'Enter customer WhatsApp phone number (with country code, e.g., 923001234567):',
+      title: '📱 WhatsApp Payment Reminder',
+      html: `
+        <div class="text-start">
+          <p class="small text-muted mb-3">Sending invoice reminder for <strong>${esc(sale.item)}</strong> (Due: <strong>${fmt(getIncomeBalance(sale))}</strong>)</p>
+          <div class="mb-2">
+            <label class="form-label fw-bold small text-dark mb-1">Customer WhatsApp Number</label>
+            <input id="swal-wa-phone" class="form-control" placeholder="e.g. 923001234567" autofocus>
+            <div class="form-text small text-muted mt-1">Include country code without '+' (e.g. 923001234567).</div>
+          </div>
+        </div>
+      `,
       showCancelButton: true,
-      confirmButtonColor: '#2F6F63',
-      preConfirm: (val) => {
-        if (!val) { Swal.showValidationMessage('Please enter a phone number'); return false; }
+      confirmButtonText: '📲 Send WhatsApp',
+      confirmButtonColor: '#000000',
+      cancelButtonColor: '#64748B',
+      preConfirm: () => {
+        const val = document.getElementById('swal-wa-phone').value.trim();
+        if (!val) { Swal.showValidationMessage('Please enter a valid phone number'); return false; }
         return val.replace(/[^0-9]/g, '');
       }
     }).then(res => {
