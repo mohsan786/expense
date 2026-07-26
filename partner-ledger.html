@@ -112,6 +112,228 @@ const swalAlert = (title, text = "", icon = "info") => {
   });
 };
 
+async function showEditExpenseModal(id) {
+  const e = state.expenses.find(x => x.id === id);
+  if (!e) return;
+  const partners = state.config.partners;
+  const employees = state.config.employees;
+  const payerVal = e.payerEmployeeId ? `employee:${e.payerEmployeeId}` : `partner:${e.paidBy}`;
+  const optionsHtml = `
+    <optgroup label="Partner">${partners.map(p=>`<option value="partner:${p.id}" ${payerVal==='partner:'+p.id?'selected':''}>${esc(p.name)}</option>`).join("")}</optgroup>
+    ${employees.length ? `<optgroup label="Employee (reimbursable)">${employees.map(emp=>`<option value="employee:${emp.id}" ${payerVal==='employee:'+emp.id?'selected':''}>${esc(emp.name)}</option>`).join("")}</optgroup>` : ""}
+  `;
+  const { value: formValues } = await Swal.fire({
+    title: 'Edit Expense',
+    html:
+      `<div style="text-align:left;display:flex;flex-direction:column;gap:10px;">` +
+      `<div><label style="font-size:12px;font-weight:600;">Date</label><input id="swal-exp-date" class="swal2-input" type="date" value="${e.date||today()}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Description</label><input id="swal-exp-desc" class="swal2-input" value="${esc(e.description||'')}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Amount</label><input id="swal-exp-amount" type="number" class="swal2-input" value="${e.amount||''}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Paid By</label><select id="swal-exp-payer" class="swal2-input" style="margin:4px 0 0 0;width:100%;">${optionsHtml}</select></div>` +
+      `</div>`,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonColor: '#2F6F63',
+    background: '#FCFAF4',
+    color: '#23302B',
+    preConfirm: () => {
+      const date = document.getElementById('swal-exp-date').value || today();
+      const description = document.getElementById('swal-exp-desc').value.trim();
+      const amount = Number(document.getElementById('swal-exp-amount').value);
+      const payerVal = document.getElementById('swal-exp-payer').value;
+      if (!description || !amount) {
+        Swal.showValidationMessage('Please enter description and amount');
+        return false;
+      }
+      return { date, description, amount, payerVal };
+    }
+  });
+
+  if (formValues) {
+    const [payerType, payerId] = formValues.payerVal.split(':');
+    mutate(() => {
+      e.date = formValues.date;
+      e.description = formValues.description;
+      e.amount = formValues.amount;
+      if (payerType === 'employee') {
+        e.payerEmployeeId = payerId;
+        e.paidBy = undefined;
+      } else {
+        e.paidBy = payerId;
+        e.payerEmployeeId = undefined;
+      }
+    });
+  }
+}
+
+async function showEditIncomeModal(id) {
+  const e = state.income.find(x => x.id === id);
+  if (!e) return;
+  const partners = state.config.partners;
+  const employees = state.config.employees;
+  const receiverVal = e.receivedByEmployeeId ? `employee:${e.receivedByEmployeeId}` : `partner:${e.receivedBy}`;
+  const optionsHtml = `
+    <optgroup label="Partner">${partners.map(p=>`<option value="partner:${p.id}" ${receiverVal==='partner:'+p.id?'selected':''}>${esc(p.name)}</option>`).join("")}</optgroup>
+    ${employees.length ? `<optgroup label="Worker (holding cash)">${employees.map(emp=>`<option value="employee:${emp.id}" ${receiverVal==='employee:'+emp.id?'selected':''}>${esc(emp.name)}</option>`).join("")}</optgroup>` : ""}
+  `;
+  const { value: formValues } = await Swal.fire({
+    title: 'Edit Sale / Income',
+    html:
+      `<div style="text-align:left;display:flex;flex-direction:column;gap:10px;">` +
+      `<div><label style="font-size:12px;font-weight:600;">Date</label><input id="swal-inc-date" class="swal2-input" type="date" value="${e.date||today()}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Item</label><input id="swal-inc-item" class="swal2-input" value="${esc(e.item||'')}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Quantity</label><input id="swal-inc-qty" type="number" class="swal2-input" value="${e.quantity||''}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Total Amount</label><input id="swal-inc-amount" type="number" class="swal2-input" value="${e.amount||''}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Received By</label><select id="swal-inc-receiver" class="swal2-input" style="margin:4px 0 0 0;width:100%;">${optionsHtml}</select></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Note / Customer</label><input id="swal-inc-note" class="swal2-input" value="${esc(e.note||'')}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `</div>`,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonColor: '#2F6F63',
+    background: '#FCFAF4',
+    color: '#23302B',
+    preConfirm: () => {
+      const date = document.getElementById('swal-inc-date').value || today();
+      const item = document.getElementById('swal-inc-item').value.trim();
+      const quantity = document.getElementById('swal-inc-qty').value ? Number(document.getElementById('swal-inc-qty').value) : null;
+      const amount = Number(document.getElementById('swal-inc-amount').value);
+      const receiverVal = document.getElementById('swal-inc-receiver').value;
+      const note = document.getElementById('swal-inc-note').value.trim();
+      if (!item || !amount) {
+        Swal.showValidationMessage('Please enter item and total amount');
+        return false;
+      }
+      return { date, item, quantity, amount, receiverVal, note };
+    }
+  });
+
+  if (formValues) {
+    const [receiverType, receiverId] = formValues.receiverVal.split(':');
+    mutate(() => {
+      e.date = formValues.date;
+      e.item = formValues.item;
+      e.quantity = formValues.quantity;
+      e.amount = formValues.amount;
+      e.note = formValues.note;
+      if (receiverType === 'employee') {
+        e.receivedByEmployeeId = receiverId;
+        e.receivedBy = undefined;
+      } else {
+        e.receivedBy = receiverId;
+        e.receivedByEmployeeId = undefined;
+      }
+    });
+  }
+}
+
+async function showEditEmployeeModal(id) {
+  const emp = state.config.employees.find(e => e.id === id);
+  if (!emp) return;
+  const { value: formValues } = await Swal.fire({
+    title: 'Edit Employee Profile',
+    html:
+      `<div style="text-align:left;display:flex;flex-direction:column;gap:10px;">` +
+      `<div><label style="font-size:12px;font-weight:600;">Employee Name</label><input id="swal-emp-name" class="swal2-input" value="${esc(emp.name||'')}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Payment Type</label><select id="swal-emp-type" class="swal2-input" style="margin:4px 0 0 0;width:100%;"><option value="weekly" ${emp.type==='weekly'?'selected':''}>Weekly Rate</option><option value="workbased" ${emp.type==='workbased'?'selected':''}>Piece-Rate (Work Based)</option></select></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Weekly Rate (if applicable)</label><input id="swal-emp-weekly" type="number" class="swal2-input" value="${emp.weeklyRate||0}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `</div>`,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonColor: '#2F6F63',
+    background: '#FCFAF4',
+    color: '#23302B',
+    preConfirm: () => {
+      const name = document.getElementById('swal-emp-name').value.trim();
+      const type = document.getElementById('swal-emp-type').value;
+      const weeklyRate = Number(document.getElementById('swal-emp-weekly').value || 0);
+      if (!name) {
+        Swal.showValidationMessage('Please enter employee name');
+        return false;
+      }
+      return { name, type, weeklyRate };
+    }
+  });
+
+  if (formValues) {
+    mutate(() => {
+      emp.name = formValues.name;
+      emp.type = formValues.type;
+      emp.weeklyRate = formValues.weeklyRate;
+      if (emp.type === 'workbased' && !emp.items) emp.items = [];
+    });
+  }
+}
+
+async function showEditItemModal(empId, itemId) {
+  const emp = state.config.employees.find(e => e.id === empId);
+  if (!emp || !emp.items) return;
+  const item = emp.items.find(it => it.id === itemId);
+  if (!item) return;
+  const { value: formValues } = await Swal.fire({
+    title: 'Edit Piece-Rate Work Item',
+    html:
+      `<div style="text-align:left;display:flex;flex-direction:column;gap:10px;">` +
+      `<div><label style="font-size:12px;font-weight:600;">Item Name (e.g. Upper Stitching)</label><input id="swal-item-label" class="swal2-input" value="${esc(item.label||'')}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Rate Per Pair / Unit</label><input id="swal-item-rate" type="number" class="swal2-input" value="${item.rate||''}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `</div>`,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonColor: '#2F6F63',
+    background: '#FCFAF4',
+    color: '#23302B',
+    preConfirm: () => {
+      const label = document.getElementById('swal-item-label').value.trim();
+      const rate = Number(document.getElementById('swal-item-rate').value);
+      if (!label || !rate) {
+        Swal.showValidationMessage('Please enter item name and rate');
+        return false;
+      }
+      return { label, rate };
+    }
+  });
+
+  if (formValues) {
+    mutate(() => {
+      item.label = formValues.label;
+      item.rate = formValues.rate;
+    });
+  }
+}
+
+async function showEditVendorModal(id) {
+  const vendor = state.config.vendors.find(v => v.id === id);
+  if (!vendor) return;
+  const { value: formValues } = await Swal.fire({
+    title: 'Edit Vendor Profile',
+    html:
+      `<div style="text-align:left;display:flex;flex-direction:column;gap:10px;">` +
+      `<div><label style="font-size:12px;font-weight:600;">Vendor / Supplier Name</label><input id="swal-v-name" class="swal2-input" value="${esc(vendor.name||'')}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Note / Phone / Address</label><input id="swal-v-note" class="swal2-input" value="${esc(vendor.note||'')}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `</div>`,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonColor: '#2F6F63',
+    background: '#FCFAF4',
+    color: '#23302B',
+    preConfirm: () => {
+      const name = document.getElementById('swal-v-name').value.trim();
+      const note = document.getElementById('swal-v-note').value.trim();
+      if (!name) {
+        Swal.showValidationMessage('Please enter vendor name');
+        return false;
+      }
+      return { name, note };
+    }
+  });
+
+  if (formValues) {
+    mutate(() => {
+      vendor.name = formValues.name;
+      vendor.note = formValues.note;
+    });
+  }
+}
+
 let state = {
   config: { currency: "$", partners: [{ id: "a", name: "Partner A", ratio: 2 }, { id: "b", name: "Partner B", ratio: 1 }], employees: [], vendors: [] },
   expenses: [],
@@ -318,7 +540,7 @@ function renderIncome() {
       <div class="mono small">${e.quantity||"—"}</div>
       <div class="mono">${fmt(e.amount)}</div>
       <div class="small">${receiverLabel} ${tag}</div>
-      <button class="icon-btn" data-act="delete-income" data-id="${e.id}">✕</button>
+      <button class="icon-btn" data-act="edit-income" data-id="${e.id}" title="Edit Sale">✏️</button>
     </div>`;
   }).join("");
   const receiverOptions = `
@@ -377,7 +599,7 @@ function renderExpenses() {
       <div>${esc(e.description)}</div>
       <div class="mono">${fmt(e.amount)}</div>
       <div class="small">${payerLabel} ${tag}</div>
-      <button class="icon-btn" data-act="delete-expense" data-id="${e.id}">✕</button>
+      <button class="icon-btn" data-act="edit-expense" data-id="${e.id}" title="Edit Expense">✏️</button>
     </div>`;
   }).join("");
   const payerOptions = `
@@ -461,7 +683,7 @@ function renderEmployeeCard(emp, partners) {
   if (expanded) {
     let workSection = "";
     if (emp.type === "workbased") {
-      const itemChips = items.map(it => `<span class="item-chip">${esc(it.label)} · ${fmt(it.rate)}<button data-act="delete-item" data-emp="${emp.id}" data-item="${it.id}">✕</button></span>`).join("");
+      const itemChips = items.map(it => `<span class="item-chip">${esc(it.label)} · ${fmt(it.rate)}<button data-act="edit-item" data-emp="${emp.id}" data-item="${it.id}" style="border:none;background:none;cursor:pointer;padding:0 2px;" title="Edit Item">✏️</button></span>`).join("");
       workSection = `
         <div class="serif small-title">Work items &amp; prices</div>
         <div style="margin-bottom:8px">${itemChips || `<span class="muted small">No items yet — add one below.</span>`}</div>
@@ -583,7 +805,7 @@ function renderEmployeeCard(emp, partners) {
           ${outstandingAdv>0 ? `<span class="mono small strong gold">advance ${fmt(outstandingAdv)}</span>` : ""}
           ${outstandingReimb>0 ? `<span class="mono small strong" style="color:var(--rust)">reimburse ${fmt(outstandingReimb)}</span>` : ""}
           ${outstandingHeld>0 ? `<span class="mono small strong" style="color:var(--rust)">holding ${fmt(outstandingHeld)}</span>` : ""}
-          <button class="icon-btn" data-act="delete-employee" data-id="${emp.id}">✕</button>
+          <button class="icon-btn" data-act="edit-employee" data-id="${emp.id}" title="Edit Employee">✏️</button>
         </div>
       </div>
       ${body}
@@ -675,7 +897,7 @@ function renderVendorCard(vendor, partners) {
         </div>
         <div class="emp-head-right">
           ${outstanding>0.005 ? `<span class="mono small strong" style="color:var(--rust)">owe ${fmt(outstanding)}</span>` : `<span class="mono small strong" style="color:var(--teal)">settled</span>`}
-          <button class="icon-btn" data-act="delete-vendor" data-id="${vendor.id}">✕</button>
+          <button class="icon-btn" data-act="edit-vendor" data-id="${vendor.id}" title="Edit Vendor">✏️</button>
         </div>
       </div>
       ${body}
@@ -771,11 +993,8 @@ document.addEventListener("DOMContentLoaded", () => {
       mutate(() => state.expenses.unshift(entry));
       return;
     }
-    if (act === "delete-expense") {
-      const id = el.dataset.id;
-      const confirmDelete = await swalConfirm("Delete Expense?", "Are you sure you want to delete this expense entry?");
-      if (!confirmDelete) return;
-      mutate(() => { state.expenses = state.expenses.filter(x => x.id !== id); });
+    if (act === "edit-expense") {
+      showEditExpenseModal(el.dataset.id);
       return;
     }
 
@@ -794,11 +1013,8 @@ document.addEventListener("DOMContentLoaded", () => {
       mutate(() => state.income.unshift(entry));
       return;
     }
-    if (act === "delete-income") {
-      const id = el.dataset.id;
-      const confirmDelete = await swalConfirm("Delete Sale Entry?", "Are you sure you want to delete this sale entry?");
-      if (!confirmDelete) return;
-      mutate(() => { state.income = state.income.filter(x => x.id !== id); });
+    if (act === "edit-income") {
+      showEditIncomeModal(el.dataset.id);
       return;
     }
 
@@ -811,19 +1027,8 @@ document.addEventListener("DOMContentLoaded", () => {
       mutate(() => { state.config.employees.push(emp); });
       return;
     }
-    if (act === "delete-employee") {
-      const id = el.dataset.id;
-      const confirmDelete = await swalConfirm("Delete Employee?", "All work logs, advances, and payment history for this employee will be deleted.");
-      if (!confirmDelete) return;
-      mutate(() => {
-        state.config.employees = state.config.employees.filter(e => e.id !== id);
-        state.workLogs = state.workLogs.filter(w => w.employeeId !== id);
-        state.salaryPayments = state.salaryPayments.filter(s => s.employeeId !== id);
-        state.advances = state.advances.filter(a => a.employeeId !== id);
-        state.expenses = state.expenses.map(x => x.payerEmployeeId === id ? { ...x, payerEmployeeId: undefined } : x);
-        state.income = state.income.map(x => x.receivedByEmployeeId === id ? { ...x, receivedByEmployeeId: undefined } : x);
-        if (state.expandedEmp === id) state.expandedEmp = null;
-      });
+    if (act === "edit-employee") {
+      showEditEmployeeModal(el.dataset.id);
       return;
     }
     if (act === "toggle-employee") {
@@ -845,15 +1050,8 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       return;
     }
-    if (act === "delete-item") {
-      const empId = el.dataset.emp;
-      const itemId = el.dataset.item;
-      const confirmDelete = await swalConfirm("Delete Work Item?", "Are you sure you want to delete this piece rate work item?");
-      if (!confirmDelete) return;
-      mutate(() => {
-        const emp = state.config.employees.find(e => e.id === empId);
-        emp.items = (emp.items || []).filter(it => it.id !== itemId);
-      });
+    if (act === "edit-item") {
+      showEditItemModal(el.dataset.emp, el.dataset.item);
       return;
     }
 
@@ -931,16 +1129,8 @@ document.addEventListener("DOMContentLoaded", () => {
       mutate(() => { state.config.vendors.push({ id: uid(), name, note }); });
       return;
     }
-    if (act === "delete-vendor") {
-      const id = el.dataset.id;
-      const confirmDelete = await swalConfirm("Delete Vendor?", "Are you sure you want to delete this vendor?");
-      if (!confirmDelete) return;
-      mutate(() => {
-        state.config.vendors = state.config.vendors.filter(v => v.id !== id);
-        state.expenses = state.expenses.map(x => x.vendorId === id ? { ...x, vendorId: undefined } : x);
-        state.vendorPayments = state.vendorPayments.filter(x => x.vendorId !== id);
-        if (state.expandedVendor === id) state.expandedVendor = null;
-      });
+    if (act === "edit-vendor") {
+      showEditVendorModal(el.dataset.id);
       return;
     }
     if (act === "toggle-vendor") {
