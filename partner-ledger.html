@@ -1103,29 +1103,23 @@ function renderCategoryBudgets() {
         <div style="background:#E2E8F0;border-radius:10px;height:6px;overflow:hidden;margin-bottom:6px;">
           <div style="width:${pct}%;background:${color};height:100%;border-radius:10px;transition:width 0.3s;"></div>
         </div>
-        <div class="muted small" style="font-size:11px;">Spent: <span class="mono strong">${fmt(spent)}</span> / ${fmt(limit)}</div>
-      </div>
-    `;
-  }).join("");
-
+}
   return `<div style="margin-bottom:14px;"><div class="serif small-title" style="margin-bottom:6px;">🎯 Monthly Category Budgets</div><div style="display:flex;gap:10px;flex-wrap:wrap;">${cards}</div></div>`;
 }
 
 function renderCustomers() {
-  const customers = state.config.customers || [];
+  const allCustomers = state.config.customers || [];
   const sales = state.income;
+  const q = (state.custSearch || "").toLowerCase().trim();
 
-  const rows = customers.map(c => {
-    const custSales = sales.filter(s => s.customerId === c.id || (s.note && s.note.toLowerCase().includes(c.name.toLowerCase())));
-    const totalBilled = custSales.reduce((s, x) => s + Number(x.amount || 0), 0);
-function renderCustomers() {
-  const customers = state.config.customers || [];
-  const sales = state.income;
+  const customers = allCustomers.filter(c => {
+    if (!q) return true;
+    return (c.name || "").toLowerCase().includes(q) || (c.phone || "").includes(q) || (c.address || "").toLowerCase().includes(q);
+  });
 
   const rows = customers.map(c => {
     const expanded = state.expandedCust === c.id;
     const custSales = sales.filter(s => s.customerId === c.id || (s.note && s.note.toLowerCase().includes(c.name.toLowerCase())));
-    const totalBilled = custSales.reduce((s, x) => s + Number(x.amount || 0), 0);
     const totalPaid = custSales.reduce((s, x) => s + getIncomePaid(x), 0);
     const pendingDue = custSales.reduce((s, x) => s + getIncomeBalance(x), 0);
 
@@ -1150,31 +1144,21 @@ function renderCustomers() {
             </div>
           </div>
         `;
-      }).join("") : `<div class="empty-msg">No orders recorded for this customer yet.</div>`;
+      }).join("") : `<div class="empty-msg">No sales or orders recorded for this customer yet. Log sales from the Sales tab.</div>`;
 
       statementBody = `
         <div class="card-body border-top bg-light mt-2 p-3" style="border-radius:0 0 10px 10px;">
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <span class="fw-bold small text-dark text-uppercase">📋 Customer Statement & Order Ledger</span>
+            <span class="fw-bold small text-dark text-uppercase">📋 Customer Statement &amp; Sales Ledger</span>
             <div class="d-flex gap-2">
               ${c.phone ? `<button class="btn btn-sm btn-outline-dark fw-bold" data-act="wa-direct" data-phone="${c.phone}" data-name="${c.name}" data-due="${pendingDue}">📲 Send WhatsApp Statement (${fmt(pendingDue)} Due)</button>` : ''}
             </div>
           </div>
-          <div class="table-panel mb-3">
+          <div class="table-panel">
             <div class="mono table-head" style="display:grid;grid-template-columns:100px 1fr 90px 100px 100px 100px auto;gap:8px;">
               <div>DATE</div><div>ORDER ITEM</div><div>TOTAL</div><div>PAID</div><div>DUE</div><div>STATUS</div><div></div>
             </div>
             ${ordersHtml}
-          </div>
-          <div class="p-3 bg-white border rounded">
-            <div class="fw-bold small mb-2">➕ Quick Log Order for ${esc(c.name)}</div>
-            <div class="row g-2 align-items-center">
-              <div class="col-md-3 col-12"><input class="form-control form-control-sm" id="cust-quick-item-${c.id}" placeholder="Item (e.g. Leather Shoes)"></div>
-              <div class="col-md-2 col-6"><input class="form-control form-control-sm" type="number" id="cust-quick-qty-${c.id}" placeholder="Qty"></div>
-              <div class="col-md-2 col-6"><input class="form-control form-control-sm" type="number" id="cust-quick-amount-${c.id}" placeholder="Total Price"></div>
-              <div class="col-md-2 col-6"><input class="form-control form-control-sm" type="number" id="cust-quick-paid-${c.id}" placeholder="Advance Paid"></div>
-              <div class="col-md-3 col-12"><button class="btn btn-sm btn-dark fw-bold w-100" data-act="cust-add-order" data-id="${c.id}">+ Create Order</button></div>
-            </div>
           </div>
         </div>
       `;
@@ -1189,7 +1173,7 @@ function renderCustomers() {
               ${c.phone ? `<span class="muted small" style="margin-left:6px;">📞 ${esc(c.phone)}</span>` : ""}
               ${c.address ? `<span class="muted small" style="margin-left:6px;">📍 ${esc(c.address)}</span>` : ""}
             </div>
-            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;" onclick="event.stopPropagation();">
+            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
               <div class="mono small">Orders: <strong>${custSales.length}</strong></div>
               <div class="mono small text-success">Paid: <strong>${fmt(totalPaid)}</strong></div>
               <div class="mono small ${pendingDue>0?'text-danger':'text-muted'}">Due: <strong>${fmt(pendingDue)}</strong></div>
@@ -1215,12 +1199,14 @@ function renderCustomers() {
       </div>
     </div>
     <div class="panel table-panel">
-      <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
-        <div class="serif strong" style="font-size:16px;">Customer Database & Accounts (${customers.length})</div>
-        <span class="muted small">Click any customer to open their full statement ledger & log orders</span>
+      <div class="d-flex justify-content-between align-items-center p-3 border-bottom flex-wrap gap-2">
+        <div class="serif strong" style="font-size:16px;">Customer Database &amp; Ledger (${allCustomers.length})</div>
+        <div style="max-width:320px;width:100%;">
+          <input class="form-control form-control-sm" id="cust-search" placeholder="🔍 Search by customer name or phone..." value="${esc(state.custSearch || '')}" data-act="search-customer">
+        </div>
       </div>
       <div class="p-3">
-        ${customers.length === 0 ? `<div class="empty-msg">No customers created yet. Add one above to manage customer accounts.</div>` : rows}
+        ${allCustomers.length === 0 ? `<div class="empty-msg">No customers created yet. Add one above or select when logging sales.</div>` : (rows.length === 0 ? `<div class="empty-msg">No customers match your search query.</div>` : rows)}
       </div>
     </div>
   `;
@@ -1411,11 +1397,11 @@ function renderIncome() {
     <optgroup label="Partner">${partners.map(p=>`<option value="partner:${p.id}">${esc(p.name)}</option>`).join("")}</optgroup>
     ${employees.length ? `<optgroup label="Worker (owes it back)">${employees.map(e=>`<option value="employee:${e.id}">${esc(e.name)}</option>`).join("")}</optgroup>` : ""}
   `;
-  const customerOptions = `<option value="">-- Select Customer (Optional) --</option>${(state.config.customers||[]).map(c=>`<option value="${c.id}">${esc(c.name)}${c.phone?` (${esc(c.phone)})`:''}</option>`).join("")}`;
+  const customerOptions = `<option value="">-- Select Existing Customer (Optional) --</option><option value="__new__">➕ + Create New Customer Profile...</option>${(state.config.customers||[]).map(c=>`<option value="${c.id}">${esc(c.name)}${c.phone?` (${esc(c.phone)})`:''}${c.address?` — ${esc(c.address)}`:''}</option>`).join("")}`;
   return `
     <div class="panel">
       <div class="serif strong" style="margin-bottom:4px">Log a sale</div>
-      <div class="muted small" style="margin-bottom:12px">Log sales and advance payments. Link customer profile for full ledger tracking.</div>
+      <div class="muted small" style="margin-bottom:12px">Log sales &amp; advances. Select existing customer or create new profile on-the-fly.</div>
       <div class="row g-2 align-items-center mb-2">
         <div class="col-md-2 col-6"><input class="form-control" type="date" id="inc-date" value="${today()}"></div>
         <div class="col-md-3 col-12"><input class="form-control" id="inc-item" placeholder="Item (e.g. Leather shoes)"></div>
@@ -1423,8 +1409,18 @@ function renderIncome() {
         <div class="col-md-2 col-6"><input class="form-control" id="inc-amount" type="number" placeholder="Total price"></div>
         <div class="col-md-2 col-6"><input class="form-control" id="inc-paid-amount" type="number" placeholder="Advance / Paid"></div>
         <div class="col-md-2 col-6"><select class="form-select" id="inc-receivedby">${receiverOptions}</select></div>
-        <div class="col-md-4 col-12"><select class="form-select" id="inc-customer">${customerOptions}</select></div>
-        <div class="col-md-8 col-12"><input class="form-control" id="inc-note" placeholder="Note / order details (optional)"></div>
+        <div class="col-md-5 col-12">
+          <select class="form-select" id="inc-customer" data-act="inc-cust-select">
+            ${customerOptions}
+          </select>
+        </div>
+        <div class="col-md-7 col-12" id="inc-new-cust-fields" style="display:none;">
+          <div class="row g-2">
+            <div class="col-6"><input class="form-control" id="inc-new-cust-name" placeholder="New Customer Name *"></div>
+            <div class="col-6"><input class="form-control" id="inc-new-cust-phone" placeholder="WhatsApp / Phone (e.g. 03001234567)"></div>
+          </div>
+        </div>
+        <div class="col-12"><input class="form-control" id="inc-note" placeholder="Order Note / Special details (optional)"></div>
         <div class="col-12 text-end mt-2"><button class="btn btn-dark fw-bold px-4" data-act="add-income">+ Add Sale</button></div>
       </div>
     </div>
@@ -2395,9 +2391,29 @@ document.addEventListener("DOMContentLoaded", () => {
       const paidAmount = paidInput !== "" ? Number(paidInput) : totalAmount;
       const receiverVal = document.getElementById("inc-receivedby").value;
       const [receiverType, receiverId] = receiverVal.split(":");
-      const customerId = document.getElementById("inc-customer") ? document.getElementById("inc-customer").value : "";
+      const custSel = document.getElementById("inc-customer") ? document.getElementById("inc-customer").value : "";
       const note = document.getElementById("inc-note").value.trim();
       if (!item || !totalAmount) return;
+
+      let customerId = custSel;
+      state.config.customers = state.config.customers || [];
+      if (custSel === "__new__") {
+        const newName = document.getElementById("inc-new-cust-name") ? document.getElementById("inc-new-cust-name").value.trim() : "";
+        const newPhone = document.getElementById("inc-new-cust-phone") ? document.getElementById("inc-new-cust-phone").value.trim() : "";
+        if (newName) {
+          const existing = state.config.customers.find(c => c.name.toLowerCase() === newName.toLowerCase() || (newPhone && c.phone === newPhone));
+          if (existing) {
+            customerId = existing.id;
+          } else {
+            const newCust = { id: uid(), name: newName, phone: newPhone };
+            state.config.customers.unshift(newCust);
+            customerId = newCust.id;
+          }
+        } else {
+          customerId = "";
+        }
+      }
+
       const entry = {
         id: uid(),
         date,
@@ -2735,6 +2751,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const empId = el.dataset.emp;
         state.deductAttendance[empId] = el.checked;
         render();
+      } else if (act === "inc-cust-select") {
+        const fields = document.getElementById("inc-new-cust-fields");
+        if (fields) fields.style.display = el.value === "__new__" ? "block" : "none";
       }
     }
 
@@ -2768,6 +2787,29 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       };
       reader.readAsText(file);
+    }
+  });
+
+  app.addEventListener("input", (e) => {
+    const el = e.target.closest("[data-act]");
+    if (el) {
+      const act = el.dataset.act;
+      if (act === "search-customer") {
+        state.custSearch = el.value;
+        render();
+        const input = document.getElementById("cust-search");
+        if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+      } else if (act === "search-income") {
+        state.incomeSearch = el.value;
+        render();
+        const input = document.getElementById("inc-search");
+        if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+      } else if (act === "search-expense") {
+        state.expenseSearch = el.value;
+        render();
+        const input = document.getElementById("exp-search");
+        if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+      }
     }
   });
 
