@@ -678,6 +678,31 @@ function renderOverview() {
   `;
 }
 
+function renderPagination(currentPage, totalItems, pageSize, actName) {
+  const totalPages = Math.ceil(totalItems / pageSize);
+  if (totalPages <= 1) return "";
+  let btns = "";
+  for (let i = 1; i <= totalPages; i++) {
+    btns += `<li class="page-item ${i === currentPage ? 'active' : ''}"><button class="page-link" data-act="${actName}" data-page="${i}">${i}</button></li>`;
+  }
+  const start = (currentPage - 1) * pageSize + 1;
+  const end = Math.min(currentPage * pageSize, totalItems);
+  return `
+    <div class="d-flex flex-wrap justify-content-between align-items-center p-3 border-top bg-light gap-2">
+      <span class="small text-muted">Showing ${start}–${end} of ${totalItems} entries</span>
+      <ul class="pagination pagination-sm mb-0">
+        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+          <button class="page-link" data-act="${actName}" data-page="${currentPage - 1}">« Prev</button>
+        </li>
+        ${btns}
+        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+          <button class="page-link" data-act="${actName}" data-page="${currentPage + 1}">Next »</button>
+        </li>
+      </ul>
+    </div>
+  `;
+}
+
 function renderIncome() {
   const partners = state.config.partners;
   const employees = state.config.employees;
@@ -687,7 +712,14 @@ function renderIncome() {
     const receiver = e.receivedByEmployeeId ? (employees.find(x => x.id === e.receivedByEmployeeId)?.name || "") : (partners.find(p => p.id === e.receivedBy)?.name || "");
     return (e.item||"").toLowerCase().includes(q) || (e.note||"").toLowerCase().includes(q) || (e.date||"").includes(q) || receiver.toLowerCase().includes(q) || String(e.amount||"").includes(q);
   });
-  const rows = filtered.map(e => {
+
+  const pageSize = 10;
+  const totalItems = filtered.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  state.incomePage = Math.min(state.incomePage || 1, totalPages);
+  const paged = filtered.slice((state.incomePage - 1) * pageSize, state.incomePage * pageSize);
+
+  const rows = paged.map(e => {
     let receiverLabel, tag = "";
     if (e.receivedByEmployeeId) {
       const emp = employees.find(x => x.id === e.receivedByEmployeeId);
@@ -732,6 +764,7 @@ function renderIncome() {
       </div>
       <div class="mono table-head income-row"><div>DATE</div><div>ITEM</div><div>QTY</div><div>AMOUNT</div><div>RECEIVED</div><div></div></div>
       ${state.income.length===0 ? `<div class="empty-msg">No sales logged yet.</div>` : (filtered.length===0 ? `<div class="empty-msg">No sales match your search.</div>` : rows)}
+      ${renderPagination(state.incomePage, totalItems, pageSize, 'set-income-page')}
     </div>
   `;
 }
@@ -745,7 +778,14 @@ function renderExpenses() {
     const payer = e.payerEmployeeId ? (employees.find(x => x.id === e.payerEmployeeId)?.name || "") : (partners.find(p => p.id === e.paidBy)?.name || "");
     return (e.description||"").toLowerCase().includes(q) || (e.date||"").includes(q) || payer.toLowerCase().includes(q) || String(e.amount||"").includes(q);
   });
-  const rows = filtered.map(e => {
+
+  const pageSize = 10;
+  const totalItems = filtered.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  state.expensePage = Math.min(state.expensePage || 1, totalPages);
+  const paged = filtered.slice((state.expensePage - 1) * pageSize, state.expensePage * pageSize);
+
+  const rows = paged.map(e => {
     let payerLabel, tag = "";
     if (e.payerEmployeeId) {
       const emp = employees.find(x => x.id === e.payerEmployeeId);
@@ -792,6 +832,7 @@ function renderExpenses() {
       </div>
       <div class="mono table-head expense-row"><div>DATE</div><div>DESC</div><div>AMOUNT</div><div>PAID BY</div><div></div></div>
       ${state.expenses.length===0 ? `<div class="empty-msg">No expenses logged yet.</div>` : (filtered.length===0 ? `<div class="empty-msg">No expenses match your search.</div>` : rows)}
+      ${renderPagination(state.expensePage, totalItems, pageSize, 'set-expense-page')}
     </div>
   `;
 }
@@ -1186,6 +1227,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const act = el.dataset.act;
 
     if (act === "switch-tab") { state.tab = el.dataset.tab; render(); return; }
+
+    if (act === "set-income-page") {
+      state.incomePage = Number(el.dataset.page);
+      render();
+      return;
+    }
+    if (act === "set-expense-page") {
+      state.expensePage = Number(el.dataset.page);
+      render();
+      return;
+    }
 
     if (act === "export-data") {
       const payload = JSON.stringify({ config: state.config, expenses: state.expenses, income: state.income, workLogs: state.workLogs, salaryPayments: state.salaryPayments, advances: state.advances, vendorPayments: state.vendorPayments }, null, 2);
