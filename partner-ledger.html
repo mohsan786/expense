@@ -1129,9 +1129,9 @@ function renderCustomers() {
         const total = Number(s.amount || 0);
         const paid = getIncomePaid(s);
         const due = getIncomeBalance(s);
-        let badge = paid >= total ? `<span class="badge bg-success">Paid</span>` : (paid > 0 ? `<span class="badge bg-warning text-dark">Advance (${fmt(paid)})</span>` : `<span class="badge bg-danger">Unpaid</span>`);
+        let badge = paid >= total ? `<span class="badge bg-success">Paid</span>` : (paid > 0 ? `<span class="badge bg-warning text-dark" title="Paid ${fmt(paid)} / Due ${fmt(due)}">Advance</span>` : `<span class="badge bg-danger">Unpaid</span>`);
         return `
-          <div class="row-line" style="display:grid;grid-template-columns:100px 1fr 90px 100px 100px 100px auto;gap:8px;align-items:center;">
+          <div class="row-line" style="display:grid;grid-template-columns:95px 1fr 85px 95px 95px 120px 120px;gap:8px;align-items:center;">
             <div class="mono small">${esc(s.date)}</div>
             <div>${esc(s.item)}${s.note ? ` <span class="muted small">(${esc(s.note)})</span>` : ""}</div>
             <div class="mono small">${fmt(total)}</div>
@@ -1155,7 +1155,7 @@ function renderCustomers() {
             </div>
           </div>
           <div class="table-panel">
-            <div class="mono table-head" style="display:grid;grid-template-columns:100px 1fr 90px 100px 100px 100px auto;gap:8px;">
+            <div class="mono table-head" style="display:grid;grid-template-columns:95px 1fr 85px 95px 95px 120px 120px;gap:8px;">
               <div>DATE</div><div>ORDER ITEM</div><div>TOTAL</div><div>PAID</div><div>DUE</div><div>STATUS</div><div></div>
             </div>
             ${ordersHtml}
