@@ -12,7 +12,7 @@ function get_db() {
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
             ]);
         } catch (PDOException $e) {
-            // If DB doesn't exist, try connecting to MySQL server to create it
+            // If DB doesn't exist, try connecting to MySQL server to create it 
             if ($e->getCode() == 1049) {
                 try {
                     $tmp_dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";charset=utf8mb4";
