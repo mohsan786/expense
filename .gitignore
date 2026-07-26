@@ -2,3 +2,4 @@ ledger.sqlite
 *.log
 .DS_Store
 Thumbs.db
+config.php
