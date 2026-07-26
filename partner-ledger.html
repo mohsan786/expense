@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Ledger</title>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;700&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
+  :root { --paper:#F6F2E9; --ink:#23302B; --rule:#CBBFA0; --teal:#2F6F63; --rust:#A6472F; --gold:#A9803B; --panel:#FCFAF4; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font-family:'Source Sans 3','Segoe UI',sans-serif; }
+  .wrap { max-width:880px; margin:0 auto; padding:28px 16px 60px; }
+  .serif { font-family:'Source Serif 4',Georgia,serif; }
+  .mono { font-family:'IBM Plex Mono',monospace; font-variant-numeric:tabular-nums; }
+  .strong { font-weight:700; } .muted { color:#6b6353; } .small { font-size:12.5px; }
+  .gold { color:var(--gold); } .teal-text { color:var(--teal); } .rust-text { color:var(--rust); }
+  .header { margin-bottom:22px; border-bottom:2px solid var(--ink); padding-bottom:14px; }
+  .header-top { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:6px; }
+  .title { font-size:28px; font-weight:700; margin:0; }
+  .sub { font-size:11px; color:#8a806a; }
+  .tagline { margin:4px 0 0; font-size:13.5px; color:#5b5445; }
+  .err { margin:6px 0 0; font-size:12px; color:var(--rust); }
+  .tabs { display:flex; gap:4px; margin-bottom:22px; border-bottom:1px solid var(--rule); overflow-x:auto; }
+  .tab-btn { display:flex; align-items:center; gap:6px; padding:9px 12px; background:transparent; border:none; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; color:#6b6353; font-weight:500; font-size:13.5px; white-space:nowrap; }
+  .tab-btn.active { color:var(--teal); font-weight:600; border-bottom-color:var(--teal); }
+  .panel { background:var(--panel); border:1px solid var(--rule); border-radius:8px; padding:16px; margin-bottom:16px; }
+  .total-box { padding:20px 22px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:4px; }
+  .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:16px; }
+  @media (max-width:520px) { .grid2, .grid3 { grid-template-columns:1fr; } }
+  .pc-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .scale-bar { display:flex; height:30px; border-radius:5px; overflow:hidden; border:1px solid var(--ink); }
+  .scale-seg { display:flex; align-items:center; justify-content:center; color:#fff; font-size:12px; font-weight:600; font-family:'IBM Plex Mono',monospace; }
+  .settle-box { background:#F3E8D2; border:1px solid var(--gold); border-radius:8px; padding:16px; display:flex; align-items:center; gap:10px; font-size:14px; }
+  .settled { font-size:14px; color:#6b6353; }
+  .led-input { background:#fff; border:1px solid var(--rule); border-radius:4px; padding:7px 9px; font-size:14px; color:var(--ink); outline:none; width:100%; font-family:inherit; }
+  .led-input:focus { border-color:var(--teal); }
+  .led-btn { background:var(--teal); color:#fff; border:none; border-radius:5px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap; }
+  .led-btn.secondary { background:transparent; color:var(--ink); border:1px solid var(--rule); }
+  .icon-btn { background:none; border:none; cursor:pointer; color:#8a806a; font-size:14px; }
+  .form-grid-expense { display:grid; grid-template-columns:110px 1fr 90px 160px auto; gap:8px; }
+  .form-grid-income { display:grid; grid-template-columns:110px 1fr 70px 90px 140px auto; gap:8px; }
+  .form-grid-emp { display:grid; grid-template-columns:1fr 150px auto; gap:8px; align-items:center; }
+  .form-grid-item { display:grid; grid-template-columns:1fr 110px auto; gap:8px; margin-bottom:6px; }
+  .form-grid-work { display:grid; grid-template-columns:110px 1fr 80px 1fr auto; gap:8px; margin-bottom:6px; }
+  .form-grid-adv, .form-grid-pay { display:grid; grid-template-columns:110px 90px 130px 1fr auto; gap:8px; margin-bottom:6px; }
+  .form-grid-partner { display:grid; grid-template-columns:1fr 90px 130px; gap:8px; margin-bottom:10px; }
+  @media (max-width:640px) { .form-grid-expense,.form-grid-income,.form-grid-emp,.form-grid-item,.form-grid-work,.form-grid-adv,.form-grid-pay { grid-template-columns:1fr; } }
+  .table-panel { padding:0; overflow:hidden; }
+  .table-head { padding:8px 14px; font-size:11px; color:#8a806a; border-bottom:1px solid var(--rule); }
+  .expense-row { display:grid; grid-template-columns:76px 1fr 84px 140px 28px; gap:6px; align-items:center; }
+  .income-row { display:grid; grid-template-columns:76px 1fr 50px 76px 100px 28px; gap:6px; align-items:center; }
+  @media (max-width:540px) {
+    .table-head { display:none; }
+    .expense-row { display:flex; flex-wrap:wrap; gap:4px 8px; justify-content:space-between; }
+    .income-row { display:flex; flex-wrap:wrap; gap:4px 8px; justify-content:space-between; }
+    .expense-row > div:nth-child(2), .income-row > div:nth-child(2) { width:100%; font-weight:600; order:-1; }
+  }
+  .row-line { border-bottom:1px solid var(--rule); padding:10px 14px; font-size:13.5px; }
+  .table-panel .row-line:last-child { border-bottom:none; }
+  .empty-msg { padding:20px; font-size:13.5px; color:#8a806a; }
+  .emp-card { padding:0; overflow:hidden; }
+  .emp-head { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; cursor:pointer; gap:10px; flex-wrap:wrap; }
+  .emp-head-left { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .emp-head-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .card-body { border-top:1px solid var(--rule); padding:16px; }
+  .small-title { font-weight:700; font-size:13px; margin-bottom:8px; }
+  .checkbox-row { display:flex; align-items:center; gap:6px; font-size:12px; color:#6b6353; margin-bottom:8px; }
+  .history-row { display:flex; justify-content:space-between; padding:6px 0; font-size:12.5px; border-bottom:1px solid var(--rule); }
+  .item-chip { display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid var(--rule); border-radius:20px; padding:4px 10px; font-size:12px; margin:0 6px 6px 0; }
+  .item-chip button { border:none; background:none; cursor:pointer; color:#8a806a; font-size:11px; }
+  .divider { border-top:1px dashed var(--rule); margin:14px 0; }
+  .tag { font-size:10.5px; padding:2px 6px; border-radius:10px; font-weight:600; }
+  .tag-wait { background:#F3E8D2; color:var(--gold); }
+  .tag-done { background:#E4EFE9; color:var(--teal); }
+  .loading { min-height:60vh; display:flex; align-items:center; justify-content:center; font-family:Georgia,serif; }
+  ::placeholder { color:#a39a82; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const today = () => new Date().toISOString().slice(0, 10);
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+const swalConfirm = async (title, text = "This action cannot be undone.") => {
+  const res = await Swal.fire({
+    title,
+    text,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#A6472F',
+    cancelButtonColor: '#6b6353',
+    confirmButtonText: 'Yes, proceed',
+    cancelButtonText: 'Cancel',
+    background: '#FCFAF4',
+    color: '#23302B'
+  });
+  return res.isConfirmed;
+};
+
+const swalAlert = (title, text = "", icon = "info") => {
+  return Swal.fire({
+    title,
+    text,
+    icon,
+    confirmButtonColor: '#2F6F63',
+    background: '#FCFAF4',
+    color: '#23302B'
+  });
+};
+
+let state = {
+  config: { currency: "$", partners: [{ id: "a", name: "Partner A", ratio: 2 }, { id: "b", name: "Partner B", ratio: 1 }], employees: [], vendors: [] },
+  expenses: [],
+  income: [],
+  workLogs: [],
+  salaryPayments: [],
+  advances: [],
+  vendorPayments: [],
+  tab: "overview",
+  expandedEmp: null,
+  deductAdvance: {},
+  includeReimbursement: {},
+  deductHeldIncome: {},
+  expandedVendor: null,
+  incomeSearch: "",
+  expenseSearch: "",
+  loaded: false,
+  saveErr: false,
+};
+
+async function getStoredData(key) {
+  try {
+    if (typeof window !== "undefined" && window.storage && typeof window.storage.get === "function") {
+      const res = await window.storage.get(key, true);
+      if (res && res.value) return res.value;
+    }
+  } catch (e) {}
+  try {
+    return localStorage.getItem(key);
+  } catch (e) {
+    return null;
+  }
+}
+
+async function setStoredData(key, val) {
+  let saved = false;
+  try {
+    if (typeof window !== "undefined" && window.storage && typeof window.storage.set === "function") {
+      const res = await window.storage.set(key, val, true);
+      if (res) saved = true;
+    }
+  } catch (e) {}
+  try {
+    localStorage.setItem(key, val);
+    saved = true;
+  } catch (e) {}
+  return saved;
+}
+
+async function load() {
+  try {
+    const val = await getStoredData("ledger-data");
+    if (val) {
+      const d = JSON.parse(val);
+      if (d.config) state.config = d.config;
+      if (d.expenses) state.expenses = d.expenses;
+      if (d.income) state.income = d.income;
+      if (d.workLogs) state.workLogs = d.workLogs;
+      if (d.salaryPayments) state.salaryPayments = d.salaryPayments;
+      if (d.advances) state.advances = d.advances;
+      if (d.vendorPayments) state.vendorPayments = d.vendorPayments;
+      if (!state.config.vendors) state.config.vendors = [];
+      state.config.employees = state.config.employees.map(e => {
+        if (e.type === "workbased" && !e.items) {
+          const items = (e.unitRate) ? [{ id: uid(), label: e.unitLabel || "unit", rate: e.unitRate }] : [];
+          return { ...e, items };
+        }
+        return e;
+      });
+    }
+  } catch (e) {}
+  state.loaded = true;
+  render();
+}
+
+async function persist() {
+  try {
+    const payload = JSON.stringify({ config: state.config, expenses: state.expenses, income: state.income, workLogs: state.workLogs, salaryPayments: state.salaryPayments, advances: state.advances, vendorPayments: state.vendorPayments });
+    const r = await setStoredData("ledger-data", payload);
+    state.saveErr = !r;
+  } catch (e) { state.saveErr = true; }
+}
+function mutate(fn) { fn(); persist(); render(); }
+
+function totalRatio() { return state.config.partners.reduce((s, p) => s + Number(p.ratio || 0), 0); }
+function totalIncome() { return state.income.reduce((s, x) => s + Number(x.amount || 0), 0); }
+function totalOutflow() {
+  const exp = state.expenses.reduce((s, x) => s + Number(x.amount || 0), 0);
+  const sal = state.salaryPayments.reduce((s, x) => s + Number(x.amount || 0), 0); // wage only, reimbursement excluded (already counted as expense)
+  const adv = state.advances.reduce((s, x) => s + Number(x.amount || 0), 0);
+  return exp + sal + adv;
+}
+function netProfit() { return totalIncome() - totalOutflow(); }
+
+function partnerStats() {
+  const tr = totalRatio();
+  const np = netProfit();
+  return state.config.partners.map(p => {
+    const opCap = Number(p.openingCapital || 0);
+    const expPaid = state.expenses.filter(x => x.paidBy === p.id).reduce((s, x) => s + Number(x.amount || 0), 0);
+    const salPaid = state.salaryPayments.filter(x => x.paidBy === p.id).reduce((s, x) => s + Number(x.amount || 0) + Number(x.reimbursedAmount || 0), 0);
+    const advPaid = state.advances.filter(x => x.paidBy === p.id).reduce((s, x) => s + Number(x.amount || 0), 0);
+    const vendPaid = state.vendorPayments.filter(x => x.paidBy === p.id).reduce((s, x) => s + Number(x.amount || 0), 0);
+    const paid = opCap + expPaid + salPaid + advPaid + vendPaid;
+    const received = state.income.filter(x => x.receivedBy === p.id).reduce((s, x) => s + Number(x.amount || 0), 0);
+    const fairShare = tr > 0 ? (np * Number(p.ratio || 0)) / tr : 0;
+    const balance = paid - received + fairShare;
+    return { ...p, paid, received, fairShare, balance, opCap };
+  });
+}
+function fmt(n) { return `${state.config.currency}${Number(n || 0).toFixed(2)}`; }
+function empWorkLogs(id) { return state.workLogs.filter(w => w.employeeId === id); }
+function empSalaryPayments(id) { return state.salaryPayments.filter(s => s.employeeId === id); }
+function empAdvances(id) { return state.advances.filter(a => a.employeeId === id); }
+function empOutstandingAdvance(id) { return empAdvances(id).filter(a => !a.settled).reduce((s, a) => s + a.amount, 0); }
+function empCoveredExpenses(id) { return state.expenses.filter(x => x.payerEmployeeId === id); }
+function empOutstandingReimbursement(id) { return empCoveredExpenses(id).filter(x => !x.settled).reduce((s, x) => s + Number(x.amount || 0), 0); }
+function empHeldIncome(id) { return state.income.filter(x => x.receivedByEmployeeId === id); }
+function empOutstandingHeldIncome(id) { return empHeldIncome(id).filter(x => !x.settled).reduce((s, x) => s + Number(x.amount || 0), 0); }
+function vendorPurchases(id) { return state.expenses.filter(x => x.vendorId === id); }
+function vendorPaymentsFor(id) { return state.vendorPayments.filter(x => x.vendorId === id); }
+function vendorCreditTotal(id) { return vendorPurchases(id).filter(x => x.onCredit).reduce((s, x) => s + Number(x.amount || 0), 0); }
+function vendorOutstanding(id) { return vendorCreditTotal(id) - vendorPaymentsFor(id).reduce((s, x) => s + Number(x.amount || 0), 0); }
+function totalVendorOutstanding() { return state.config.vendors.reduce((s, v) => s + vendorOutstanding(v.id), 0); }
+
+function renderHeader() {
+  return `<div class="header">
+    <div class="header-top"><h1 class="serif title">The Ledger</h1><span class="mono sub">shared with your partner</span></div>
+    <p class="tagline">Income, shared expenses, split by ratio, and payroll — kept in one place.</p>
+    ${state.saveErr ? `<p class="err">Couldn't save just now — your changes may not persist. Try again in a moment.</p>` : ""}
+  </div>`;
+}
+function renderTabs() {
+  const items = [["overview","Overview"],["income","Income"],["expenses","Expenses"],["employees","Employees"],["vendors","Vendors"],["settings","Settings"]];
+  return `<div class="tabs">${items.map(([id,label]) => `<button class="tab-btn ${state.tab===id?"active":""}" data-act="switch-tab" data-tab="${id}">${label}</button>`).join("")}</div>`;
+}
+
+function renderOverview() {
+  const stats = partnerStats();
+  const tr = totalRatio();
+  const inc = totalIncome();
+  const out = totalOutflow();
+  const np = netProfit();
+  let settlementHtml = "";
+  if (stats.length >= 2) {
+    const sorted = [...stats].sort((a, b) => b.balance - a.balance);
+    const creditor = sorted[0], debtor = sorted[sorted.length - 1];
+    const amount = Math.abs(creditor.balance);
+    if (amount > 0.005) {
+      settlementHtml = `<div class="settle-box">💵 <div><strong>${esc(debtor.name)}</strong> owes <strong>${esc(creditor.name)}</strong> <span class="mono strong">${fmt(amount)}</span> to even out the ${state.config.partners.map(p=>p.ratio).join(":")} split.</div></div>`;
+    } else {
+      settlementHtml = `<div class="panel settled">Everything's settled — both partners are even on the ${state.config.partners.map(p=>p.ratio).join(":")} split.</div>`;
+    }
+  }
+  const cards = stats.map(p => `
+    <div class="panel">
+      <div class="pc-top"><span class="serif strong">${esc(p.name)}</span><span class="mono muted small">ratio ${p.ratio} share${p.ratio>1?'s':''}</span></div>
+      ${p.opCap > 0 ? `<div class="muted small" style="margin-top:6px">Starting capital: <span class="mono strong gold">${fmt(p.opCap)}</span></div>` : ''}
+      <div class="muted small" style="margin-top:6px">Income received</div>
+      <div class="mono teal-text" style="font-size:16px;font-weight:600">+${fmt(p.received)}</div>
+      <div class="muted small" style="margin-top:6px">Expenses paid out of pocket</div>
+      <div class="mono rust-text" style="font-size:16px;font-weight:600">-${fmt(p.paid - p.opCap)}</div>
+      <div class="muted small" style="margin-top:8px">Fair share of profit (${p.ratio}/${tr})</div>
+      <div class="mono">${fmt(p.fairShare)}</div>
+      <div class="small strong" style="margin-top:8px;color:${p.balance>=0?"var(--teal)":"var(--rust)"}">
+        ${p.balance>=0? `Owed ${fmt(p.balance)}` : `Owes ${fmt(Math.abs(p.balance))}`}
+      </div>
+    </div>`).join("");
+  const scaleSegs = state.config.partners.map((p,i) => `<div class="scale-seg" style="width:${tr>0?(Number(p.ratio||0)/tr*100):0}%;background:${i===0?"var(--teal)":"var(--rust)"}">${esc(p.name)} · ${p.ratio}</div>`).join("");
+  return `
+    <div class="grid3">
+      <div class="panel total-box"><div class="muted serif" style="font-size:13px">Total income</div><div class="mono teal-text" style="font-size:24px;font-weight:600">${fmt(inc)}</div></div>
+      <div class="panel total-box"><div class="muted serif" style="font-size:13px">Total expenses</div><div class="mono rust-text" style="font-size:24px;font-weight:600">${fmt(out)}</div></div>
+      <div class="panel total-box"><div class="muted serif" style="font-size:13px">Net profit</div><div class="mono" style="font-size:24px;font-weight:600;color:${np>=0?"var(--ink)":"var(--rust)"}">${fmt(np)}</div></div>
+    </div>
+    <div class="grid2">${cards}</div>
+    <div class="panel"><div class="serif strong" style="margin-bottom:12px">Split scale</div><div class="scale-bar">${scaleSegs}</div></div>
+    ${totalVendorOutstanding() > 0.005 ? `<div class="panel" style="display:flex;justify-content:space-between;align-items:center"><span class="muted small">Owed to vendors (materials bought on credit)</span><span class="mono strong" style="color:var(--rust)">${fmt(totalVendorOutstanding())}</span></div>` : ""}
+    ${settlementHtml}
+  `;
+}
+
+function renderIncome() {
+  const partners = state.config.partners;
+  const employees = state.config.employees;
+  const q = (state.incomeSearch || "").toLowerCase().trim();
+  const filtered = state.income.filter(e => {
+    if (!q) return true;
+    const receiver = e.receivedByEmployeeId ? (employees.find(x => x.id === e.receivedByEmployeeId)?.name || "") : (partners.find(p => p.id === e.receivedBy)?.name || "");
+    return (e.item||"").toLowerCase().includes(q) || (e.note||"").toLowerCase().includes(q) || (e.date||"").includes(q) || receiver.toLowerCase().includes(q) || String(e.amount||"").includes(q);
+  });
+  const rows = filtered.map(e => {
+    let receiverLabel, tag = "";
+    if (e.receivedByEmployeeId) {
+      const emp = employees.find(x => x.id === e.receivedByEmployeeId);
+      receiverLabel = esc(emp?.name || "—");
+      tag = e.settled ? `<span class="tag tag-done">settled</span>` : `<span class="tag tag-wait">holding</span>`;
+    } else {
+      receiverLabel = esc(partners.find(p=>p.id===e.receivedBy)?.name || "—");
+    }
+    return `<div class="row-line income-row">
+      <div class="mono small">${esc(e.date)}</div>
+      <div>${esc(e.item)}${e.note ? ` <span class="muted small">— ${esc(e.note)}</span>` : ""}</div>
+      <div class="mono small">${e.quantity||"—"}</div>
+      <div class="mono">${fmt(e.amount)}</div>
+      <div class="small">${receiverLabel} ${tag}</div>
+      <button class="icon-btn" data-act="delete-income" data-id="${e.id}">✕</button>
+    </div>`;
+  }).join("");
+  const receiverOptions = `
+    <optgroup label="Partner">${partners.map(p=>`<option value="partner:${p.id}">${esc(p.name)}</option>`).join("")}</optgroup>
+    ${employees.length ? `<optgroup label="Worker (owes it back)">${employees.map(e=>`<option value="employee:${e.id}">${esc(e.name)}</option>`).join("")}</optgroup>` : ""}
+  `;
+  return `
+    <div class="panel">
+      <div class="serif strong" style="margin-bottom:4px">Log a sale</div>
+      <div class="muted small" style="margin-bottom:10px">E.g. leather shoes sold — pick a quantity and price, or just enter the total. If a worker collected the payment themselves, select their name — it'll show as cash they're holding until it's settled.</div>
+      <div class="form-grid-income">
+        <input class="led-input" type="date" id="inc-date" value="${today()}">
+        <input class="led-input" id="inc-item" placeholder="Item (e.g. Men's loafers)">
+        <input class="led-input" id="inc-qty" type="number" placeholder="Qty">
+        <input class="led-input" id="inc-amount" type="number" placeholder="Total amount">
+        <select class="led-input" id="inc-receivedby">${receiverOptions}</select>
+        <button class="led-btn" data-act="add-income">+ Add</button>
+      </div>
+      <input class="led-input" id="inc-note" placeholder="Note / customer (optional)" style="margin-top:8px">
+    </div>
+    <div class="panel table-panel">
+      <div style="padding:8px 14px;border-bottom:1px solid var(--rule);background:#fff">
+        <input class="led-input" id="inc-search" placeholder="🔍 Search sales by item, customer, date..." value="${esc(state.incomeSearch)}" data-act="search-income">
+      </div>
+      <div class="mono table-head income-row"><div>DATE</div><div>ITEM</div><div>QTY</div><div>AMOUNT</div><div>RECEIVED</div><div></div></div>
+      ${state.income.length===0 ? `<div class="empty-msg">No sales logged yet.</div>` : (filtered.length===0 ? `<div class="empty-msg">No sales match your search.</div>` : rows)}
+    </div>
+  `;
+}
+
+function renderExpenses() {
+  const partners = state.config.partners;
+  const employees = state.config.employees;
+  const q = (state.expenseSearch || "").toLowerCase().trim();
+  const filtered = state.expenses.filter(e => {
+    if (!q) return true;
+    const payer = e.payerEmployeeId ? (employees.find(x => x.id === e.payerEmployeeId)?.name || "") : (partners.find(p => p.id === e.paidBy)?.name || "");
+    return (e.description||"").toLowerCase().includes(q) || (e.date||"").includes(q) || payer.toLowerCase().includes(q) || String(e.amount||"").includes(q);
+  });
+  const rows = filtered.map(e => {
+    let payerLabel, tag = "";
+    if (e.payerEmployeeId) {
+      const emp = employees.find(x => x.id === e.payerEmployeeId);
+      payerLabel = `${esc(emp?.name || "—")}`;
+      tag = e.settled ? `<span class="tag tag-done">reimbursed</span>` : `<span class="tag tag-wait">awaiting reimb.</span>`;
+    } else if (e.vendorId && e.onCredit) {
+      const vend = state.config.vendors.find(v => v.id === e.vendorId);
+      payerLabel = `${esc(vend?.name || "—")}`;
+      tag = `<span class="tag tag-wait">on credit</span>`;
+    } else {
+      payerLabel = esc(partners.find(p=>p.id===e.paidBy)?.name || "—");
+      if (e.vendorId) { const vend = state.config.vendors.find(v => v.id === e.vendorId); tag = vend ? `<span class="tag tag-done">${esc(vend.name)}</span>` : ""; }
+    }
+    return `<div class="row-line expense-row">
+      <div class="mono small">${esc(e.date)}</div>
+      <div>${esc(e.description)}</div>
+      <div class="mono">${fmt(e.amount)}</div>
+      <div class="small">${payerLabel} ${tag}</div>
+      <button class="icon-btn" data-act="delete-expense" data-id="${e.id}">✕</button>
+    </div>`;
+  }).join("");
+  const payerOptions = `
+    <optgroup label="Partner">${partners.map(p=>`<option value="partner:${p.id}">${esc(p.name)}</option>`).join("")}</optgroup>
+    ${employees.length ? `<optgroup label="Employee (reimbursable)">${employees.map(e=>`<option value="employee:${e.id}">${esc(e.name)}</option>`).join("")}</optgroup>` : ""}
+  `;
+  return `
+    <div class="panel">
+      <div class="serif strong" style="margin-bottom:4px">Add an expense</div>
+      <div class="muted small" style="margin-bottom:10px">If a worker paid out of pocket, choose their name — it'll show as owed to them until you reimburse it (see their Employees card).</div>
+      <div class="form-grid-expense">
+        <input class="led-input" type="date" id="exp-date" value="${today()}">
+        <input class="led-input" id="exp-desc" placeholder="Description">
+        <input class="led-input" id="exp-amount" type="number" placeholder="Amount">
+        <select class="led-input" id="exp-payer">${payerOptions}</select>
+        <button class="led-btn" data-act="add-expense">+ Add</button>
+      </div>
+    </div>
+    <div class="panel table-panel">
+      <div style="padding:8px 14px;border-bottom:1px solid var(--rule);background:#fff">
+        <input class="led-input" id="exp-search" placeholder="🔍 Search expenses by description, payer, date..." value="${esc(state.expenseSearch)}" data-act="search-expense">
+      </div>
+      <div class="mono table-head expense-row"><div>DATE</div><div>DESC</div><div>AMOUNT</div><div>PAID BY</div><div></div></div>
+      ${state.expenses.length===0 ? `<div class="empty-msg">No expenses logged yet.</div>` : (filtered.length===0 ? `<div class="empty-msg">No expenses match your search.</div>` : rows)}
+    </div>
+  `;
+}
+
+function renderEmployees() {
+  const partners = state.config.partners;
+  const empHtml = state.config.employees.map(emp => renderEmployeeCard(emp, partners)).join("");
+  return `
+    <div class="panel">
+      <div class="serif strong" style="margin-bottom:10px">Add an employee</div>
+      <div class="form-grid-emp">
+        <input class="led-input" id="new-emp-name" placeholder="Name">
+        <select class="led-input" id="new-emp-type" onchange="toggleEmpTypeUI()">
+          <option value="weekly">Weekly salary</option>
+          <option value="workbased">Work-based (piece rate)</option>
+        </select>
+        <button class="led-btn" data-act="add-employee">+ Add</button>
+      </div>
+      <div id="new-emp-weekly-wrap" style="margin-top:8px">
+        <input class="led-input" id="new-emp-weekly" type="number" placeholder="Weekly amount" style="max-width:200px">
+      </div>
+      <div id="new-emp-work-wrap" style="display:none;margin-top:8px" class="muted small">
+        You'll add their work items (e.g. cutting, stitching) with different prices after creating them.
+      </div>
+    </div>
+    ${state.config.employees.length===0 ? `<div class="empty-msg">No employees yet — add one above.</div>` : empHtml}
+  `;
+}
+
+function renderEmployeeCard(emp, partners) {
+  const expanded = state.expandedEmp === emp.id;
+  const workLogs = empWorkLogs(emp.id);
+  const payments = empSalaryPayments(emp.id);
+  const advances = empAdvances(emp.id);
+  const coveredExpenses = empCoveredExpenses(emp.id);
+  const heldIncome = empHeldIncome(emp.id);
+  const totalEarned = workLogs.reduce((s, w) => s + w.amount, 0);
+  const totalWagePaid = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+  const outstandingAdv = empOutstandingAdvance(emp.id);
+  const outstandingReimb = empOutstandingReimbursement(emp.id);
+  const outstandingHeld = empOutstandingHeldIncome(emp.id);
+  const owed = emp.type === "workbased" ? (totalEarned - totalWagePaid - outstandingAdv - outstandingHeld + outstandingReimb) : null;
+  const deductAdv = state.deductAdvance[emp.id] !== false;
+  const includeReimb = state.includeReimbursement[emp.id] !== false;
+  const deductHeld = state.deductHeldIncome[emp.id] !== false;
+
+  const unpaidWorkEarned = Math.max(0, totalEarned - totalWagePaid);
+  const suggestedWage = emp.type === "weekly"
+    ? Math.max(emp.weeklyRate - (deductAdv ? outstandingAdv : 0) - (deductHeld ? outstandingHeld : 0), 0)
+    : Math.max(unpaidWorkEarned - (deductAdv ? outstandingAdv : 0) - (deductHeld ? outstandingHeld : 0), 0);
+  const suggestedTotal = suggestedWage + (includeReimb ? outstandingReimb : 0);
+  const items = emp.items || [];
+
+  const headSub = emp.type === "weekly" ? `weekly · ${fmt(emp.weeklyRate)}` : (items.length ? `work-based · ${items.length} item type${items.length>1?"s":""}` : "work-based · no items yet");
+
+  let body = "";
+  if (expanded) {
+    let workSection = "";
+    if (emp.type === "workbased") {
+      const itemChips = items.map(it => `<span class="item-chip">${esc(it.label)} · ${fmt(it.rate)}<button data-act="delete-item" data-emp="${emp.id}" data-item="${it.id}">✕</button></span>`).join("");
+      workSection = `
+        <div class="serif small-title">Work items &amp; prices</div>
+        <div style="margin-bottom:8px">${itemChips || `<span class="muted small">No items yet — add one below.</span>`}</div>
+        <div class="form-grid-item">
+          <input class="led-input" id="item-label-${emp.id}" placeholder="Item name (e.g. Stitching)">
+          <input class="led-input" id="item-rate-${emp.id}" type="number" placeholder="Price per piece">
+          <button class="led-btn secondary" data-act="add-item" data-emp="${emp.id}">+ Add item</button>
+        </div>
+        <div class="divider"></div>
+        <div class="serif small-title">Log work</div>
+        ${items.length ? `
+          <div class="form-grid-work">
+            <input class="led-input" type="date" id="work-date-${emp.id}" value="${today()}">
+            <select class="led-input" id="work-item-${emp.id}">${items.map(it=>`<option value="${it.id}">${esc(it.label)} · ${fmt(it.rate)}</option>`).join("")}</select>
+            <input class="led-input" type="number" id="work-qty-${emp.id}" placeholder="Qty">
+            <input class="led-input" id="work-note-${emp.id}" placeholder="Note (optional)">
+            <button class="led-btn" data-act="add-work" data-emp="${emp.id}">+ Log</button>
+          </div>
+        ` : `<div class="muted small" style="margin-bottom:10px">Add a work item above first.</div>`}
+        <div class="muted small" style="margin-bottom:14px">Total earned: <span class="mono strong">${fmt(totalEarned)}</span></div>
+      `;
+    }
+
+    const advanceSection = `
+      <div class="serif small-title">Money given during the week (advance)</div>
+      <div class="form-grid-adv">
+        <input class="led-input" type="date" id="adv-date-${emp.id}" value="${today()}">
+        <input class="led-input" type="number" id="adv-amount-${emp.id}" placeholder="Amount">
+        <select class="led-input" id="adv-paidby-${emp.id}">${partners.map(p=>`<option value="${p.id}">Given by ${esc(p.name)}</option>`).join("")}</select>
+        <input class="led-input" id="adv-note-${emp.id}" placeholder="Note (optional)">
+        <button class="led-btn secondary" data-act="add-advance" data-emp="${emp.id}">+ Log advance</button>
+      </div>
+      ${outstandingAdv>0 ? `<div class="gold small" style="margin-bottom:14px">${fmt(outstandingAdv)} given this period — can be deducted automatically on payday below.</div>` : `<div style="margin-bottom:14px"></div>`}
+    `;
+
+    const coveredList = coveredExpenses.length ? `
+      <div class="serif small-title">Expenses they've covered</div>
+      ${coveredExpenses.map(x => `<div class="history-row"><span class="mono muted" style="width:90px">${esc(x.date)}</span><span style="flex:1">${esc(x.description)} ${x.settled?`<span class="tag tag-done">reimbursed</span>`:`<span class="tag tag-wait">awaiting</span>`}</span><span class="mono strong gold">${fmt(x.amount)}</span></div>`).join("")}
+      <div style="margin-bottom:14px"></div>
+    ` : "";
+
+    const heldList = heldIncome.length ? `
+      <div class="serif small-title">Cash they've collected from customers</div>
+      ${heldIncome.map(x => `<div class="history-row"><span class="mono muted" style="width:90px">${esc(x.date)}</span><span style="flex:1">${esc(x.item)} ${x.settled?`<span class="tag tag-done">settled</span>`:`<span class="tag tag-wait">holding</span>`}</span><span class="mono strong" style="color:var(--rust)">${fmt(x.amount)}</span></div>`).join("")}
+      <div style="margin-bottom:14px"></div>
+    ` : "";
+
+    let deductAdvRow = outstandingAdv>0 ? `
+      <label class="checkbox-row"><input type="checkbox" ${deductAdv?"checked":""} data-act="toggle-deduct" data-emp="${emp.id}"> Deduct the ${fmt(outstandingAdv)} advance from this payment</label>
+    ` : "";
+    let deductHeldRow = outstandingHeld>0 ? `
+      <label class="checkbox-row"><input type="checkbox" ${deductHeld?"checked":""} data-act="toggle-held" data-emp="${emp.id}"> Deduct the ${fmt(outstandingHeld)} they collected from customers from this payment</label>
+    ` : "";
+    let includeReimbRow = outstandingReimb>0 ? `
+      <label class="checkbox-row"><input type="checkbox" ${includeReimb?"checked":""} data-act="toggle-reimb" data-emp="${emp.id}"> Add the ${fmt(outstandingReimb)} expense reimbursement to this payment</label>
+    ` : "";
+    let payNote = "";
+    if (emp.type === "weekly") {
+      const parts = [`Weekly rate ${fmt(emp.weeklyRate)}`];
+      if (outstandingAdv>0) parts.push(`${deductAdv?"− advance "+fmt(outstandingAdv):"(advance not deducted)"}`);
+      if (outstandingHeld>0) parts.push(`${deductHeld?"− collected "+fmt(outstandingHeld):"(collected cash not deducted)"}`);
+      if (outstandingReimb>0) parts.push(`${includeReimb?"+ reimbursement "+fmt(outstandingReimb):"(reimbursement not included)"}`);
+      payNote = `${parts.join(" ")} = <span class="mono strong">${fmt(suggestedTotal)}</span> due today.`;
+    } else {
+      const parts = [`Earned ${fmt(totalEarned)}`];
+      if (totalWagePaid > 0) parts.push(`(paid ${fmt(totalWagePaid)})`);
+      if (outstandingAdv>0) parts.push(`${deductAdv?"− advance "+fmt(outstandingAdv):"(advance not deducted)"}`);
+      if (outstandingHeld>0) parts.push(`${deductHeld?"− collected "+fmt(outstandingHeld):"(collected cash not deducted)"}`);
+      if (outstandingReimb>0) parts.push(`${includeReimb?"+ reimbursement "+fmt(outstandingReimb):"(reimbursement not included)"}`);
+      payNote = `${parts.join(" ")} = <span class="mono strong">${fmt(suggestedTotal)}</span> due today.`;
+    }
+
+    const paySection = `
+      <div class="serif small-title">${emp.type==="weekly"?"Pay this week":"Log a payment"}</div>
+      <div class="form-grid-adv">
+        <input class="led-input" type="date" id="pay-date-${emp.id}" value="${today()}">
+        <input class="led-input" type="number" id="pay-amount-${emp.id}" placeholder="${suggestedTotal > 0 ? String(suggestedTotal) : 'Amount'}">
+        <select class="led-input" id="pay-paidby-${emp.id}">${partners.map(p=>`<option value="${p.id}">Paid by ${esc(p.name)}</option>`).join("")}</select>
+        <input class="led-input" id="pay-note-${emp.id}" placeholder="Note (optional)">
+        <button class="led-btn" data-act="add-payment" data-emp="${emp.id}">+ Pay</button>
+      </div>
+      ${deductAdvRow}${deductHeldRow}${includeReimbRow}
+      ${payNote ? `<div class="muted small" style="margin-bottom:14px">${payNote}</div>` : `<div style="margin-bottom:14px"></div>`}
+    `;
+
+    const historyItems = [
+      ...workLogs.map(w => ({ ...w, kind: "work" })),
+      ...payments.map(p => ({ ...p, kind: "pay" })),
+      ...advances.map(a => ({ ...a, kind: "advance" })),
+    ].sort((a, b) => (a.date < b.date ? 1 : -1));
+
+    const historyHtml = historyItems.length ? `
+      <div class="mono muted" style="font-size:11px;margin-bottom:6px">HISTORY</div>
+      ${historyItems.map(r => {
+        let label = "";
+        if (r.kind === "work") label = `${esc(r.itemLabel||"Work")} × ${r.quantity}${r.note?" — "+esc(r.note):""}`;
+        else if (r.kind === "pay") label = `Paid by ${esc(partners.find(p=>p.id===r.paidBy)?.name||"—")}${r.deductedAdvances?` (− ${fmt(r.deductedAdvances)} advance)`:""}${r.deductedHeld?` (− ${fmt(r.deductedHeld)} collected)`:""}${r.reimbursedAmount?` (+ ${fmt(r.reimbursedAmount)} reimb.)`:""}${r.note?" — "+esc(r.note):""}`;
+        else label = `Advance given by ${esc(partners.find(p=>p.id===r.paidBy)?.name||"—")}${r.note?" — "+esc(r.note):""}`;
+        const color = r.kind==="work" ? "var(--teal)" : (r.kind==="advance" ? "var(--gold)" : "var(--rust)");
+        const sign = r.kind==="work" ? "+" : "-";
+        const amt = r.kind==="pay" ? (r.amount + (r.reimbursedAmount||0)) : r.amount;
+        return `<div class="history-row"><span class="mono muted" style="width:90px">${esc(r.date)}</span><span style="flex:1">${label}</span><span class="mono strong" style="color:${color}">${sign}${fmt(amt)}</span></div>`;
+      }).join("")}
+    ` : "";
+
+    body = `<div class="card-body">${workSection}${advanceSection}${coveredList}${heldList}${paySection}${historyHtml}</div>`;
+  }
+
+  return `
+    <div class="panel emp-card">
+      <div class="emp-head" data-act="toggle-employee" data-id="${emp.id}">
+        <div class="emp-head-left">
+          <span>${expanded?"▾":"▸"}</span>
+          <span class="serif strong">${esc(emp.name)}</span>
+          <span class="muted small">${headSub}</span>
+        </div>
+        <div class="emp-head-right">
+          ${emp.type==="workbased" ? `<span class="mono small strong" style="color:${owed>0?"var(--rust)":"var(--teal)"}">${owed>0?`owes ${fmt(owed)}`:"settled"}</span>` : ""}
+          ${outstandingAdv>0 ? `<span class="mono small strong gold">advance ${fmt(outstandingAdv)}</span>` : ""}
+          ${outstandingReimb>0 ? `<span class="mono small strong" style="color:var(--rust)">reimburse ${fmt(outstandingReimb)}</span>` : ""}
+          ${outstandingHeld>0 ? `<span class="mono small strong" style="color:var(--rust)">holding ${fmt(outstandingHeld)}</span>` : ""}
+          <button class="icon-btn" data-act="delete-employee" data-id="${emp.id}">✕</button>
+        </div>
+      </div>
+      ${body}
+    </div>
+  `;
+}
+
+function renderVendors() {
+  const partners = state.config.partners;
+  const vendorHtml = state.config.vendors.map(v => renderVendorCard(v, partners)).join("");
+  return `
+    <div class="panel">
+      <div class="serif strong" style="margin-bottom:10px">Add a vendor</div>
+      <div class="form-grid-emp" style="grid-template-columns:1fr 1fr auto">
+        <input class="led-input" id="new-vendor-name" placeholder="Vendor name (e.g. leather supplier)">
+        <input class="led-input" id="new-vendor-note" placeholder="Note (optional)">
+        <button class="led-btn" data-act="add-vendor">+ Add</button>
+      </div>
+    </div>
+    ${state.config.vendors.length===0 ? `<div class="empty-msg">No vendors yet — add one above.</div>` : vendorHtml}
+  `;
+}
+
+function renderVendorCard(vendor, partners) {
+  const expanded = state.expandedVendor === vendor.id;
+  const purchases = vendorPurchases(vendor.id);
+  const payments = vendorPaymentsFor(vendor.id);
+  const outstanding = vendorOutstanding(vendor.id);
+
+  let body = "";
+  if (expanded) {
+    const purchaseSection = `
+      <div class="serif small-title">Log a purchase</div>
+      <div class="form-grid-income" style="grid-template-columns:110px 1fr 100px 150px auto">
+        <input class="led-input" type="date" id="vp-date-${vendor.id}" value="${today()}">
+        <input class="led-input" id="vp-desc-${vendor.id}" placeholder="What was bought (e.g. leather hides)">
+        <input class="led-input" type="number" id="vp-amount-${vendor.id}" placeholder="Amount">
+        <select class="led-input" id="vp-payment-${vendor.id}">
+          ${partners.map(p=>`<option value="partner:${p.id}">Paid now by ${esc(p.name)}</option>`).join("")}
+          <option value="credit">On credit (pay later)</option>
+        </select>
+        <button class="led-btn" data-act="add-purchase" data-vendor="${vendor.id}">+ Log</button>
+      </div>
+      <div style="margin-bottom:14px"></div>
+    `;
+
+    const paySection = outstanding > 0.005 ? `
+      <div class="serif small-title">Pay this vendor</div>
+      <div class="form-grid-adv">
+        <input class="led-input" type="date" id="vpay-date-${vendor.id}" value="${today()}">
+        <input class="led-input" type="number" id="vpay-amount-${vendor.id}" placeholder="${outstanding.toFixed(2)}">
+        <select class="led-input" id="vpay-paidby-${vendor.id}">${partners.map(p=>`<option value="${p.id}">Paid by ${esc(p.name)}</option>`).join("")}</select>
+        <input class="led-input" id="vpay-note-${vendor.id}" placeholder="Note (optional)">
+        <button class="led-btn" data-act="pay-vendor" data-vendor="${vendor.id}">+ Pay</button>
+      </div>
+      <div class="muted small" style="margin-bottom:14px">Currently owe ${fmt(outstanding)} — leave amount blank to pay it in full, or enter a partial amount.</div>
+    ` : `<div style="margin-bottom:6px"></div>`;
+
+    const historyItems = [
+      ...purchases.map(x => ({ ...x, kind: "purchase" })),
+      ...payments.map(x => ({ ...x, kind: "vpay" })),
+    ].sort((a, b) => (a.date < b.date ? 1 : -1));
+
+    const historyHtml = historyItems.length ? `
+      <div class="mono muted" style="font-size:11px;margin-bottom:6px">HISTORY</div>
+      ${historyItems.map(r => {
+        let label, color, sign;
+        if (r.kind === "purchase") {
+          label = `${esc(r.description)}${r.onCredit ? ` <span class="tag tag-wait">on credit</span>` : ` <span class="tag tag-done">paid by ${esc(partners.find(p=>p.id===r.paidBy)?.name||"—")}</span>`}`;
+          color = "var(--rust)"; sign = "-";
+        } else {
+          label = `Payment by ${esc(partners.find(p=>p.id===r.paidBy)?.name||"—")}${r.note?" — "+esc(r.note):""}`;
+          color = "var(--teal)"; sign = "-";
+        }
+        return `<div class="history-row"><span class="mono muted" style="width:90px">${esc(r.date)}</span><span style="flex:1">${label}</span><span class="mono strong" style="color:${color}">${sign}${fmt(r.amount)}</span></div>`;
+      }).join("")}
+    ` : "";
+
+    body = `<div class="card-body">${purchaseSection}${paySection}${historyHtml}</div>`;
+  }
+
+  return `
+    <div class="panel emp-card">
+      <div class="emp-head" data-act="toggle-vendor" data-id="${vendor.id}">
+        <div class="emp-head-left">
+          <span>${expanded?"▾":"▸"}</span>
+          <span class="serif strong">${esc(vendor.name)}</span>
+          ${vendor.note ? `<span class="muted small">${esc(vendor.note)}</span>` : ""}
+        </div>
+        <div class="emp-head-right">
+          ${outstanding>0.005 ? `<span class="mono small strong" style="color:var(--rust)">owe ${fmt(outstanding)}</span>` : `<span class="mono small strong" style="color:var(--teal)">settled</span>`}
+          <button class="icon-btn" data-act="delete-vendor" data-id="${vendor.id}">✕</button>
+        </div>
+      </div>
+      ${body}
+    </div>
+  `;
+}
+
+function renderSettings() {
+  const partnersHtml = state.config.partners.map(p => `
+    <div class="form-grid-partner">
+      <div><span class="muted small">Partner Name</span><input class="led-input" data-act="partner-name" data-id="${p.id}" value="${esc(p.name)}"></div>
+      <div><span class="muted small">Ratio Share</span><input class="led-input" type="number" data-act="partner-ratio" data-id="${p.id}" value="${p.ratio}"></div>
+      <div><span class="muted small">Starting Capital</span><input class="led-input" type="number" data-act="partner-cap" data-id="${p.id}" value="${p.openingCapital || 0}"></div>
+    </div>`).join("");
+  return `
+    <div class="panel">
+      <div class="serif strong" style="margin-bottom:12px">Partners, split ratio &amp; starting capital</div>
+      ${partnersHtml}
+      <div class="muted small" style="margin-top:8px">Ratio is relative (e.g. 1 and 2 means your friend gets 2/3 of net profit and you get 1/3). Starting capital is money contributed before using the app.</div>
+    </div>
+    <div class="panel">
+      <div class="serif strong" style="margin-bottom:12px">Currency symbol</div>
+      <input class="led-input" style="width:80px" data-act="currency" value="${esc(state.config.currency)}">
+    </div>
+    <div class="panel">
+      <div class="serif strong" style="margin-bottom:8px">Data Backup & Restore</div>
+      <div class="muted small" style="margin-bottom:12px">Export your ledger data to a JSON file for safe offline backup, or restore data from a backup file.</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="led-btn" data-act="export-data">📥 Export Backup (JSON)</button>
+        <button class="led-btn secondary" data-act="import-trigger">📤 Import Backup</button>
+        <input type="file" id="import-file-input" accept=".json" style="display:none">
+      </div>
+    </div>
+  `;
+}
+
+function render() {
+  const app = document.getElementById("app");
+  if (!state.loaded) { app.innerHTML = `<div class="loading">Loading ledger…</div>`; return; }
+  let content = "";
+  if (state.tab === "overview") content = renderOverview();
+  else if (state.tab === "income") content = renderIncome();
+  else if (state.tab === "expenses") content = renderExpenses();
+  else if (state.tab === "employees") content = renderEmployees();
+  else if (state.tab === "vendors") content = renderVendors();
+  else if (state.tab === "settings") content = renderSettings();
+  app.innerHTML = `<div class="wrap">${renderHeader()}${renderTabs()}${content}</div>`;
+}
+
+function toggleEmpTypeUI() {
+  const t = document.getElementById("new-emp-type").value;
+  document.getElementById("new-emp-weekly-wrap").style.display = t === "weekly" ? "block" : "none";
+  document.getElementById("new-emp-work-wrap").style.display = t === "workbased" ? "block" : "none";
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const app = document.getElementById("app");
+
+  app.addEventListener("click", async (e) => {
+    const el = e.target.closest("[data-act]");
+    if (!el) return;
+    const act = el.dataset.act;
+
+    if (act === "switch-tab") { state.tab = el.dataset.tab; render(); return; }
+
+    if (act === "export-data") {
+      const payload = JSON.stringify({ config: state.config, expenses: state.expenses, income: state.income, workLogs: state.workLogs, salaryPayments: state.salaryPayments, advances: state.advances, vendorPayments: state.vendorPayments }, null, 2);
+      const blob = new Blob([payload], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ledger-backup-${today()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
+    if (act === "import-trigger") {
+      const input = document.getElementById("import-file-input");
+      if (input) input.click();
+      return;
+    }
+
+    if (act === "add-expense") {
+      const date = document.getElementById("exp-date").value || today();
+      const description = document.getElementById("exp-desc").value.trim();
+      const amount = Number(document.getElementById("exp-amount").value);
+      const payerVal = document.getElementById("exp-payer").value;
+      const [payerType, payerId] = payerVal.split(":");
+      if (!description || !amount) return;
+      const entry = { id: uid(), date, description, amount };
+      if (payerType === "employee") { entry.payerEmployeeId = payerId; entry.settled = false; }
+      else { entry.paidBy = payerId; }
+      mutate(() => state.expenses.unshift(entry));
+      return;
+    }
+    if (act === "delete-expense") {
+      const id = el.dataset.id;
+      const confirmDelete = await swalConfirm("Delete Expense?", "Are you sure you want to delete this expense entry?");
+      if (!confirmDelete) return;
+      mutate(() => { state.expenses = state.expenses.filter(x => x.id !== id); });
+      return;
+    }
+
+    if (act === "add-income") {
+      const date = document.getElementById("inc-date").value || today();
+      const item = document.getElementById("inc-item").value.trim();
+      const quantity = document.getElementById("inc-qty").value ? Number(document.getElementById("inc-qty").value) : null;
+      const amount = Number(document.getElementById("inc-amount").value);
+      const receiverVal = document.getElementById("inc-receivedby").value;
+      const [receiverType, receiverId] = receiverVal.split(":");
+      const note = document.getElementById("inc-note").value.trim();
+      if (!item || !amount) return;
+      const entry = { id: uid(), date, item, quantity, amount, note };
+      if (receiverType === "employee") { entry.receivedByEmployeeId = receiverId; entry.settled = false; }
+      else { entry.receivedBy = receiverId; }
+      mutate(() => state.income.unshift(entry));
+      return;
+    }
+    if (act === "delete-income") {
+      const id = el.dataset.id;
+      const confirmDelete = await swalConfirm("Delete Sale Entry?", "Are you sure you want to delete this sale entry?");
+      if (!confirmDelete) return;
+      mutate(() => { state.income = state.income.filter(x => x.id !== id); });
+      return;
+    }
+
+    if (act === "add-employee") {
+      const name = document.getElementById("new-emp-name").value.trim();
+      const type = document.getElementById("new-emp-type").value;
+      if (!name) return;
+      const weeklyRate = Number(document.getElementById("new-emp-weekly")?.value || 0);
+      const emp = { id: uid(), name, type, weeklyRate, items: type === "workbased" ? [] : undefined };
+      mutate(() => { state.config.employees.push(emp); });
+      return;
+    }
+    if (act === "delete-employee") {
+      const id = el.dataset.id;
+      const confirmDelete = await swalConfirm("Delete Employee?", "All work logs, advances, and payment history for this employee will be deleted.");
+      if (!confirmDelete) return;
+      mutate(() => {
+        state.config.employees = state.config.employees.filter(e => e.id !== id);
+        state.workLogs = state.workLogs.filter(w => w.employeeId !== id);
+        state.salaryPayments = state.salaryPayments.filter(s => s.employeeId !== id);
+        state.advances = state.advances.filter(a => a.employeeId !== id);
+        state.expenses = state.expenses.map(x => x.payerEmployeeId === id ? { ...x, payerEmployeeId: undefined } : x);
+        state.income = state.income.map(x => x.receivedByEmployeeId === id ? { ...x, receivedByEmployeeId: undefined } : x);
+        if (state.expandedEmp === id) state.expandedEmp = null;
+      });
+      return;
+    }
+    if (act === "toggle-employee") {
+      const id = el.dataset.id;
+      state.expandedEmp = state.expandedEmp === id ? null : id;
+      render();
+      return;
+    }
+
+    if (act === "add-item") {
+      const empId = el.dataset.emp;
+      const label = document.getElementById(`item-label-${empId}`).value.trim();
+      const rate = Number(document.getElementById(`item-rate-${empId}`).value);
+      if (!label || !rate) return;
+      mutate(() => {
+        const emp = state.config.employees.find(e => e.id === empId);
+        emp.items = emp.items || [];
+        emp.items.push({ id: uid(), label, rate });
+      });
+      return;
+    }
+    if (act === "delete-item") {
+      const empId = el.dataset.emp;
+      const itemId = el.dataset.item;
+      const confirmDelete = await swalConfirm("Delete Work Item?", "Are you sure you want to delete this piece rate work item?");
+      if (!confirmDelete) return;
+      mutate(() => {
+        const emp = state.config.employees.find(e => e.id === empId);
+        emp.items = (emp.items || []).filter(it => it.id !== itemId);
+      });
+      return;
+    }
+
+    if (act === "add-work") {
+      const empId = el.dataset.emp;
+      const emp = state.config.employees.find(e => e.id === empId);
+      const date = document.getElementById(`work-date-${empId}`).value || today();
+      const itemId = document.getElementById(`work-item-${empId}`).value;
+      const item = (emp.items || []).find(it => it.id === itemId);
+      const quantity = Number(document.getElementById(`work-qty-${empId}`).value);
+      const note = document.getElementById(`work-note-${empId}`).value.trim();
+      if (!quantity || !item) return;
+      const amount = quantity * item.rate;
+      mutate(() => state.workLogs.unshift({ id: uid(), employeeId: empId, itemId: item.id, itemLabel: item.label, rate: item.rate, date, quantity, note, amount }));
+      return;
+    }
+
+    if (act === "add-advance") {
+      const empId = el.dataset.emp;
+      const date = document.getElementById(`adv-date-${empId}`).value || today();
+      const amount = Number(document.getElementById(`adv-amount-${empId}`).value);
+      const paidBy = document.getElementById(`adv-paidby-${empId}`).value;
+      const note = document.getElementById(`adv-note-${empId}`).value.trim();
+      if (!amount) return;
+      mutate(() => state.advances.unshift({ id: uid(), employeeId: empId, date, amount, paidBy, note, settled: false }));
+      return;
+    }
+
+    if (act === "add-payment") {
+      const empId = el.dataset.emp;
+      const emp = state.config.employees.find(e => e.id === empId);
+      const outstandingAdv = empOutstandingAdvance(empId);
+      const outstandingReimb = empOutstandingReimbursement(empId);
+      const outstandingHeld = empOutstandingHeldIncome(empId);
+      const deductAdv = (state.deductAdvance[empId] !== false) && outstandingAdv > 0;
+      const includeReimb = (state.includeReimbursement[empId] !== false) && outstandingReimb > 0;
+      const deductHeld = (state.deductHeldIncome[empId] !== false) && outstandingHeld > 0;
+      const date = document.getElementById(`pay-date-${empId}`).value || today();
+      const amountInput = document.getElementById(`pay-amount-${empId}`).value;
+
+      const workLogs = empWorkLogs(empId);
+      const payments = empSalaryPayments(empId);
+      const totalEarned = workLogs.reduce((s, w) => s + w.amount, 0);
+      const totalWagePaid = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+      const unpaidWorkEarned = Math.max(0, totalEarned - totalWagePaid);
+
+      const suggestedWage = emp.type === "weekly"
+        ? Math.max(emp.weeklyRate - (deductAdv ? outstandingAdv : 0) - (deductHeld ? outstandingHeld : 0), 0)
+        : Math.max(unpaidWorkEarned - (deductAdv ? outstandingAdv : 0) - (deductHeld ? outstandingHeld : 0), 0);
+
+      let wageAmount, reimbursedAmount;
+      if (amountInput !== "") {
+        wageAmount = Number(amountInput);
+        reimbursedAmount = includeReimb ? outstandingReimb : 0;
+      } else {
+        wageAmount = suggestedWage;
+        reimbursedAmount = includeReimb ? outstandingReimb : 0;
+      }
+      const paidBy = document.getElementById(`pay-paidby-${empId}`).value;
+      const note = document.getElementById(`pay-note-${empId}`).value.trim();
+      if (!wageAmount && wageAmount !== 0 && !reimbursedAmount) return;
+      if (wageAmount === 0 && reimbursedAmount === 0 && emp.type !== "weekly" && unpaidWorkEarned === 0) return;
+      mutate(() => {
+        state.salaryPayments.unshift({ id: uid(), employeeId: empId, date, amount: wageAmount, reimbursedAmount, paidBy, note, deductedAdvances: deductAdv ? outstandingAdv : 0, deductedHeld: deductHeld ? outstandingHeld : 0 });
+        if (deductAdv) state.advances = state.advances.map(a => (a.employeeId === empId && !a.settled ? { ...a, settled: true } : a));
+        if (includeReimb) state.expenses = state.expenses.map(x => (x.payerEmployeeId === empId && !x.settled ? { ...x, settled: true, settledBy: paidBy } : x));
+        if (deductHeld) state.income = state.income.map(x => (x.receivedByEmployeeId === empId && !x.settled ? { ...x, settled: true, settledBy: paidBy } : x));
+      });
+      return;
+    }
+    if (act === "add-vendor") {
+      const name = document.getElementById("new-vendor-name").value.trim();
+      const note = document.getElementById("new-vendor-note").value.trim();
+      if (!name) return;
+      mutate(() => { state.config.vendors.push({ id: uid(), name, note }); });
+      return;
+    }
+    if (act === "delete-vendor") {
+      const id = el.dataset.id;
+      const confirmDelete = await swalConfirm("Delete Vendor?", "Are you sure you want to delete this vendor?");
+      if (!confirmDelete) return;
+      mutate(() => {
+        state.config.vendors = state.config.vendors.filter(v => v.id !== id);
+        state.expenses = state.expenses.map(x => x.vendorId === id ? { ...x, vendorId: undefined } : x);
+        state.vendorPayments = state.vendorPayments.filter(x => x.vendorId !== id);
+        if (state.expandedVendor === id) state.expandedVendor = null;
+      });
+      return;
+    }
+    if (act === "toggle-vendor") {
+      const id = el.dataset.id;
+      state.expandedVendor = state.expandedVendor === id ? null : id;
+      render();
+      return;
+    }
+    if (act === "add-purchase") {
+      const vendorId = el.dataset.vendor;
+      const date = document.getElementById(`vp-date-${vendorId}`).value || today();
+      const description = document.getElementById(`vp-desc-${vendorId}`).value.trim();
+      const amount = Number(document.getElementById(`vp-amount-${vendorId}`).value);
+      const paymentVal = document.getElementById(`vp-payment-${vendorId}`).value;
+      if (!description || !amount) return;
+      const entry = { id: uid(), date, description, amount, vendorId };
+      if (paymentVal === "credit") { entry.onCredit = true; }
+      else { const [, partnerId] = paymentVal.split(":"); entry.paidBy = partnerId; entry.onCredit = false; }
+      mutate(() => state.expenses.unshift(entry));
+      return;
+    }
+    if (act === "pay-vendor") {
+      const vendorId = el.dataset.vendor;
+      const outstanding = vendorOutstanding(vendorId);
+      const date = document.getElementById(`vpay-date-${vendorId}`).value || today();
+      const amountInput = document.getElementById(`vpay-amount-${vendorId}`).value;
+      const amount = amountInput ? Number(amountInput) : outstanding;
+      const paidBy = document.getElementById(`vpay-paidby-${vendorId}`).value;
+      const note = document.getElementById(`vpay-note-${vendorId}`).value.trim();
+      if (!amount) return;
+      mutate(() => state.vendorPayments.unshift({ id: uid(), vendorId, date, amount, paidBy, note }));
+      return;
+    }
+  });
+
+  app.addEventListener("input", (e) => {
+    const el = e.target.closest("[data-act]");
+    if (!el) return;
+    const act = el.dataset.act;
+    if (act === "search-income") {
+      state.incomeSearch = el.value;
+      render();
+    } else if (act === "search-expense") {
+      state.expenseSearch = el.value;
+      render();
+    }
+  });
+
+  app.addEventListener("change", (e) => {
+    const el = e.target.closest("[data-act]");
+    if (el) {
+      const act = el.dataset.act;
+      if (act === "partner-name") {
+        const id = el.dataset.id;
+        mutate(() => { state.config.partners = state.config.partners.map(p => p.id === id ? { ...p, name: el.value } : p); });
+      } else if (act === "partner-ratio") {
+        const id = el.dataset.id;
+        mutate(() => { state.config.partners = state.config.partners.map(p => p.id === id ? { ...p, ratio: Number(el.value) } : p); });
+      } else if (act === "partner-cap") {
+        const id = el.dataset.id;
+        mutate(() => { state.config.partners = state.config.partners.map(p => p.id === id ? { ...p, openingCapital: Number(el.value) } : p); });
+      } else if (act === "currency") {
+        mutate(() => { state.config.currency = el.value; });
+      } else if (act === "toggle-deduct") {
+        const empId = el.dataset.emp;
+        state.deductAdvance[empId] = el.checked;
+        render();
+      } else if (act === "toggle-reimb") {
+        const empId = el.dataset.emp;
+        state.includeReimbursement[empId] = el.checked;
+        render();
+      } else if (act === "toggle-held") {
+        const empId = el.dataset.emp;
+        state.deductHeldIncome[empId] = el.checked;
+        render();
+      }
+    }
+
+    if (e.target && e.target.id === "import-file-input") {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        try {
+          const d = JSON.parse(evt.target.result);
+          if (d && (d.config || d.expenses || d.income)) {
+            const confirmImport = await swalConfirm("Overwrite Ledger Data?", "Importing this backup will overwrite current ledger data.");
+            if (confirmImport) {
+              mutate(() => {
+                if (d.config) state.config = d.config;
+                if (d.expenses) state.expenses = d.expenses;
+                if (d.income) state.income = d.income;
+                if (d.workLogs) state.workLogs = d.workLogs;
+                if (d.salaryPayments) state.salaryPayments = d.salaryPayments;
+                if (d.advances) state.advances = d.advances;
+                if (d.vendorPayments) state.vendorPayments = d.vendorPayments;
+              });
+              swalAlert("Import Successful!", "Backup restored successfully.", "success");
+            }
+          } else {
+            swalAlert("Invalid File", "Invalid backup file structure.", "error");
+          }
+        } catch (err) {
+          swalAlert("Parse Error", "Error reading or parsing JSON file.", "error");
+        }
+      };
+      reader.readAsText(file);
+    }
+  });
+
+  load();
+});
+</script>
+</body>
+</html>

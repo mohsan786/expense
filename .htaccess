@@ -1,0 +1,8 @@
+# Protect configuration and SQLite files if present
+<FilesMatch "\.(sqlite|db|log|ini)$">
+    Order deny,allow
+    Deny from all
+</FilesMatch>
+
+# Enable directory protection
+Options -Indexes
