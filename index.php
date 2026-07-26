@@ -578,6 +578,7 @@ function renderIncome() {
       <div class="mono">${fmt(e.amount)}</div>
       <div class="small">${receiverLabel} ${tag}</div>
       <button class="icon-btn" data-act="edit-income" data-id="${e.id}" title="Edit Sale">✏️</button>
+      <button class="icon-btn" data-act="delete-income" data-id="${e.id}" title="Delete Sale" style="color:var(--rust);margin-left:4px">🗑️</button>
     </div>`;
   }).join("");
   const receiverOptions = `
@@ -637,6 +638,7 @@ function renderExpenses() {
       <div class="mono">${fmt(e.amount)}</div>
       <div class="small">${payerLabel} ${tag}</div>
       <button class="icon-btn" data-act="edit-expense" data-id="${e.id}" title="Edit Expense">✏️</button>
+      <button class="icon-btn" data-act="delete-expense" data-id="${e.id}" title="Delete Expense" style="color:var(--rust);margin-left:4px">🗑️</button>
     </div>`;
   }).join("");
   const payerOptions = `
@@ -720,7 +722,7 @@ function renderEmployeeCard(emp, partners) {
   if (expanded) {
     let workSection = "";
     if (emp.type === "workbased") {
-      const itemChips = items.map(it => `<span class="item-chip">${esc(it.label)} · ${fmt(it.rate)}<button data-act="edit-item" data-emp="${emp.id}" data-item="${it.id}" style="border:none;background:none;cursor:pointer;padding:0 2px;" title="Edit Item">✏️</button></span>`).join("");
+      const itemChips = items.map(it => `<span class="item-chip">${esc(it.label)} · ${fmt(it.rate)}<button data-act="edit-item" data-emp="${emp.id}" data-item="${it.id}" style="border:none;background:none;cursor:pointer;padding:0 2px;" title="Edit Item">✏️</button><button data-act="delete-item" data-emp="${emp.id}" data-item="${it.id}" style="border:none;background:none;cursor:pointer;padding:0 2px;color:var(--rust);" title="Delete Item">🗑️</button></span>`).join("");
       workSection = `
         <div class="serif small-title">Work items &amp; prices</div>
         <div style="margin-bottom:8px">${itemChips || `<span class="muted small">No items yet — add one below.</span>`}</div>
@@ -843,6 +845,7 @@ function renderEmployeeCard(emp, partners) {
           ${outstandingReimb>0 ? `<span class="mono small strong" style="color:var(--rust)">reimburse ${fmt(outstandingReimb)}</span>` : ""}
           ${outstandingHeld>0 ? `<span class="mono small strong" style="color:var(--rust)">holding ${fmt(outstandingHeld)}</span>` : ""}
           <button class="icon-btn" data-act="edit-employee" data-id="${emp.id}" title="Edit Employee">✏️</button>
+          <button class="icon-btn" data-act="delete-employee" data-id="${emp.id}" title="Delete Employee" style="color:var(--rust);margin-left:4px">🗑️</button>
         </div>
       </div>
       ${body}
@@ -935,6 +938,7 @@ function renderVendorCard(vendor, partners) {
         <div class="emp-head-right">
           ${outstanding>0.005 ? `<span class="mono small strong" style="color:var(--rust)">owe ${fmt(outstanding)}</span>` : `<span class="mono small strong" style="color:var(--teal)">settled</span>`}
           <button class="icon-btn" data-act="edit-vendor" data-id="${vendor.id}" title="Edit Vendor">✏️</button>
+          <button class="icon-btn" data-act="delete-vendor" data-id="${vendor.id}" title="Delete Vendor" style="color:var(--rust);margin-left:4px">🗑️</button>
         </div>
       </div>
       ${body}
@@ -1076,6 +1080,13 @@ document.addEventListener("DOMContentLoaded", () => {
       showEditExpenseModal(el.dataset.id);
       return;
     }
+    if (act === "delete-expense") {
+      const id = el.dataset.id;
+      const confirmDelete = await swalConfirm("Delete Expense?", "Are you sure you want to delete this expense entry?");
+      if (!confirmDelete) return;
+      mutate(() => { state.expenses = state.expenses.filter(x => x.id !== id); });
+      return;
+    }
 
     if (act === "add-income") {
       const date = document.getElementById("inc-date").value || today();
@@ -1096,6 +1107,13 @@ document.addEventListener("DOMContentLoaded", () => {
       showEditIncomeModal(el.dataset.id);
       return;
     }
+    if (act === "delete-income") {
+      const id = el.dataset.id;
+      const confirmDelete = await swalConfirm("Delete Sale Entry?", "Are you sure you want to delete this sale entry?");
+      if (!confirmDelete) return;
+      mutate(() => { state.income = state.income.filter(x => x.id !== id); });
+      return;
+    }
 
     if (act === "add-employee") {
       const name = document.getElementById("new-emp-name").value.trim();
@@ -1108,6 +1126,21 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (act === "edit-employee") {
       showEditEmployeeModal(el.dataset.id);
+      return;
+    }
+    if (act === "delete-employee") {
+      const id = el.dataset.id;
+      const confirmDelete = await swalConfirm("Delete Employee?", "All work logs, advances, and payment history for this employee will be deleted.");
+      if (!confirmDelete) return;
+      mutate(() => {
+        state.config.employees = state.config.employees.filter(e => e.id !== id);
+        state.workLogs = state.workLogs.filter(w => w.employeeId !== id);
+        state.salaryPayments = state.salaryPayments.filter(s => s.employeeId !== id);
+        state.advances = state.advances.filter(a => a.employeeId !== id);
+        state.expenses = state.expenses.map(x => x.payerEmployeeId === id ? { ...x, payerEmployeeId: undefined } : x);
+        state.income = state.income.map(x => x.receivedByEmployeeId === id ? { ...x, receivedByEmployeeId: undefined } : x);
+        if (state.expandedEmp === id) state.expandedEmp = null;
+      });
       return;
     }
     if (act === "toggle-employee") {
@@ -1131,6 +1164,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (act === "edit-item") {
       showEditItemModal(el.dataset.emp, el.dataset.item);
+      return;
+    }
+    if (act === "delete-item") {
+      const empId = el.dataset.emp;
+      const itemId = el.dataset.item;
+      const confirmDelete = await swalConfirm("Delete Work Item?", "Are you sure you want to delete this piece rate work item?");
+      if (!confirmDelete) return;
+      mutate(() => {
+        const emp = state.config.employees.find(e => e.id === empId);
+        emp.items = (emp.items || []).filter(it => it.id !== itemId);
+      });
       return;
     }
 
@@ -1210,6 +1254,18 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (act === "edit-vendor") {
       showEditVendorModal(el.dataset.id);
+      return;
+    }
+    if (act === "delete-vendor") {
+      const id = el.dataset.id;
+      const confirmDelete = await swalConfirm("Delete Vendor?", "Are you sure you want to delete this vendor?");
+      if (!confirmDelete) return;
+      mutate(() => {
+        state.config.vendors = state.config.vendors.filter(v => v.id !== id);
+        state.expenses = state.expenses.map(x => x.vendorId === id ? { ...x, vendorId: undefined } : x);
+        state.vendorPayments = state.vendorPayments.filter(x => x.vendorId !== id);
+        if (state.expandedVendor === id) state.expandedVendor = null;
+      });
       return;
     }
     if (act === "toggle-vendor") {
