@@ -3,11 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Ledger — Partner Business & Payroll</title>
+<title>Velto LS — Business Expense & Payroll Ledger</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <style>
-  /* Modern SaaS Left Sidebar & Layout Shell */
+  /* Executive Black & White Theme */
+  :root {
+    --paper: #F8FAFC;
+    --ink: #000000;
+    --rule: #E2E8F0;
+    --panel: #FFFFFF;
+    --muted: #64748B;
+  }
+
   .app-shell {
     display: flex;
     min-height: 100vh;
@@ -15,44 +23,47 @@
   }
   .app-sidebar {
     width: 250px;
-    background: #0F172A;
-    color: #F8FAFC;
+    background: #000000;
+    color: #FFFFFF;
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
     position: sticky;
     top: 0;
     height: 100vh;
-    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.08);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.12);
     z-index: 100;
+    border-right: 1px solid #18181B;
   }
   .sidebar-brand {
     padding: 24px 20px;
     display: flex;
     align-items: center;
     gap: 12px;
-    border-bottom: 1px solid #1E293B;
+    border-bottom: 1px solid #18181B;
   }
   .brand-icon {
-    font-size: 24px;
-    background: linear-gradient(135deg, #0D9488 0%, #10B981 100%);
+    font-size: 20px;
+    background: #FFFFFF;
+    color: #000000;
+    font-weight: 800;
     width: 42px;
     height: 42px;
     border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.4);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
   }
   .brand-title {
-    font-size: 17px;
-    font-weight: 700;
+    font-size: 18px;
+    font-weight: 800;
     letter-spacing: -0.3px;
     color: #FFFFFF;
   }
   .brand-sub {
     font-size: 11px;
-    color: #94A3B8;
+    color: #A1A1AA;
     font-weight: 500;
   }
   .sidebar-nav {
@@ -70,7 +81,7 @@
     padding: 11px 16px;
     border: none;
     background: transparent;
-    color: #94A3B8;
+    color: #A1A1AA;
     font-weight: 600;
     font-size: 14px;
     border-radius: 10px;
@@ -80,24 +91,24 @@
     transition: all 0.2s ease;
   }
   .sidebar-item:hover {
-    background: #1E293B;
-    color: #F8FAFC;
+    background: #18181B;
+    color: #FFFFFF;
     transform: translateX(2px);
   }
   .sidebar-item.active {
-    background: linear-gradient(135deg, #0D9488 0%, #0F766E 100%);
-    color: #FFFFFF;
+    background: #FFFFFF;
+    color: #000000;
     font-weight: 700;
-    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.35);
+    box-shadow: 0 4px 14px rgba(255, 255, 255, 0.25);
   }
   .sidebar-footer {
     padding: 16px 20px;
-    border-top: 1px solid #1E293B;
+    border-top: 1px solid #18181B;
   }
   .logout-btn {
-    background: #1E293B;
-    color: #F43F5E;
-    border: 1px solid #334155;
+    background: #18181B;
+    color: #FFFFFF;
+    border: 1px solid #27272A;
     width: 100%;
     padding: 9px 12px;
     border-radius: 8px;
@@ -128,9 +139,9 @@
   }
   .topbar-title {
     font-size: 20px;
-    font-weight: 700;
+    font-weight: 800;
     margin: 0;
-    color: #0F172A;
+    color: #000000;
     letter-spacing: -0.3px;
   }
   .topbar-sub {
@@ -138,28 +149,19 @@
     color: #64748B;
     margin: 2px 0 0 0;
   }
-  .cloud-badge {
-    background: #ECFDF5;
-    color: #047857;
-    border: 1px solid #A7F3D0;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-  }
   .quick-act-btn {
-    background: linear-gradient(135deg, #0D9488 0%, #10B981 100%);
-    color: #FFF;
-    border: none;
-    padding: 7px 16px;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 13px;
+    background: #000000;
+    color: #FFFFFF;
+    border: 1px solid #27272A;
+    padding: 8px 18px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 13.5px;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(13, 148, 136, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     transition: transform 0.15s;
   }
-  .quick-act-btn:hover { transform: scale(1.03); }
+  .quick-act-btn:hover { transform: scale(1.03); background: #27272A; }
 
   .view-container {
     padding: 24px 28px;
@@ -173,7 +175,7 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
-  /* SaaS Gradient KPI Grid */
+  /* Executive Black KPI Cards */
   .kpi-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -187,23 +189,23 @@
     display: flex;
     align-items: center;
     gap: 16px;
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
   .kpi-card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 14px 30px -5px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 14px 30px -5px rgba(0, 0, 0, 0.25);
   }
-  .kpi-income { background: linear-gradient(135deg, #059669 0%, #10B981 100%); }
-  .kpi-expense { background: linear-gradient(135deg, #E11D48 0%, #F43F5E 100%); }
-  .kpi-profit { background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%); }
-  .kpi-due { background: linear-gradient(135deg, #D97706 0%, #F59E0B 100%); }
+  .kpi-income { background: linear-gradient(135deg, #09090B 0%, #18181B 100%); border: 1px solid #27272A; }
+  .kpi-expense { background: linear-gradient(135deg, #18181B 0%, #27272A 100%); border: 1px solid #3F3F46; }
+  .kpi-profit { background: linear-gradient(135deg, #000000 0%, #18181B 100%); border: 1px solid #27272A; }
+  .kpi-due { background: linear-gradient(135deg, #27272A 0%, #3F3F46 100%); border: 1px solid #52525B; }
 
   .kpi-icon {
-    font-size: 28px;
-    background: rgba(255, 255, 255, 0.2);
-    width: 52px;
-    height: 52px;
+    font-size: 26px;
+    background: rgba(255, 255, 255, 0.15);
+    width: 50px;
+    height: 50px;
     border-radius: 14px;
     display: flex;
     align-items: center;
@@ -287,36 +289,61 @@
   .settle-box { background: var(--gold-light); border: 1px solid #FCD34D; border-radius: 10px; padding: 16px 20px; display: flex; align-items: center; gap: 12px; font-size: 14px; color: #78350F; }
   .settled { font-size: 14px; color: var(--muted); }
   
-  /* Inputs & Buttons */
+  /* Premium Vibrant Buttons & Input Controls */
   .led-input {
     background: #FFFFFF;
-    border: 1px solid #CBD5E1;
-    border-radius: 8px;
-    padding: 9px 12px;
+    border: 1.5px solid #CBD5E1;
+    border-radius: 10px;
+    padding: 10px 14px;
     font-size: 14px;
     color: var(--ink);
     outline: none;
     width: 100%;
     font-family: inherit;
-    transition: all 0.15s ease;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
   }
-  .led-input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15); }
+  .led-input:focus {
+    border-color: #0D9488;
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+    background: #FFFFFF;
+  }
   .led-btn {
-    background: var(--teal);
+    background: linear-gradient(135deg, #0D9488 0%, #10B981 100%);
     color: #FFFFFF;
     border: none;
-    border-radius: 8px;
-    padding: 9px 16px;
-    font-size: 13.5px;
-    font-weight: 600;
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 700;
     cursor: pointer;
     white-space: nowrap;
-    transition: all 0.18s ease;
-    box-shadow: 0 2px 6px rgba(13, 148, 136, 0.2);
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
   }
-  .led-btn:hover { background: var(--teal-dark); transform: translateY(-1px); }
-  .led-btn.secondary { background: #F1F5F9; color: #334155; border: 1px solid var(--rule); box-shadow: none; }
-  .led-btn.secondary:hover { background: #E2E8F0; color: var(--ink); }
+  .led-btn:hover {
+    background: linear-gradient(135deg, #0F766E 0%, #059669 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(13, 148, 136, 0.4);
+  }
+  .led-btn:active {
+    transform: translateY(0);
+  }
+  .led-btn.secondary {
+    background: #F1F5F9;
+    color: #1E293B;
+    border: 1.5px solid #CBD5E1;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .led-btn.secondary:hover {
+    background: #E2E8F0;
+    color: #0F172A;
+    border-color: #94A3B8;
+  }
   
   .icon-btn { background: none; border: none; cursor: pointer; color: #94A3B8; font-size: 14px; padding: 4px; border-radius: 6px; transition: all 0.15s ease; }
   .icon-btn:hover { color: var(--ink); background: #F1F5F9; }
@@ -1028,7 +1055,6 @@ function renderHeader() {
       </div>
       <div style="display:flex;align-items:center;gap:12px;">
         <button class="quick-act-btn" data-act="quick-add-modal">⚡ Quick Add</button>
-        <span class="cloud-badge">☁️ MySQL Live</span>
       </div>
     </header>
     ${state.saveErr ? `<div class="alert alert-danger py-2 px-3 mb-3 small" style="border-radius:10px;">⚠️ Couldn't connect to MySQL database just now. Check database configuration.</div>` : ""}
@@ -1044,7 +1070,7 @@ function getTabTitle(tab) {
   if (tab === "customers") return "Customer Directory & Ledger";
   if (tab === "reports") return "Financial Analytics & Reports";
   if (tab === "settings") return "System Settings & Configuration";
-  return "The Ledger";
+  return "Velto LS";
 }
 
 function getTabSubtitle(tab) {
@@ -1075,8 +1101,8 @@ function renderTabs() {
       <div class="sidebar-brand">
         <div class="brand-icon">💼</div>
         <div>
-          <div class="brand-title">The Ledger</div>
-          <div class="brand-sub">SaaS Financial Suite</div>
+          <div class="brand-title">Velto LS</div>
+          <div class="brand-sub">Velto LS Suite</div>
         </div>
       </div>
       <nav class="sidebar-nav">
@@ -1337,11 +1363,11 @@ function renderIncome() {
 
     let statusTag = "";
     if (balance <= 0) {
-      statusTag = `<span class="tag tag-done">Paid</span>`;
+      statusTag = `<span class="badge bg-success">Paid</span>`;
     } else if (paidAmt > 0) {
-      statusTag = `<span class="tag tag-wait">Advance (${fmt(paidAmt)} paid / ${fmt(balance)} due)</span>`;
+      statusTag = `<span class="badge bg-warning text-dark">Advance (${fmt(paidAmt)} paid / ${fmt(balance)} due)</span>`;
     } else {
-      statusTag = `<span class="tag tag-rust">Unpaid (${fmt(balance)} due)</span>`;
+      statusTag = `<span class="badge bg-danger">Unpaid (${fmt(balance)} due)</span>`;
     }
 
     const receiversList = payments.map(p => {
@@ -1360,12 +1386,12 @@ function renderIncome() {
       <div>${esc(e.item)}${e.note ? ` <span class="muted small">— ${esc(e.note)}</span>` : ""}</div>
       <div class="mono small">${e.quantity||"—"}</div>
       <div class="mono strong">${fmt(totalAmt)}</div>
-      <div class="mono ${paidAmt < totalAmt ? 'gold' : 'teal-text'}">${fmt(paidAmt)}</div>
+      <div class="mono ${paidAmt < totalAmt ? 'text-warning' : 'text-success'}">${fmt(paidAmt)}</div>
       <div class="small">${statusTag}</div>
       <div class="small">${uniqueReceivers}</div>
       <div style="display:flex;align-items:center;gap:4px;justify-content:flex-end">
-        <button class="led-btn secondary" style="padding:2px 6px;font-size:11.5px;" data-act="wa-sale" data-id="${e.id}" title="Send WhatsApp Payment Reminder">📲 WA</button>
-        ${balance > 0 ? `<button class="led-btn secondary" style="padding:2px 6px;font-size:11.5px;" data-act="pay-income-balance" data-id="${e.id}" title="Collect Remaining Payment">💵 Pay</button>` : ''}
+        <button class="btn btn-sm btn-outline-dark fw-semibold" style="padding:2px 6px;font-size:11.5px;" data-act="wa-sale" data-id="${e.id}" title="Send WhatsApp Payment Reminder">📲 WA</button>
+        ${balance > 0 ? `<button class="btn btn-sm btn-outline-success fw-semibold" style="padding:2px 6px;font-size:11.5px;" data-act="pay-income-balance" data-id="${e.id}" title="Collect Remaining Payment">💵 Pay</button>` : ''}
         <button class="icon-btn" data-act="edit-income" data-id="${e.id}" title="Edit Sale">✏️</button>
         <button class="icon-btn" data-act="delete-income" data-id="${e.id}" title="Delete Sale" style="color:var(--rust)">🗑️</button>
       </div>
@@ -1378,21 +1404,21 @@ function renderIncome() {
   return `
     <div class="panel">
       <div class="serif strong" style="margin-bottom:4px">Log a sale</div>
-      <div class="muted small" style="margin-bottom:10px">Log sales and advance payments. If customer gives partial/advance payment, enter Total price &amp; Advance paid. Remaining due balance can be collected when order is picked up.</div>
-      <div class="form-grid-income">
-        <input class="led-input" type="date" id="inc-date" value="${today()}">
-        <input class="led-input" id="inc-item" placeholder="Item (e.g. Men's loafers)">
-        <input class="led-input" id="inc-qty" type="number" placeholder="Qty">
-        <input class="led-input" id="inc-amount" type="number" placeholder="Total price">
-        <input class="led-input" id="inc-paid-amount" type="number" placeholder="Advance / Paid">
-        <select class="led-input" id="inc-receivedby">${receiverOptions}</select>
-        <button class="led-btn" data-act="add-income">+ Add Sale</button>
+      <div class="muted small" style="margin-bottom:12px">Log sales and advance payments. Remaining due balance can be collected anytime.</div>
+      <div class="row g-2 align-items-center mb-2">
+        <div class="col-md-2 col-6"><input class="form-control" type="date" id="inc-date" value="${today()}"></div>
+        <div class="col-md-3 col-12"><input class="form-control" id="inc-item" placeholder="Item (e.g. Leather shoes)"></div>
+        <div class="col-md-1 col-6"><input class="form-control" id="inc-qty" type="number" placeholder="Qty"></div>
+        <div class="col-md-2 col-6"><input class="form-control" id="inc-amount" type="number" placeholder="Total price"></div>
+        <div class="col-md-2 col-6"><input class="form-control" id="inc-paid-amount" type="number" placeholder="Advance / Paid"></div>
+        <div class="col-md-2 col-6"><select class="form-select" id="inc-receivedby">${receiverOptions}</select></div>
+        <div class="col-12"><input class="form-control" id="inc-note" placeholder="Note / customer name (optional)"></div>
+        <div class="col-12 text-end mt-2"><button class="btn btn-dark fw-bold px-4" data-act="add-income">+ Add Sale</button></div>
       </div>
-      <input class="led-input" id="inc-note" placeholder="Note / customer (optional)" style="margin-top:8px">
     </div>
     <div class="panel table-panel">
       <div style="padding:8px 14px;border-bottom:1px solid var(--rule);background:#fff">
-        <input class="led-input" id="inc-search" placeholder="🔍 Search sales by item, customer, date..." value="${esc(state.incomeSearch)}" data-act="search-income">
+        <input class="form-control" id="inc-search" placeholder="🔍 Search sales by item, customer, date..." value="${esc(state.incomeSearch)}" data-act="search-income">
       </div>
       <div class="mono table-head income-row"><div>DATE</div><div>ITEM</div><div>QTY</div><div>TOTAL</div><div>PAID</div><div>STATUS</div><div>RECEIVED</div><div></div></div>
       ${state.income.length===0 ? `<div class="empty-msg">No sales logged yet.</div>` : (filtered.length===0 ? `<div class="empty-msg">No sales match your search.</div>` : rows)}
@@ -1423,16 +1449,16 @@ function renderExpenses() {
     if (e.payerEmployeeId) {
       const emp = employees.find(x => x.id === e.payerEmployeeId);
       payerLabel = `${esc(emp?.name || "—")}`;
-      tag = e.settled ? `<span class="tag tag-done">reimbursed</span>` : `<span class="tag tag-wait">awaiting reimb.</span>`;
+      tag = e.settled ? `<span class="badge bg-success">reimbursed</span>` : `<span class="badge bg-warning text-dark">awaiting reimb.</span>`;
     } else if (e.vendorId && e.onCredit) {
       const vend = state.config.vendors.find(v => v.id === e.vendorId);
       payerLabel = `${esc(vend?.name || "—")}`;
-      tag = `<span class="tag tag-wait">on credit</span>`;
+      tag = `<span class="badge bg-warning text-dark">on credit</span>`;
     } else {
       payerLabel = esc(partners.find(p=>p.id===e.paidBy)?.name || "—");
-      if (e.vendorId) { const vend = state.config.vendors.find(v => v.id === e.vendorId); tag = vend ? `<span class="tag tag-done">${esc(vend.name)}</span>` : ""; }
+      if (e.vendorId) { const vend = state.config.vendors.find(v => v.id === e.vendorId); tag = vend ? `<span class="badge bg-secondary">${esc(vend.name)}</span>` : ""; }
     }
-    const categoryTag = `<span class="tag tag-done" style="background:#F1F5F9;color:#334155;border:1px solid #CBD5E1;">${esc(e.category || 'Raw Materials')}</span>`;
+    const categoryTag = `<span class="badge bg-light text-dark border">${esc(e.category || 'Raw Materials')}</span>`;
     const pmLabel = getPaymentMethodLabel(e.paymentMethod || 'cash');
 
     return `<div class="row-line expense-row">
@@ -1459,39 +1485,45 @@ function renderExpenses() {
     ${renderCategoryBudgets()}
     <div class="panel">
       <div class="serif strong" style="margin-bottom:4px">Add an expense</div>
-      <div class="muted small" style="margin-bottom:10px">Categorize expenses, select payment method (Cash, Bank, Mobile Wallet), and attach receipt photos/bills.</div>
-      <div class="form-grid-expense">
-        <input class="led-input" type="date" id="exp-date" value="${today()}">
-        <input class="led-input" id="exp-desc" placeholder="Description (e.g. Leather soles)">
-        <input class="led-input" id="exp-amount" type="number" placeholder="Amount">
-        <select class="led-input" id="exp-category">
-          <option value="Raw Materials">Raw Materials</option>
-          <option value="Factory Rent">Factory Rent</option>
-          <option value="Shop Rent">Shop Rent</option>
-          <option value="Utilities / Bills">Utilities / Bills</option>
-          <option value="Packaging">Packaging</option>
-          <option value="Worker Food & Tea">Worker Food &amp; Tea</option>
-          <option value="Machinery & Repairs">Machinery &amp; Repairs</option>
-          <option value="Transport">Transport</option>
-          <option value="Miscellaneous">Miscellaneous</option>
-        </select>
-        <select class="led-input" id="exp-pm">
-          <option value="cash">💵 Cash in Hand</option>
-          <option value="bank">🏦 Bank Transfer</option>
-          <option value="wallet">📱 Mobile Wallet (JazzCash/Easypaisa)</option>
-          <option value="card">💳 Credit/Debit Card</option>
-        </select>
-        <select class="led-input" id="exp-payer">${payerOptions}</select>
-        <button class="led-btn" data-act="add-expense">+ Add Expense</button>
-      </div>
-      <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
-        <label style="font-size:12px;font-weight:600;" class="muted">📷 Attach Bill / Receipt Image:</label>
-        <input class="led-input" type="file" id="exp-receipt-file" accept="image/*" style="font-size:12px;padding:4px;max-width:280px;">
+      <div class="muted small" style="margin-bottom:12px">Categorize expenses, select payment method, and attach receipt bills.</div>
+      <div class="row g-2 align-items-center mb-2">
+        <div class="col-md-2 col-6"><input class="form-control" type="date" id="exp-date" value="${today()}"></div>
+        <div class="col-md-3 col-12"><input class="form-control" id="exp-desc" placeholder="Description (e.g. Leather soles)"></div>
+        <div class="col-md-2 col-6"><input class="form-control" id="exp-amount" type="number" placeholder="Amount"></div>
+        <div class="col-md-2 col-6">
+          <select class="form-select" id="exp-category">
+            <option value="Raw Materials">Raw Materials</option>
+            <option value="Factory Rent">Factory Rent</option>
+            <option value="Shop Rent">Shop Rent</option>
+            <option value="Utilities / Bills">Utilities / Bills</option>
+            <option value="Packaging">Packaging</option>
+            <option value="Worker Food & Tea">Worker Food &amp; Tea</option>
+            <option value="Machinery & Repairs">Machinery &amp; Repairs</option>
+            <option value="Transport">Transport</option>
+            <option value="Miscellaneous">Miscellaneous</option>
+          </select>
+        </div>
+        <div class="col-md-3 col-6">
+          <select class="form-select" id="exp-pm">
+            <option value="cash">💵 Cash in Hand</option>
+            <option value="bank">🏦 Bank Transfer</option>
+            <option value="wallet">📱 Mobile Wallet (JazzCash/Easypaisa)</option>
+            <option value="card">💳 Credit/Debit Card</option>
+          </select>
+        </div>
+        <div class="col-md-3 col-6"><select class="form-select" id="exp-payer">${payerOptions}</select></div>
+        <div class="col-md-6 col-12">
+          <div class="input-group">
+            <span class="input-group-text bg-light text-muted fw-semibold">📷 Bill Photo</span>
+            <input class="form-control" type="file" id="exp-receipt-file" accept="image/*">
+          </div>
+        </div>
+        <div class="col-md-3 col-12 text-end"><button class="btn btn-dark fw-bold w-100" data-act="add-expense">+ Add Expense</button></div>
       </div>
     </div>
     <div class="panel table-panel">
       <div style="padding:8px 14px;border-bottom:1px solid var(--rule);background:#fff">
-        <input class="led-input" id="exp-search" placeholder="🔍 Search expenses by description, category, payer, date..." value="${esc(state.expenseSearch)}" data-act="search-expense">
+        <input class="form-control" id="exp-search" placeholder="🔍 Search expenses by description, category, payer, date..." value="${esc(state.expenseSearch)}" data-act="search-expense">
       </div>
       <div class="mono table-head expense-row"><div>DATE</div><div>DESC</div><div>CATEGORY</div><div>AMOUNT</div><div>METHOD</div><div>PAID BY</div><div></div></div>
       ${state.expenses.length===0 ? `<div class="empty-msg">No expenses logged yet.</div>` : (filtered.length===0 ? `<div class="empty-msg">No expenses match your search.</div>` : rows)}
@@ -1506,23 +1538,27 @@ function renderEmployees() {
   return `
     <div class="panel">
       <div class="serif strong" style="margin-bottom:4px">Add Employee Profile</div>
-      <div class="muted small" style="margin-bottom:12px">Register workers with contact phone numbers for weekly salary or piece-rate work.</div>
-      <div class="form-grid-expense" style="grid-template-columns: 1fr 1fr 160px; margin-bottom:8px;">
-        <input class="led-input" id="new-emp-name" placeholder="Full Name (e.g. Ali Raza)">
-        <input class="led-input" id="new-emp-phone" placeholder="Phone (e.g. 0300-1234567)">
-        <select class="led-input" id="new-emp-type" onchange="toggleEmpTypeUI()">
-          <option value="weekly">Weekly salary</option>
-          <option value="workbased">Work-based (piece rate)</option>
-        </select>
-      </div>
-      <div id="new-emp-weekly-wrap" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <input class="led-input" id="new-emp-weekly" type="number" placeholder="Weekly salary amount" style="max-width:240px">
-        <button class="led-btn" data-act="add-employee">👤 + Add Employee</button>
-      </div>
-      <div id="new-emp-work-wrap" style="display:none;margin-top:8px;" class="muted small">
-        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-          <span>You'll add their piece-rate work items (e.g. cutting, stitching) with prices after creating their profile.</span>
-          <button class="led-btn" data-act="add-employee">👤 + Add Employee</button>
+      <div class="muted small" style="margin-bottom:12px">Register workers for weekly salary or piece-rate work.</div>
+      <div class="row g-2 align-items-center">
+        <div class="col-md-4 col-12"><input class="form-control" id="new-emp-name" placeholder="Full Name (e.g. Ali Raza)"></div>
+        <div class="col-md-4 col-12"><input class="form-control" id="new-emp-phone" placeholder="Phone (e.g. 0300-1234567)"></div>
+        <div class="col-md-4 col-12">
+          <select class="form-select" id="new-emp-type" onchange="toggleEmpTypeUI()">
+            <option value="weekly">Weekly salary</option>
+            <option value="workbased">Work-based (piece rate)</option>
+          </select>
+        </div>
+        <div class="col-12" id="new-emp-weekly-wrap">
+          <div class="d-flex gap-2 align-items-center mt-1">
+            <input class="form-control" id="new-emp-weekly" type="number" placeholder="Weekly salary amount" style="max-width:240px">
+            <button class="btn btn-dark fw-bold px-4" data-act="add-employee">👤 + Add Employee</button>
+          </div>
+        </div>
+        <div class="col-12" id="new-emp-work-wrap" style="display:none;">
+          <div class="d-flex gap-2 align-items-center mt-1">
+            <span class="muted small">Piece-rate work items will be added after profile creation.</span>
+            <button class="btn btn-dark fw-bold px-4" data-act="add-employee">👤 + Add Employee</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1779,11 +1815,11 @@ function renderVendors() {
   return `
     <div class="panel">
       <div class="serif strong" style="margin-bottom:10px">Add a vendor</div>
-      <div class="form-grid-emp" style="grid-template-columns:1fr 1fr 1fr auto">
-        <input class="led-input" id="new-vendor-name" placeholder="Vendor name (e.g. leather supplier)">
-        <input class="led-input" id="new-vendor-phone" placeholder="Phone (e.g. 0300-9876543)">
-        <input class="led-input" id="new-vendor-note" placeholder="Note / Address (optional)">
-        <button class="led-btn" data-act="add-vendor">+ Add</button>
+      <div class="row g-2 align-items-center">
+        <div class="col-md-4 col-12"><input class="form-control" id="new-vendor-name" placeholder="Vendor name (e.g. Leather supplier)"></div>
+        <div class="col-md-3 col-12"><input class="form-control" id="new-vendor-phone" placeholder="Phone (e.g. 0300-9876543)"></div>
+        <div class="col-md-3 col-12"><input class="form-control" id="new-vendor-note" placeholder="Note / Address (optional)"></div>
+        <div class="col-md-2 col-12"><button class="btn btn-dark fw-bold w-100" data-act="add-vendor">+ Add Vendor</button></div>
       </div>
     </div>
     ${state.config.vendors.length===0 ? `<div class="empty-msg">No vendors yet — add one above.</div>` : vendorHtml}

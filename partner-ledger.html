@@ -1270,13 +1270,7 @@ function renderPagination(currentPage, totalItems, pageSize, actName) {
   return `
     <div class="d-flex flex-wrap justify-content-between align-items-center p-3 border-top bg-light gap-2">
       <span class="small text-muted">Showing ${start}–${end} of ${totalItems} entries</span>
-      <ul class="pagination pagination-sm mb-0">
-        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-          <button class="page-link" data-act="${actName}" data-page="${currentPage - 1}">« Prev</button>
-        </li>
-        ${btns}
-        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-          <button class="page-link" data-act="${actName}" data-page="${currentPage + function renderIncome() {
+function renderIncome() {
   const partners = state.config.partners;
   const employees = state.config.employees;
   const q = (state.incomeSearch || "").toLowerCase().trim();
@@ -1301,11 +1295,11 @@ function renderPagination(currentPage, totalItems, pageSize, actName) {
 
     let statusTag = "";
     if (balance <= 0) {
-      statusTag = `<span class="tag tag-done">Paid</span>`;
+      statusTag = `<span class="badge bg-success">Paid</span>`;
     } else if (paidAmt > 0) {
-      statusTag = `<span class="tag tag-wait">Advance (${fmt(paidAmt)} paid / ${fmt(balance)} due)</span>`;
+      statusTag = `<span class="badge bg-warning text-dark">Advance (${fmt(paidAmt)} paid / ${fmt(balance)} due)</span>`;
     } else {
-      statusTag = `<span class="tag tag-rust">Unpaid (${fmt(balance)} due)</span>`;
+      statusTag = `<span class="badge bg-danger">Unpaid (${fmt(balance)} due)</span>`;
     }
 
     const receiversList = payments.map(p => {
@@ -1313,7 +1307,7 @@ function renderPagination(currentPage, totalItems, pageSize, actName) {
         const emp = employees.find(x => x.id === p.receivedByEmployeeId);
         return `${esc(emp?.name || "Worker")}${p.settled ? '' : ' (holding)'}`;
       } else {
-        const prt = partners.find(x => x.id === p.receivedBy);
+        const prt = partners.find(p => p.id === p.receivedBy);
         return esc(prt?.name || "Partner");
       }
     });
@@ -1324,12 +1318,12 @@ function renderPagination(currentPage, totalItems, pageSize, actName) {
       <div>${esc(e.item)}${e.note ? ` <span class="muted small">— ${esc(e.note)}</span>` : ""}</div>
       <div class="mono small">${e.quantity||"—"}</div>
       <div class="mono strong">${fmt(totalAmt)}</div>
-      <div class="mono ${paidAmt < totalAmt ? 'gold' : 'teal-text'}">${fmt(paidAmt)}</div>
+      <div class="mono ${paidAmt < totalAmt ? 'text-warning' : 'text-success'}">${fmt(paidAmt)}</div>
       <div class="small">${statusTag}</div>
       <div class="small">${uniqueReceivers}</div>
       <div style="display:flex;align-items:center;gap:4px;justify-content:flex-end">
-        <button class="led-btn secondary" style="padding:2px 6px;font-size:11.5px;" data-act="wa-sale" data-id="${e.id}" title="Send WhatsApp Payment Reminder">📲 WA</button>
-        ${balance > 0 ? `<button class="led-btn secondary" style="padding:2px 6px;font-size:11.5px;" data-act="pay-income-balance" data-id="${e.id}" title="Collect Remaining Payment">💵 Pay</button>` : ''}
+        <button class="btn btn-sm btn-outline-dark fw-semibold" style="padding:2px 6px;font-size:11.5px;" data-act="wa-sale" data-id="${e.id}" title="Send WhatsApp Payment Reminder">📲 WA</button>
+        ${balance > 0 ? `<button class="btn btn-sm btn-outline-success fw-semibold" style="padding:2px 6px;font-size:11.5px;" data-act="pay-income-balance" data-id="${e.id}" title="Collect Remaining Payment">💵 Pay</button>` : ''}
         <button class="icon-btn" data-act="edit-income" data-id="${e.id}" title="Edit Sale">✏️</button>
         <button class="icon-btn" data-act="delete-income" data-id="${e.id}" title="Delete Sale" style="color:var(--rust)">🗑️</button>
       </div>
@@ -1342,21 +1336,21 @@ function renderPagination(currentPage, totalItems, pageSize, actName) {
   return `
     <div class="panel">
       <div class="serif strong" style="margin-bottom:4px">Log a sale</div>
-      <div class="muted small" style="margin-bottom:10px">Log sales and advance payments. If customer gives partial/advance payment, enter Total price &amp; Advance paid. Remaining due balance can be collected when order is picked up.</div>
-      <div class="form-grid-income">
-        <input class="led-input" type="date" id="inc-date" value="${today()}">
-        <input class="led-input" id="inc-item" placeholder="Item (e.g. Men's loafers)">
-        <input class="led-input" id="inc-qty" type="number" placeholder="Qty">
-        <input class="led-input" id="inc-amount" type="number" placeholder="Total price">
-        <input class="led-input" id="inc-paid-amount" type="number" placeholder="Advance / Paid">
-        <select class="led-input" id="inc-receivedby">${receiverOptions}</select>
-        <button class="led-btn" data-act="add-income">+ Add Sale</button>
+      <div class="muted small" style="margin-bottom:12px">Log sales and advance payments. Remaining due balance can be collected anytime.</div>
+      <div class="row g-2 align-items-center mb-2">
+        <div class="col-md-2 col-6"><input class="form-control" type="date" id="inc-date" value="${today()}"></div>
+        <div class="col-md-3 col-12"><input class="form-control" id="inc-item" placeholder="Item (e.g. Leather shoes)"></div>
+        <div class="col-md-1 col-6"><input class="form-control" id="inc-qty" type="number" placeholder="Qty"></div>
+        <div class="col-md-2 col-6"><input class="form-control" id="inc-amount" type="number" placeholder="Total price"></div>
+        <div class="col-md-2 col-6"><input class="form-control" id="inc-paid-amount" type="number" placeholder="Advance / Paid"></div>
+        <div class="col-md-2 col-6"><select class="form-select" id="inc-receivedby">${receiverOptions}</select></div>
+        <div class="col-12"><input class="form-control" id="inc-note" placeholder="Note / customer name (optional)"></div>
+        <div class="col-12 text-end mt-2"><button class="btn btn-dark fw-bold px-4" data-act="add-income">+ Add Sale</button></div>
       </div>
-      <input class="led-input" id="inc-note" placeholder="Note / customer (optional)" style="margin-top:8px">
     </div>
     <div class="panel table-panel">
       <div style="padding:8px 14px;border-bottom:1px solid var(--rule);background:#fff">
-        <input class="led-input" id="inc-search" placeholder="🔍 Search sales by item, customer, date..." value="${esc(state.incomeSearch)}" data-act="search-income">
+        <input class="form-control" id="inc-search" placeholder="🔍 Search sales by item, customer, date..." value="${esc(state.incomeSearch)}" data-act="search-income">
       </div>
       <div class="mono table-head income-row"><div>DATE</div><div>ITEM</div><div>QTY</div><div>TOTAL</div><div>PAID</div><div>STATUS</div><div>RECEIVED</div><div></div></div>
       ${state.income.length===0 ? `<div class="empty-msg">No sales logged yet.</div>` : (filtered.length===0 ? `<div class="empty-msg">No sales match your search.</div>` : rows)}
@@ -1387,16 +1381,16 @@ function renderExpenses() {
     if (e.payerEmployeeId) {
       const emp = employees.find(x => x.id === e.payerEmployeeId);
       payerLabel = `${esc(emp?.name || "—")}`;
-      tag = e.settled ? `<span class="tag tag-done">reimbursed</span>` : `<span class="tag tag-wait">awaiting reimb.</span>`;
+      tag = e.settled ? `<span class="badge bg-success">reimbursed</span>` : `<span class="badge bg-warning text-dark">awaiting reimb.</span>`;
     } else if (e.vendorId && e.onCredit) {
       const vend = state.config.vendors.find(v => v.id === e.vendorId);
       payerLabel = `${esc(vend?.name || "—")}`;
-      tag = `<span class="tag tag-wait">on credit</span>`;
+      tag = `<span class="badge bg-warning text-dark">on credit</span>`;
     } else {
       payerLabel = esc(partners.find(p=>p.id===e.paidBy)?.name || "—");
-      if (e.vendorId) { const vend = state.config.vendors.find(v => v.id === e.vendorId); tag = vend ? `<span class="tag tag-done">${esc(vend.name)}</span>` : ""; }
+      if (e.vendorId) { const vend = state.config.vendors.find(v => v.id === e.vendorId); tag = vend ? `<span class="badge bg-secondary">${esc(vend.name)}</span>` : ""; }
     }
-    const categoryTag = `<span class="tag tag-done" style="background:#F1F5F9;color:#334155;border:1px solid #CBD5E1;">${esc(e.category || 'Raw Materials')}</span>`;
+    const categoryTag = `<span class="badge bg-light text-dark border">${esc(e.category || 'Raw Materials')}</span>`;
     const pmLabel = getPaymentMethodLabel(e.paymentMethod || 'cash');
 
     return `<div class="row-line expense-row">
@@ -1423,47 +1417,74 @@ function renderExpenses() {
     ${renderCategoryBudgets()}
     <div class="panel">
       <div class="serif strong" style="margin-bottom:4px">Add an expense</div>
-      <div class="muted small" style="margin-bottom:10px">Categorize expenses, select payment method (Cash, Bank, Mobile Wallet), and attach receipt photos/bills.</div>
-      <div class="form-grid-expense">
-        <input class="led-input" type="date" id="exp-date" value="${today()}">
-        <input class="led-input" id="exp-desc" placeholder="Description (e.g. Leather soles)">
-        <input class="led-input" id="exp-amount" type="number" placeholder="Amount">
-        <select class="led-input" id="exp-category">
-          <option value="Raw Materials">Raw Materials</option>
-          <option value="Factory Rent">Factory Rent</option>
-          <option value="Shop Rent">Shop Rent</option>
-          <option value="Utilities / Bills">Utilities / Bills</option>
-          <option value="Packaging">Packaging</option>
-          <option value="Worker Food & Tea">Worker Food &amp; Tea</option>
-          <option value="Machinery & Repairs">Machinery &amp; Repairs</option>
-          <option value="Transport">Transport</option>
-          <option value="Miscellaneous">Miscellaneous</option>
-        </select>
-        <select class="led-input" id="exp-pm">
-          <option value="cash">💵 Cash in Hand</option>
-          <option value="bank">🏦 Bank Transfer</option>
-          <option value="wallet">📱 Mobile Wallet (JazzCash/Easypaisa)</option>
-          <option value="card">💳 Credit/Debit Card</option>
-        </select>
-        <select class="led-input" id="exp-payer">${payerOptions}</select>
-        <button class="led-btn" data-act="add-expense">+ Add Expense</button>
-      </div>
-      <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
-        <label style="font-size:12px;font-weight:600;" class="muted">📷 Attach Bill / Receipt Image:</label>
-        <input class="led-input" type="file" id="exp-receipt-file" accept="image/*" style="font-size:12px;padding:4px;max-width:280px;">
+      <div class="muted small" style="margin-bottom:12px">Categorize expenses, select payment method, and attach receipt bills.</div>
+      <div class="row g-2 align-items-center mb-2">
+        <div class="col-md-2 col-6"><input class="form-control" type="date" id="exp-date" value="${today()}"></div>
+        <div class="col-md-3 col-12"><input class="form-control" id="exp-desc" placeholder="Description (e.g. Leather soles)"></div>
+        <div class="col-md-2 col-6"><input class="form-control" id="exp-amount" type="number" placeholder="Amount"></div>
+        <div class="col-md-2 col-6">
+          <select class="form-select" id="exp-category">
+            <option value="Raw Materials">Raw Materials</option>
+            <option value="Factory Rent">Factory Rent</option>
+            <option value="Shop Rent">Shop Rent</option>
+            <option value="Utilities / Bills">Utilities / Bills</option>
+            <option value="Packaging">Packaging</option>
+            <option value="Worker Food & Tea">Worker Food &amp; Tea</option>
+            <option value="Machinery & Repairs">Machinery &amp; Repairs</option>
+            <option value="Transport">Transport</option>
+            <option value="Miscellaneous">Miscellaneous</option>
+          </select>
+        </div>
+        <div class="col-md-3 col-6">
+          <select class="form-select" id="exp-pm">
+            <option value="cash">💵 Cash in Hand</option>
+            <option value="bank">🏦 Bank Transfer</option>
+            <option value="wallet">📱 Mobile Wallet (JazzCash/Easypaisa)</option>
+            <option value="card">💳 Credit/Debit Card</option>
+          </select>
+        </div>
+        <div class="col-md-3 col-6"><select class="form-select" id="exp-payer">${payerOptions}</select></div>
+        <div class="col-md-6 col-12">
+          <div class="input-group">
+            <span class="input-group-text bg-light text-muted fw-semibold">📷 Bill Photo</span>
+            <input class="form-control" type="file" id="exp-receipt-file" accept="image/*">
+          </div>
+        </div>
+        <div class="col-md-3 col-12 text-end"><button class="btn btn-dark fw-bold w-100" data-act="add-expense">+ Add Expense</button></div>
       </div>
     </div>
     <div class="panel table-panel">
       <div style="padding:8px 14px;border-bottom:1px solid var(--rule);background:#fff">
-        <input class="led-input" id="exp-search" placeholder="🔍 Search expenses by description, category, payer, date..." value="${esc(state.expenseSearch)}" data-act="search-expense">
+        <input class="form-control" id="exp-search" placeholder="🔍 Search expenses by description, category, payer, date..." value="${esc(state.expenseSearch)}" data-act="search-expense">
       </div>
       <div class="mono table-head expense-row"><div>DATE</div><div>DESC</div><div>CATEGORY</div><div>AMOUNT</div><div>METHOD</div><div>PAID BY</div><div></div></div>
       ${state.expenses.length===0 ? `<div class="empty-msg">No expenses logged yet.</div>` : (filtered.length===0 ? `<div class="empty-msg">No expenses match your search.</div>` : rows)}
       ${renderPagination(state.expensePage, totalItems, pageSize, 'set-expense-page')}
     </div>
   `;
-})}
-      ${renderPagination(state.expensePage, totalItems, pageSize, 'set-expense-page')}
+}
+
+function renderPagination(currentPage, totalItems, pageSize, actName) {
+  const totalPages = Math.ceil(totalItems / pageSize);
+  if (totalPages <= 1) return "";
+  let btns = "";
+  for (let i = 1; i <= totalPages; i++) {
+    btns += `<li class="page-item ${i === currentPage ? 'active' : ''}"><button class="page-link" data-act="${actName}" data-page="${i}">${i}</button></li>`;
+  }
+  const start = (currentPage - 1) * pageSize + 1;
+  const end = Math.min(currentPage * pageSize, totalItems);
+  return `
+    <div class="d-flex flex-wrap justify-content-between align-items-center p-3 border-top bg-light gap-2">
+      <span class="small text-muted">Showing ${start}–${end} of ${totalItems} entries</span>
+      <ul class="pagination pagination-sm mb-0">
+        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+          <button class="page-link" data-act="${actName}" data-page="${currentPage - 1}">« Prev</button>
+        </li>
+        ${btns}
+        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+          <button class="page-link" data-act="${actName}" data-page="${currentPage + 1}">Next »</button>
+        </li>
+      </ul>
     </div>
   `;
 }
