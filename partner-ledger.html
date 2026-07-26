@@ -41,7 +41,7 @@
   .icon-btn { background:none; border:none; cursor:pointer; color:#8a806a; font-size:14px; }
   .form-grid-expense { display:grid; grid-template-columns:110px 1fr 90px 160px auto; gap:8px; }
   .form-grid-income { display:grid; grid-template-columns:110px 1fr 70px 90px 140px auto; gap:8px; }
-  .form-grid-emp { display:grid; grid-template-columns:1fr 150px auto; gap:8px; align-items:center; }
+  .form-grid-emp { display:grid; grid-template-columns:1fr 1fr 150px auto; gap:8px; align-items:center; }
   .form-grid-item { display:grid; grid-template-columns:1fr 110px auto; gap:8px; margin-bottom:6px; }
   .form-grid-work { display:grid; grid-template-columns:110px 1fr 80px 1fr auto; gap:8px; margin-bottom:6px; }
   .form-grid-adv, .form-grid-pay { display:grid; grid-template-columns:110px 90px 130px 1fr auto; gap:8px; margin-bottom:6px; }
@@ -234,6 +234,7 @@ async function showEditEmployeeModal(id) {
     html:
       `<div style="text-align:left;display:flex;flex-direction:column;gap:10px;">` +
       `<div><label style="font-size:12px;font-weight:600;">Employee Name</label><input id="swal-emp-name" class="swal2-input" value="${esc(emp.name||'')}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Phone Number</label><input id="swal-emp-phone" class="swal2-input" value="${esc(emp.phone||'')}" placeholder="e.g. 0300-1234567" style="margin:4px 0 0 0;width:100%;"></div>` +
       `<div><label style="font-size:12px;font-weight:600;">Payment Type</label><select id="swal-emp-type" class="swal2-input" style="margin:4px 0 0 0;width:100%;"><option value="weekly" ${emp.type==='weekly'?'selected':''}>Weekly Rate</option><option value="workbased" ${emp.type==='workbased'?'selected':''}>Piece-Rate (Work Based)</option></select></div>` +
       `<div><label style="font-size:12px;font-weight:600;">Weekly Rate (if applicable)</label><input id="swal-emp-weekly" type="number" class="swal2-input" value="${emp.weeklyRate||0}" style="margin:4px 0 0 0;width:100%;"></div>` +
       `</div>`,
@@ -244,19 +245,21 @@ async function showEditEmployeeModal(id) {
     color: '#23302B',
     preConfirm: () => {
       const name = document.getElementById('swal-emp-name').value.trim();
+      const phone = document.getElementById('swal-emp-phone').value.trim();
       const type = document.getElementById('swal-emp-type').value;
       const weeklyRate = Number(document.getElementById('swal-emp-weekly').value || 0);
       if (!name) {
         Swal.showValidationMessage('Please enter employee name');
         return false;
       }
-      return { name, type, weeklyRate };
+      return { name, phone, type, weeklyRate };
     }
   });
 
   if (formValues) {
     mutate(() => {
       emp.name = formValues.name;
+      emp.phone = formValues.phone;
       emp.type = formValues.type;
       emp.weeklyRate = formValues.weeklyRate;
       if (emp.type === 'workbased' && !emp.items) emp.items = [];
@@ -639,20 +642,22 @@ function renderEmployees() {
   const empHtml = state.config.employees.map(emp => renderEmployeeCard(emp, partners)).join("");
   return `
     <div class="panel">
-      <div class="serif strong" style="margin-bottom:10px">Add an employee</div>
+      <div class="serif strong" style="margin-bottom:4px">Add Employee Profile</div>
+      <div class="muted small" style="margin-bottom:12px">Register workers with contact phone numbers for weekly salary or piece-rate work.</div>
       <div class="form-grid-emp">
-        <input class="led-input" id="new-emp-name" placeholder="Name">
+        <input class="led-input" id="new-emp-name" placeholder="Full Name (e.g. Ali Raza)">
+        <input class="led-input" id="new-emp-phone" placeholder="Phone (e.g. 0300-1234567)">
         <select class="led-input" id="new-emp-type" onchange="toggleEmpTypeUI()">
           <option value="weekly">Weekly salary</option>
           <option value="workbased">Work-based (piece rate)</option>
         </select>
-        <button class="led-btn" data-act="add-employee">+ Add</button>
+        <button class="led-btn" data-act="add-employee">👤 + Add</button>
       </div>
       <div id="new-emp-weekly-wrap" style="margin-top:8px">
-        <input class="led-input" id="new-emp-weekly" type="number" placeholder="Weekly amount" style="max-width:200px">
+        <input class="led-input" id="new-emp-weekly" type="number" placeholder="Weekly salary amount" style="max-width:220px">
       </div>
       <div id="new-emp-work-wrap" style="display:none;margin-top:8px" class="muted small">
-        You'll add their work items (e.g. cutting, stitching) with different prices after creating them.
+        You'll add their piece-rate work items (e.g. cutting, stitching) with prices after creating their profile.
       </div>
     </div>
     ${state.config.employees.length===0 ? `<div class="empty-msg">No employees yet — add one above.</div>` : empHtml}
@@ -804,7 +809,8 @@ function renderEmployeeCard(emp, partners) {
         <div class="emp-head-left">
           <span>${expanded?"▾":"▸"}</span>
           <span class="serif strong">${esc(emp.name)}</span>
-          <span class="muted small">${headSub}</span>
+          ${emp.phone ? `<span class="muted small" style="margin-left:4px;">📞 ${esc(emp.phone)}</span>` : ""}
+          <span class="muted small">— ${headSub}</span>
         </div>
         <div class="emp-head-right">
           ${emp.type==="workbased" ? `<span class="mono small strong" style="color:${owed>0?"var(--rust)":"var(--teal)"}">${owed>0?`owes ${fmt(owed)}`:"settled"}</span>` : ""}
@@ -1042,10 +1048,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (act === "add-employee") {
       const name = document.getElementById("new-emp-name").value.trim();
+      const phone = document.getElementById("new-emp-phone")?.value.trim() || "";
       const type = document.getElementById("new-emp-type").value;
       if (!name) return;
       const weeklyRate = Number(document.getElementById("new-emp-weekly")?.value || 0);
-      const emp = { id: uid(), name, type, weeklyRate, items: type === "workbased" ? [] : undefined };
+      const emp = { id: uid(), name, phone, type, weeklyRate, items: type === "workbased" ? [] : undefined };
       mutate(() => { state.config.employees.push(emp); });
       return;
     }
