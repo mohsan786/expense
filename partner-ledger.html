@@ -376,6 +376,56 @@
   .modal-card { background: #FFFFFF; border: 1px solid var(--rule); border-radius: 16px; padding: 32px 28px; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.25); }
   .pin-input { font-size: 26px; letter-spacing: 8px; text-align: center; padding: 12px; margin: 18px 0; font-family: 'JetBrains Mono', monospace; border-radius: 10px; }
 
+  /* Mobile Navigation & Responsive Overrides */
+  .mobile-header {
+    display: none;
+    background: #000000;
+    color: #FFFFFF;
+    padding: 12px 16px;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 1050;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+  }
+  .sidebar-backdrop {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1030;
+  }
+  @media (max-width: 991px) {
+    .app-shell { flex-direction: column; }
+    .mobile-header { display: flex; }
+    .app-sidebar {
+      position: fixed;
+      top: 0;
+      left: -280px;
+      width: 280px;
+      height: 100vh;
+      z-index: 1040;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .app-sidebar.show { transform: translateX(280px); }
+    .sidebar-backdrop.show { display: block; }
+    .main-content { width: 100% !important; min-height: calc(100vh - 60px); }
+    .app-topbar { flex-direction: column; align-items: flex-start !important; gap: 12px; }
+    .kpi-grid { grid-template-columns: 1fr !important; }
+    .table-panel { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .view-container { padding: 14px 12px !important; }
+  }
+  @media (max-width: 576px) {
+    .stat-mini-grid { grid-template-columns: 1fr !important; }
+    .emp-head { flex-direction: column; align-items: flex-start !important; }
+    .emp-head-right { width: 100%; justify-content: space-between; margin-top: 6px; }
+  }
+
   @media print {
     .tabs, .header, button:not(.no-hide-print), input[type="search"], .icon-btn { display: none !important; }
     body { background: #fff !important; }
@@ -995,7 +1045,6 @@ function empAbsenceDeduction(emp) {
     const mult = a.status === 'halfday' ? 0.5 : 1.0;
     return sum + (dailyRate * mult);
   }, 0);
-}
 function vendorPurchases(id) { return state.expenses.filter(x => x.vendorId === id); }
 function vendorPaymentsFor(id) { return state.vendorPayments.filter(x => x.vendorId === id); }
 function vendorCreditTotal(id) { return vendorPurchases(id).filter(x => x.onCredit).reduce((s, x) => s + Number(x.amount || 0), 0); }
@@ -1004,6 +1053,13 @@ function totalVendorOutstanding() { return state.config.vendors.reduce((s, v) =>
 
 function renderHeader() {
   return `
+    <div class="mobile-header">
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-dark btn-sm text-white border px-3 fw-bold" data-act="toggle-mobile-nav">☰ Menu</button>
+        <span class="fw-bold fs-5 text-white">Velto LS</span>
+      </div>
+      <button class="btn btn-sm btn-light fw-bold" data-act="quick-add-modal">⚡ Quick</button>
+    </div>
     <header class="app-topbar">
       <div>
         <h2 class="topbar-title">${getTabTitle(state.tab)}</h2>
@@ -1011,10 +1067,9 @@ function renderHeader() {
       </div>
       <div style="display:flex;align-items:center;gap:12px;">
         <button class="quick-act-btn" data-act="quick-add-modal">⚡ Quick Add</button>
-        <span class="cloud-badge">☁️ Live Shared</span>
       </div>
     </header>
-    ${state.saveErr ? `<div class="alert alert-danger py-2 px-3 mb-3 small" style="border-radius:10px;">⚠️ Couldn't save just now. Try again in a moment.</div>` : ""}
+    ${state.saveErr ? `<div class="alert alert-danger py-2 px-3 mb-3 small" style="border-radius:10px;">⚠️ Couldn't connect to MySQL database just now. Check database configuration.</div>` : ""}
   `;
 }
 
@@ -1027,7 +1082,7 @@ function getTabTitle(tab) {
   if (tab === "customers") return "Customer Directory & Ledger";
   if (tab === "reports") return "Financial Analytics & Reports";
   if (tab === "settings") return "System Settings & Configuration";
-  return "The Ledger";
+  return "Velto LS";
 }
 
 function getTabSubtitle(tab) {
@@ -1054,13 +1109,17 @@ function renderTabs() {
     ["settings", "⚙️ Settings"]
   ];
   return `
-    <aside class="app-sidebar">
-      <div class="sidebar-brand">
-        <div class="brand-icon">💼</div>
-        <div>
-          <div class="brand-title">The Ledger</div>
-          <div class="brand-sub">SaaS Financial Suite</div>
+    <div class="sidebar-backdrop ${state.mobileNav ? 'show' : ''}" data-act="close-mobile-nav"></div>
+    <aside class="app-sidebar ${state.mobileNav ? 'show' : ''}">
+      <div class="sidebar-brand d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+          <div class="brand-icon">💼</div>
+          <div>
+            <div class="brand-title">Velto LS</div>
+            <div class="brand-sub">Velto LS Suite</div>
+          </div>
         </div>
+        <button class="btn-close btn-close-white d-lg-none" data-act="close-mobile-nav" aria-label="Close"></button>
       </div>
       <nav class="sidebar-nav">
         ${items.map(([id, label]) => `
@@ -2181,7 +2240,23 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!el) return;
     const act = el.dataset.act;
 
-    if (act === "switch-tab") { state.tab = el.dataset.tab; render(); return; }
+    if (act === "toggle-mobile-nav") {
+      state.mobileNav = !state.mobileNav;
+      render();
+      return;
+    }
+    if (act === "close-mobile-nav") {
+      state.mobileNav = false;
+      render();
+      return;
+    }
+
+    if (act === "switch-tab") {
+      state.tab = el.dataset.tab;
+      state.mobileNav = false;
+      render();
+      return;
+    }
 
     if (act === "quick-add-modal") {
       Swal.fire({
