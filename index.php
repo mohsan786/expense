@@ -6,6 +6,7 @@
 <title>Velto LS — Business Expense & Payroll Ledger</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>
   /* Executive Black & White Theme */
   :root {
@@ -1159,29 +1160,83 @@ function renderCustomers() {
   const sales = state.income;
 
   const rows = customers.map(c => {
+    const expanded = state.expandedCust === c.id;
     const custSales = sales.filter(s => s.customerId === c.id || (s.note && s.note.toLowerCase().includes(c.name.toLowerCase())));
     const totalBilled = custSales.reduce((s, x) => s + Number(x.amount || 0), 0);
     const totalPaid = custSales.reduce((s, x) => s + getIncomePaid(x), 0);
     const pendingDue = custSales.reduce((s, x) => s + getIncomeBalance(x), 0);
 
-    return `
-      <div class="panel emp-card" style="margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-          <div>
-            <span class="serif strong" style="font-size:16px;">👤 ${esc(c.name)}</span>
-            ${c.phone ? `<span class="muted small" style="margin-left:6px;">📞 ${esc(c.phone)}</span>` : ""}
-            ${c.address ? `<div class="muted small">📍 ${esc(c.address)}</div>` : ""}
-            ${c.notes ? `<div class="muted small">📝 ${esc(c.notes)}</div>` : ""}
+    let statementBody = "";
+    if (expanded) {
+      const ordersHtml = custSales.length ? custSales.map(s => {
+        const total = Number(s.amount || 0);
+        const paid = getIncomePaid(s);
+        const due = getIncomeBalance(s);
+        let badge = paid >= total ? `<span class="badge bg-success">Paid</span>` : (paid > 0 ? `<span class="badge bg-warning text-dark">Advance (${fmt(paid)})</span>` : `<span class="badge bg-danger">Unpaid</span>`);
+        return `
+          <div class="row-line" style="display:grid;grid-template-columns:100px 1fr 90px 100px 100px 100px auto;gap:8px;align-items:center;">
+            <div class="mono small">${esc(s.date)}</div>
+            <div>${esc(s.item)}${s.note ? ` <span class="muted small">(${esc(s.note)})</span>` : ""}</div>
+            <div class="mono small">${fmt(total)}</div>
+            <div class="mono small text-success">${fmt(paid)}</div>
+            <div class="mono small ${due>0?'text-danger':''}">${fmt(due)}</div>
+            <div>${badge}</div>
+            <div style="display:flex;gap:4px;justify-content:flex-end;">
+              ${due > 0 ? `<button class="btn btn-sm btn-outline-success fw-semibold" style="padding:2px 6px;font-size:11px;" data-act="pay-income-balance" data-id="${s.id}">💵 Collect</button>` : ""}
+              <button class="btn btn-sm btn-outline-dark fw-semibold" style="padding:2px 6px;font-size:11px;" data-act="wa-sale" data-id="${s.id}">📲 WA</button>
+            </div>
           </div>
-          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-            <div class="mono small">Orders: <strong>${custSales.length}</strong></div>
-            <div class="mono small teal-text">Paid: <strong>${fmt(totalPaid)}</strong></div>
-            <div class="mono small ${pendingDue>0?'gold':''}">Due: <strong>${fmt(pendingDue)}</strong></div>
-            ${c.phone ? `<button class="led-btn secondary" style="padding:3px 10px;font-size:12px;" data-act="wa-direct" data-phone="${c.phone}" data-name="${c.name}" data-due="${pendingDue}">📲 WhatsApp</button>` : ''}
-            <button class="icon-btn" data-act="edit-customer" data-id="${c.id}" title="Edit Customer">✏️</button>
-            <button class="icon-btn" data-act="delete-customer" data-id="${c.id}" style="color:var(--rust);" title="Delete Customer">🗑️</button>
+        `;
+      }).join("") : `<div class="empty-msg">No orders recorded for this customer yet.</div>`;
+
+      statementBody = `
+        <div class="card-body border-top bg-light mt-2 p-3" style="border-radius:0 0 10px 10px;">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="fw-bold small text-dark text-uppercase">📋 Customer Statement & Order Ledger</span>
+            <div class="d-flex gap-2">
+              ${c.phone ? `<button class="btn btn-sm btn-outline-dark fw-bold" data-act="wa-direct" data-phone="${c.phone}" data-name="${c.name}" data-due="${pendingDue}">📲 Send WhatsApp Statement (${fmt(pendingDue)} Due)</button>` : ''}
+            </div>
+          </div>
+          <div class="table-panel mb-3">
+            <div class="mono table-head" style="display:grid;grid-template-columns:100px 1fr 90px 100px 100px 100px auto;gap:8px;">
+              <div>DATE</div><div>ORDER ITEM</div><div>TOTAL</div><div>PAID</div><div>DUE</div><div>STATUS</div><div></div>
+            </div>
+            ${ordersHtml}
+          </div>
+          <div class="p-3 bg-white border rounded">
+            <div class="fw-bold small mb-2">➕ Quick Log Order for ${esc(c.name)}</div>
+            <div class="row g-2 align-items-center">
+              <div class="col-md-3 col-12"><input class="form-control form-control-sm" id="cust-quick-item-${c.id}" placeholder="Item (e.g. Leather Shoes)"></div>
+              <div class="col-md-2 col-6"><input class="form-control form-control-sm" type="number" id="cust-quick-qty-${c.id}" placeholder="Qty"></div>
+              <div class="col-md-2 col-6"><input class="form-control form-control-sm" type="number" id="cust-quick-amount-${c.id}" placeholder="Total Price"></div>
+              <div class="col-md-2 col-6"><input class="form-control form-control-sm" type="number" id="cust-quick-paid-${c.id}" placeholder="Advance Paid"></div>
+              <div class="col-md-3 col-12"><button class="btn btn-sm btn-dark fw-bold w-100" data-act="cust-add-order" data-id="${c.id}">+ Create Order</button></div>
+            </div>
           </div>
         </div>
+      `;
+    }
+
+    return `
+      <div class="panel emp-card" style="margin-bottom:10px;padding:0;overflow:hidden;">
+        <div class="p-3" style="cursor:pointer;" data-act="toggle-customer" data-id="${c.id}">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <div>
+              <span class="fw-bold" style="font-size:16px;">${expanded ? "▾" : "▸"} 👤 ${esc(c.name)}</span>
+              ${c.phone ? `<span class="muted small" style="margin-left:6px;">📞 ${esc(c.phone)}</span>` : ""}
+              ${c.address ? `<span class="muted small" style="margin-left:6px;">📍 ${esc(c.address)}</span>` : ""}
+            </div>
+            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;" onclick="event.stopPropagation();">
+              <div class="mono small">Orders: <strong>${custSales.length}</strong></div>
+              <div class="mono small text-success">Paid: <strong>${fmt(totalPaid)}</strong></div>
+              <div class="mono small ${pendingDue>0?'text-danger':'text-muted'}">Due: <strong>${fmt(pendingDue)}</strong></div>
+              ${c.phone ? `<button class="btn btn-sm btn-outline-dark fw-semibold" style="padding:2px 8px;font-size:12px;" data-act="wa-direct" data-phone="${c.phone}" data-name="${c.name}" data-due="${pendingDue}">📲 WhatsApp</button>` : ''}
+              <button class="icon-btn" data-act="edit-customer" data-id="${c.id}" title="Edit Customer">✏️</button>
+              <button class="icon-btn" data-act="delete-customer" data-id="${c.id}" style="color:var(--rust);" title="Delete Customer">🗑️</button>
+            </div>
+          </div>
+        </div>
+        ${statementBody}
       </div>
     `;
   }).join("");
@@ -1189,16 +1244,21 @@ function renderCustomers() {
   return `
     <div class="panel">
       <div class="serif strong" style="margin-bottom:10px;">Add Customer Profile</div>
-      <div class="form-grid-emp" style="grid-template-columns:1fr 1fr 1fr auto;">
-        <input class="led-input" id="cust-name" placeholder="Customer Name">
-        <input class="led-input" id="cust-phone" placeholder="WhatsApp / Phone (e.g. 923001234567)">
-        <input class="led-input" id="cust-address" placeholder="City / Address (optional)">
-        <button class="led-btn" data-act="add-customer">+ Add Customer</button>
+      <div class="row g-2 align-items-center">
+        <div class="col-md-4 col-12"><input class="form-control" id="cust-name" placeholder="Customer Name"></div>
+        <div class="col-md-3 col-12"><input class="form-control" id="cust-phone" placeholder="WhatsApp / Phone (e.g. 923001234567)"></div>
+        <div class="col-md-3 col-12"><input class="form-control" id="cust-address" placeholder="City / Address (optional)"></div>
+        <div class="col-md-2 col-12"><button class="btn btn-dark fw-bold w-100" data-act="add-customer">+ Add Customer</button></div>
       </div>
     </div>
     <div class="panel table-panel">
-      <div class="serif strong" style="padding:12px 14px 4px;">Customer Database (${customers.length})</div>
-      ${customers.length === 0 ? `<div class="empty-msg">No customers created yet. Add one above or link when logging sales.</div>` : rows}
+      <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+        <div class="serif strong" style="font-size:16px;">Customer Database & Accounts (${customers.length})</div>
+        <span class="muted small">Click any customer to open their full statement ledger & log orders</span>
+      </div>
+      <div class="p-3">
+        ${customers.length === 0 ? `<div class="empty-msg">No customers created yet. Add one above to manage customer accounts.</div>` : rows}
+      </div>
     </div>
   `;
 }
@@ -1397,14 +1457,11 @@ function renderIncome() {
       </div>
     </div>`;
   }).join("");
-  const receiverOptions = `
-    <optgroup label="Partner">${partners.map(p=>`<option value="partner:${p.id}">${esc(p.name)}</option>`).join("")}</optgroup>
-    ${employees.length ? `<optgroup label="Worker (owes it back)">${employees.map(e=>`<option value="employee:${e.id}">${esc(e.name)}</option>`).join("")}</optgroup>` : ""}
-  `;
+  const customerOptions = `<option value="">-- Select Customer (Optional) --</option>${(state.config.customers||[]).map(c=>`<option value="${c.id}">${esc(c.name)}${c.phone?` (${esc(c.phone)})`:''}</option>`).join("")}`;
   return `
     <div class="panel">
       <div class="serif strong" style="margin-bottom:4px">Log a sale</div>
-      <div class="muted small" style="margin-bottom:12px">Log sales and advance payments. Remaining due balance can be collected anytime.</div>
+      <div class="muted small" style="margin-bottom:12px">Log sales and advance payments. Link customer profile for full ledger tracking.</div>
       <div class="row g-2 align-items-center mb-2">
         <div class="col-md-2 col-6"><input class="form-control" type="date" id="inc-date" value="${today()}"></div>
         <div class="col-md-3 col-12"><input class="form-control" id="inc-item" placeholder="Item (e.g. Leather shoes)"></div>
@@ -1412,7 +1469,8 @@ function renderIncome() {
         <div class="col-md-2 col-6"><input class="form-control" id="inc-amount" type="number" placeholder="Total price"></div>
         <div class="col-md-2 col-6"><input class="form-control" id="inc-paid-amount" type="number" placeholder="Advance / Paid"></div>
         <div class="col-md-2 col-6"><select class="form-select" id="inc-receivedby">${receiverOptions}</select></div>
-        <div class="col-12"><input class="form-control" id="inc-note" placeholder="Note / customer name (optional)"></div>
+        <div class="col-md-4 col-12"><select class="form-select" id="inc-customer">${customerOptions}</select></div>
+        <div class="col-md-8 col-12"><input class="form-control" id="inc-note" placeholder="Note / order details (optional)"></div>
         <div class="col-12 text-end mt-2"><button class="btn btn-dark fw-bold px-4" data-act="add-income">+ Add Sale</button></div>
       </div>
     </div>
@@ -1606,20 +1664,20 @@ function renderEmployeeCard(emp, partners) {
       workSection = `
         <div class="serif small-title">Work items &amp; prices</div>
         <div style="margin-bottom:8px">${itemChips || `<span class="muted small">No items yet — add one below.</span>`}</div>
-        <div class="form-grid-item">
-          <input class="led-input" id="item-label-${emp.id}" placeholder="Item name (e.g. Stitching)">
-          <input class="led-input" id="item-rate-${emp.id}" type="number" placeholder="Price per piece">
-          <button class="led-btn secondary" data-act="add-item" data-emp="${emp.id}">+ Add item</button>
+        <div class="row g-2 align-items-center mb-2">
+          <div class="col-md-5 col-12"><input class="form-control" id="item-label-${emp.id}" placeholder="Item name (e.g. Stitching)"></div>
+          <div class="col-md-4 col-7"><input class="form-control" id="item-rate-${emp.id}" type="number" placeholder="Price per piece"></div>
+          <div class="col-md-3 col-5"><button class="btn btn-outline-dark fw-bold w-100" data-act="add-item" data-emp="${emp.id}">+ Add item</button></div>
         </div>
         <div class="divider"></div>
         <div class="serif small-title">Log work</div>
         ${items.length ? `
-          <div class="form-grid-work">
-            <input class="led-input" type="date" id="work-date-${emp.id}" value="${today()}">
-            <select class="led-input" id="work-item-${emp.id}">${items.map(it=>`<option value="${it.id}">${esc(it.label)} · ${fmt(it.rate)}</option>`).join("")}</select>
-            <input class="led-input" type="number" id="work-qty-${emp.id}" placeholder="Qty">
-            <input class="led-input" id="work-note-${emp.id}" placeholder="Note (optional)">
-            <button class="led-btn" data-act="add-work" data-emp="${emp.id}">+ Log</button>
+          <div class="row g-2 align-items-center mb-2">
+            <div class="col-md-2 col-6"><input class="form-control" type="date" id="work-date-${emp.id}" value="${today()}"></div>
+            <div class="col-md-4 col-12"><select class="form-select" id="work-item-${emp.id}">${items.map(it=>`<option value="${it.id}">${esc(it.label)} · ${fmt(it.rate)}</option>`).join("")}</select></div>
+            <div class="col-md-2 col-6"><input class="form-control" type="number" id="work-qty-${emp.id}" placeholder="Qty"></div>
+            <div class="col-md-2 col-6"><input class="form-control" id="work-note-${emp.id}" placeholder="Note (optional)"></div>
+            <div class="col-md-2 col-12"><button class="btn btn-dark fw-bold w-100" data-act="add-work" data-emp="${emp.id}">+ Log</button></div>
           </div>
         ` : `<div class="muted small" style="margin-bottom:10px">Add a work item above first.</div>`}
         <div class="muted small" style="margin-bottom:14px">Total earned: <span class="mono strong">${fmt(totalEarned)}</span></div>
@@ -1635,7 +1693,7 @@ function renderEmployeeCard(emp, partners) {
             const isDeduct = a.deductSalary !== false;
             const mult = a.status === 'halfday' ? 0.5 : 1;
             const loss = dailyRate * mult;
-            const tag = isDeduct ? `<span class="tag tag-rust">Deduct -${fmt(loss)}</span>` : `<span class="tag tag-done">Paid Leave ($0)</span>`;
+            const tag = isDeduct ? `<span class="badge bg-danger">Deduct -${fmt(loss)}</span>` : `<span class="badge bg-success">Paid Leave ($0)</span>`;
             return `<div class="history-row" style="align-items:center;">
               <span class="mono muted" style="width:90px">${esc(a.date)}</span>
               <span style="flex:1">${a.status === 'halfday' ? 'Half Day' : 'Full Day'} ${a.note ? `— ${esc(a.note)}` : ''} ${tag}</span>
@@ -1648,18 +1706,22 @@ function renderEmployeeCard(emp, partners) {
       attendanceSection = `
         <div class="serif small-title">📅 Attendance &amp; Absences</div>
         <div class="muted small" style="margin-bottom:8px">Daily Rate: <span class="mono strong">${fmt(dailyRate)}</span> (${wDays} working days/week). Log absent days and choose whether to deduct salary or count as paid leave.</div>
-        <div class="form-grid-adv" style="margin-bottom:8px;">
-          <input class="led-input" type="date" id="att-date-${emp.id}" value="${today()}">
-          <select class="led-input" id="att-status-${emp.id}">
-            <option value="absent">Full Day Absent</option>
-            <option value="halfday">Half Day</option>
-          </select>
-          <select class="led-input" id="att-deduct-${emp.id}">
-            <option value="yes">Deduct Salary (Unpaid)</option>
-            <option value="no">Paid Leave (No Deduct)</option>
-          </select>
-          <input class="led-input" id="att-note-${emp.id}" placeholder="Reason / Note (optional)">
-          <button class="led-btn secondary" data-act="add-attendance" data-emp="${emp.id}">+ Log Absence</button>
+        <div class="row g-2 align-items-center mb-2">
+          <div class="col-md-2 col-6"><input class="form-control" type="date" id="att-date-${emp.id}" value="${today()}"></div>
+          <div class="col-md-3 col-6">
+            <select class="form-select" id="att-status-${emp.id}">
+              <option value="absent">Full Day Absent</option>
+              <option value="halfday">Half Day</option>
+            </select>
+          </div>
+          <div class="col-md-3 col-6">
+            <select class="form-select" id="att-deduct-${emp.id}">
+              <option value="yes">Deduct Salary (Unpaid)</option>
+              <option value="no">Paid Leave (No Deduct)</option>
+            </select>
+          </div>
+          <div class="col-md-2 col-6"><input class="form-control" id="att-note-${emp.id}" placeholder="Reason (optional)"></div>
+          <div class="col-md-2 col-12"><button class="btn btn-outline-dark fw-bold w-100" data-act="add-attendance" data-emp="${emp.id}">+ Log</button></div>
         </div>
         ${attListHtml}
         <div class="divider"></div>
@@ -1668,25 +1730,25 @@ function renderEmployeeCard(emp, partners) {
 
     const advanceSection = `
       <div class="serif small-title">Money given during the week (advance)</div>
-      <div class="form-grid-adv">
-        <input class="led-input" type="date" id="adv-date-${emp.id}" value="${today()}">
-        <input class="led-input" type="number" id="adv-amount-${emp.id}" placeholder="Amount">
-        <select class="led-input" id="adv-paidby-${emp.id}">${partners.map(p=>`<option value="${p.id}">Given by ${esc(p.name)}</option>`).join("")}</select>
-        <input class="led-input" id="adv-note-${emp.id}" placeholder="Note (optional)">
-        <button class="led-btn secondary" data-act="add-advance" data-emp="${emp.id}">+ Log advance</button>
+      <div class="row g-2 align-items-center mb-2">
+        <div class="col-md-2 col-6"><input class="form-control" type="date" id="adv-date-${emp.id}" value="${today()}"></div>
+        <div class="col-md-2 col-6"><input class="form-control" type="number" id="adv-amount-${emp.id}" placeholder="Amount"></div>
+        <div class="col-md-3 col-6"><select class="form-select" id="adv-paidby-${emp.id}">${partners.map(p=>`<option value="${p.id}">Given by ${esc(p.name)}</option>`).join("")}</select></div>
+        <div class="col-md-3 col-6"><input class="form-control" id="adv-note-${emp.id}" placeholder="Note (optional)"></div>
+        <div class="col-md-2 col-12"><button class="btn btn-outline-dark fw-bold w-100" data-act="add-advance" data-emp="${emp.id}">+ Log Advance</button></div>
       </div>
       ${outstandingAdv>0 ? `<div class="gold small" style="margin-bottom:14px">${fmt(outstandingAdv)} given this period — can be deducted automatically on payday below.</div>` : `<div style="margin-bottom:14px"></div>`}
     `;
 
     const coveredList = coveredExpenses.length ? `
       <div class="serif small-title">Expenses they've covered</div>
-      ${coveredExpenses.map(x => `<div class="history-row"><span class="mono muted" style="width:90px">${esc(x.date)}</span><span style="flex:1">${esc(x.description)} ${x.settled?`<span class="tag tag-done">reimbursed</span>`:`<span class="tag tag-wait">awaiting</span>`}</span><span class="mono strong gold">${fmt(x.amount)}</span></div>`).join("")}
+      ${coveredExpenses.map(x => `<div class="history-row"><span class="mono muted" style="width:90px">${esc(x.date)}</span><span style="flex:1">${esc(x.description)} ${x.settled?`<span class="badge bg-success">reimbursed</span>`:`<span class="badge bg-warning text-dark">awaiting</span>`}</span><span class="mono strong gold">${fmt(x.amount)}</span></div>`).join("")}
       <div style="margin-bottom:14px"></div>
     ` : "";
 
     const heldList = heldIncome.length ? `
       <div class="serif small-title">Cash they've collected from customers</div>
-      ${heldIncome.map(x => `<div class="history-row"><span class="mono muted" style="width:90px">${esc(x.date)}</span><span style="flex:1">${esc(x.item)} ${x.settled?`<span class="tag tag-done">settled</span>`:`<span class="tag tag-wait">holding</span>`}</span><span class="mono strong" style="color:var(--rust)">${fmt(x.amount)}</span></div>`).join("")}
+      ${heldIncome.map(x => `<div class="history-row"><span class="mono muted" style="width:90px">${esc(x.date)}</span><span style="flex:1">${esc(x.item)} ${x.settled?`<span class="badge bg-success">settled</span>`:`<span class="badge bg-warning text-dark">holding</span>`}</span><span class="mono strong text-danger">${fmt(x.amount)}</span></div>`).join("")}
       <div style="margin-bottom:14px"></div>
     ` : "";
 
@@ -1721,12 +1783,12 @@ function renderEmployeeCard(emp, partners) {
 
     const paySection = `
       <div class="serif small-title">${emp.type==="weekly"?"Pay this week":"Log a payment"}</div>
-      <div class="form-grid-adv">
-        <input class="led-input" type="date" id="pay-date-${emp.id}" value="${today()}">
-        <input class="led-input" type="number" id="pay-amount-${emp.id}" placeholder="${suggestedTotal > 0 ? String(suggestedTotal) : 'Amount'}">
-        <select class="led-input" id="pay-paidby-${emp.id}">${partners.map(p=>`<option value="${p.id}">Paid by ${esc(p.name)}</option>`).join("")}</select>
-        <input class="led-input" id="pay-note-${emp.id}" placeholder="Note (optional)">
-        <button class="led-btn" data-act="add-payment" data-emp="${emp.id}">+ Pay</button>
+      <div class="row g-2 align-items-center mb-2">
+        <div class="col-md-2 col-6"><input class="form-control" type="date" id="pay-date-${emp.id}" value="${today()}"></div>
+        <div class="col-md-2 col-6"><input class="form-control" type="number" id="pay-amount-${emp.id}" placeholder="${suggestedTotal > 0 ? String(suggestedTotal) : 'Amount'}"></div>
+        <div class="col-md-3 col-6"><select class="form-select" id="pay-paidby-${emp.id}">${partners.map(p=>`<option value="${p.id}">Paid by ${esc(p.name)}</option>`).join("")}</select></div>
+        <div class="col-md-3 col-6"><input class="form-control" id="pay-note-${emp.id}" placeholder="Note (optional)"></div>
+        <div class="col-md-2 col-12"><button class="btn btn-dark fw-bold w-100" data-act="add-payment" data-emp="${emp.id}">+ Pay</button></div>
       </div>
       ${deductAttRow}${deductAdvRow}${deductHeldRow}${includeReimbRow}
       ${payNote ? `<div class="muted small" style="margin-bottom:14px">${payNote}</div>` : `<div style="margin-bottom:14px"></div>`}
@@ -1854,27 +1916,29 @@ function renderVendorCard(vendor, partners) {
 
     const purchaseSection = `
       <div class="serif small-title">Log a Purchase</div>
-      <div class="form-grid-income" style="grid-template-columns:120px 1fr 100px 150px auto">
-        <input class="led-input" type="date" id="vp-date-${vendor.id}" value="${today()}">
-        <input class="led-input" id="vp-desc-${vendor.id}" placeholder="What was bought (e.g. leather hides)">
-        <input class="led-input" type="number" id="vp-amount-${vendor.id}" placeholder="Amount">
-        <select class="led-input" id="vp-payment-${vendor.id}">
-          ${partners.map(p=>`<option value="partner:${p.id}">Paid now by ${esc(p.name)}</option>`).join("")}
-          <option value="credit">On credit (pay later)</option>
-        </select>
-        <button class="led-btn" data-act="add-purchase" data-vendor="${vendor.id}">+ Log Purchase</button>
+      <div class="row g-2 align-items-center mb-2">
+        <div class="col-md-2 col-6"><input class="form-control" type="date" id="vp-date-${vendor.id}" value="${today()}"></div>
+        <div class="col-md-4 col-12"><input class="form-control" id="vp-desc-${vendor.id}" placeholder="What was bought (e.g. leather hides)"></div>
+        <div class="col-md-2 col-6"><input class="form-control" type="number" id="vp-amount-${vendor.id}" placeholder="Amount"></div>
+        <div class="col-md-2 col-6">
+          <select class="form-select" id="vp-payment-${vendor.id}">
+            ${partners.map(p=>`<option value="partner:${p.id}">Paid now by ${esc(p.name)}</option>`).join("")}
+            <option value="credit">On credit (pay later)</option>
+          </select>
+        </div>
+        <div class="col-md-2 col-12"><button class="btn btn-dark fw-bold w-100" data-act="add-purchase" data-vendor="${vendor.id}">+ Purchase</button></div>
       </div>
       <div style="margin-bottom:16px"></div>
     `;
 
     const paySection = `
       <div class="serif small-title">Pay this Vendor</div>
-      <div class="form-grid-adv">
-        <input class="led-input" type="date" id="vpay-date-${vendor.id}" value="${today()}">
-        <input class="led-input" type="number" id="vpay-amount-${vendor.id}" placeholder="${outstanding > 0 ? outstanding.toFixed(2) : 'Amount'}">
-        <select class="led-input" id="vpay-paidby-${vendor.id}">${partners.map(p=>`<option value="${p.id}">Paid by ${esc(p.name)}</option>`).join("")}</select>
-        <input class="led-input" id="vpay-note-${vendor.id}" placeholder="Note (optional)">
-        <button class="led-btn" data-act="pay-vendor" data-vendor="${vendor.id}">+ Record Payment</button>
+      <div class="row g-2 align-items-center mb-2">
+        <div class="col-md-2 col-6"><input class="form-control" type="date" id="vpay-date-${vendor.id}" value="${today()}"></div>
+        <div class="col-md-2 col-6"><input class="form-control" type="number" id="vpay-amount-${vendor.id}" placeholder="${outstanding > 0 ? outstanding.toFixed(2) : 'Amount'}"></div>
+        <div class="col-md-3 col-6"><select class="form-select" id="vpay-paidby-${vendor.id}">${partners.map(p=>`<option value="${p.id}">Paid by ${esc(p.name)}</option>`).join("")}</select></div>
+        <div class="col-md-3 col-6"><input class="form-control" id="vpay-note-${vendor.id}" placeholder="Note (optional)"></div>
+        <div class="col-md-2 col-12"><button class="btn btn-dark fw-bold w-100" data-act="pay-vendor" data-vendor="${vendor.id}">+ Pay</button></div>
       </div>
       ${outstanding > 0.005 ? `<div class="muted small" style="margin-top:6px">Currently owe ${fmt(outstanding)} — leave amount blank for full payment or enter partial amount.</div>` : ''}
     `;
@@ -1882,14 +1946,14 @@ function renderVendorCard(vendor, partners) {
     const historyHtml = historyItems.length ? `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <span class="mono muted" style="font-size:11.5px;font-weight:700;">TRANSACTION LOG</span>
-        <button class="led-btn secondary" style="font-size:12.5px;padding:4px 12px;" data-act="set-card-tab" data-id="${vendor.id}" data-tab="form">
+        <button class="btn btn-sm btn-outline-dark fw-semibold" style="font-size:12.5px;padding:4px 12px;" data-act="set-card-tab" data-id="${vendor.id}" data-tab="form">
           + Log New Purchase / Payment
         </button>
       </div>
       ${historyItems.map(r => {
         let label, color, sign;
         if (r.kind === "purchase") {
-          label = `Purchase: ${esc(r.description)}${r.onCredit ? ` <span class="tag tag-wait">on credit</span>` : ` <span class="tag tag-done">paid by ${esc(partners.find(p=>p.id===r.paidBy)?.name||"—")}</span>`}`;
+          label = `Purchase: ${esc(r.description)}${r.onCredit ? ` <span class="badge bg-warning text-dark">on credit</span>` : ` <span class="badge bg-success">paid by ${esc(partners.find(p=>p.id===r.paidBy)?.name||"—")}</span>`}`;
           color = "var(--rust)"; sign = "-";
         } else {
           label = `Payment by ${esc(partners.find(p=>p.id===r.paidBy)?.name||"—")}${r.note?" — "+esc(r.note):""}`;
@@ -1916,7 +1980,7 @@ function renderVendorCard(vendor, partners) {
           ${vendor.note ? `<span class="muted small">— ${esc(vendor.note)}</span>` : ""}
         </div>
         <div class="emp-head-right">
-          ${outstanding>0.005 ? `<span class="mono small strong" style="color:var(--rust)">owe ${fmt(outstanding)}</span>` : `<span class="mono small strong" style="color:var(--teal)">settled</span>`}
+          ${outstanding>0.005 ? `<span class="mono small strong text-danger">owe ${fmt(outstanding)}</span>` : `<span class="mono small strong text-success">settled</span>`}
           <button class="icon-btn" data-act="edit-vendor" data-id="${vendor.id}" title="Edit Vendor">✏️</button>
           <button class="icon-btn" data-act="delete-vendor" data-id="${vendor.id}" title="Delete Vendor" style="color:var(--rust);margin-left:4px">🗑️</button>
         </div>
@@ -1928,10 +1992,10 @@ function renderVendorCard(vendor, partners) {
 
 function renderSettings() {
   const partnersHtml = state.config.partners.map(p => `
-    <div class="form-grid-partner">
-      <div><span class="muted small">Partner Name</span><input class="led-input" data-act="partner-name" data-id="${p.id}" value="${esc(p.name)}"></div>
-      <div><span class="muted small">Ratio Share</span><input class="led-input" type="number" data-act="partner-ratio" data-id="${p.id}" value="${p.ratio}"></div>
-      <div><span class="muted small">Starting Capital</span><input class="led-input" type="number" data-act="partner-cap" data-id="${p.id}" value="${p.openingCapital || 0}"></div>
+    <div class="row g-2 align-items-center mb-2">
+      <div class="col-md-4 col-12"><label class="form-label small text-muted mb-0">Partner Name</label><input class="form-control" data-act="partner-name" data-id="${p.id}" value="${esc(p.name)}"></div>
+      <div class="col-md-4 col-6"><label class="form-label small text-muted mb-0">Ratio Share</label><input class="form-control" type="number" data-act="partner-ratio" data-id="${p.id}" value="${p.ratio}"></div>
+      <div class="col-md-4 col-6"><label class="form-label small text-muted mb-0">Starting Capital</label><input class="form-control" type="number" data-act="partner-cap" data-id="${p.id}" value="${p.openingCapital || 0}"></div>
     </div>`).join("");
   return `
     <div class="panel">
@@ -1941,15 +2005,15 @@ function renderSettings() {
     </div>
     <div class="panel">
       <div class="serif strong" style="margin-bottom:12px">Currency symbol</div>
-      <input class="led-input" style="width:80px" data-act="currency" value="${esc(state.config.currency)}">
+      <input class="form-control" style="width:100px" data-act="currency" value="${esc(state.config.currency)}">
     </div>
     <div class="panel">
       <div class="serif strong" style="margin-bottom:8px">Passcode & Security</div>
       <div class="muted small" style="margin-bottom:12px">Change your access passcode (default is <code>1234</code>).</div>
-      <form id="passcode-form" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-        <input class="led-input" type="password" id="cur-passcode" placeholder="Current passcode" style="width:160px" required>
-        <input class="led-input" type="password" id="new-passcode" placeholder="New passcode" style="width:160px" required minlength="4">
-        <button type="submit" class="led-btn">Update Passcode</button>
+      <form id="passcode-form" class="row g-2 align-items-center">
+        <div class="col-auto"><input class="form-control" type="password" id="cur-passcode" placeholder="Current passcode" style="width:180px" required></div>
+        <div class="col-auto"><input class="form-control" type="password" id="new-passcode" placeholder="New passcode" style="width:180px" required minlength="4"></div>
+        <div class="col-auto"><button type="submit" class="btn btn-dark fw-bold px-4">Update Passcode</button></div>
       </form>
       <div id="pass-msg" style="margin-top:6px" class="small"></div>
     </div>
@@ -1957,9 +2021,9 @@ function renderSettings() {
       <div class="serif strong" style="margin-bottom:8px">Data Backup & Restore</div>
       <div class="muted small" style="margin-bottom:12px">Export your ledger data to a JSON file for safe offline backup, or restore data from a backup file.</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="led-btn" data-act="export-data">📥 Export Backup (JSON)</button>
-        <button class="led-btn secondary" data-act="import-trigger">📤 Import Backup</button>
-        <input type="file" id="import-file-input" accept=".json" style="display:none">
+        <button class="btn btn-outline-dark fw-bold" data-act="export-data">📥 Export Backup (JSON)</button>
+        <button class="btn btn-outline-dark fw-bold" onclick="document.getElementById('import-file-input').click()">📤 Restore from Backup File</button>
+        <input type="file" id="import-file-input" style="display:none" accept=".json" onchange="importDataFile(event)">
       </div>
     </div>
   `;
@@ -1967,24 +2031,22 @@ function renderSettings() {
 
 function renderReports() {
   const range = state.reportRange || "all";
-  let startDate = state.reportStart || "";
-  let endDate = state.reportEnd || "";
+  let startDate = state.reportStartDate || "";
+  let endDate = state.reportEndDate || "";
 
-  const now = new Date();
   if (range === "this_month") {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    startDate = start.toISOString().slice(0, 10);
+    const d = new Date();
+    startDate = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
     endDate = today();
   } else if (range === "last_month") {
-    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const end = new Date(now.getFullYear(), now.getMonth(), 0);
-    startDate = start.toISOString().slice(0, 10);
-    endDate = end.toISOString().slice(0, 10);
+    const d = new Date();
+    startDate = new Date(d.getFullYear(), d.getMonth() - 1, 1).toISOString().slice(0, 10);
+    endDate = new Date(d.getFullYear(), d.getMonth(), 0).toISOString().slice(0, 10);
   } else if (range === "this_week") {
-    const day = now.getDay() || 7;
-    const start = new Date(now);
-    start.setDate(now.getDate() - day + 1);
-    startDate = start.toISOString().slice(0, 10);
+    const d = new Date();
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    startDate = new Date(d.setDate(diff)).toISOString().slice(0, 10);
     endDate = today();
   }
 
@@ -2038,13 +2100,13 @@ function renderReports() {
 
   return `
     <div class="panel" style="margin-bottom:16px;">
-      <div style="display:flex;justify-space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
         <div>
           <div class="serif strong" style="font-size:18px;">📊 Financial &amp; Operational Reports</div>
           <div class="muted small">Detailed breakdown of Income, Salaries, Attendance, Expenses, and Profit.</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <select class="led-input" id="rep-range" data-act="set-report-range" style="width:140px;">
+          <select class="form-select" id="rep-range" data-act="set-report-range" style="width:150px;">
             <option value="all" ${range==='all'?'selected':''}>All Time</option>
             <option value="this_month" ${range==='this_month'?'selected':''}>This Month</option>
             <option value="last_month" ${range==='last_month'?'selected':''}>Last Month</option>
@@ -2052,13 +2114,10 @@ function renderReports() {
             <option value="custom" ${range==='custom'?'selected':''}>Custom Range</option>
           </select>
           ${range === 'custom' ? `
-            <input class="led-input" type="date" id="rep-start" value="${startDate}" data-act="set-report-start" style="width:130px;">
+            <input class="form-control" type="date" id="rep-start" value="${startDate}" data-act="set-report-start" style="width:140px;">
             <span class="muted small">to</span>
-            <input class="led-input" type="date" id="rep-end" value="${endDate}" data-act="set-report-end" style="width:130px;">
+            <input class="form-control" type="date" id="rep-end" value="${endDate}" data-act="set-report-end" style="width:140px;">
           ` : ''}
-          <button class="led-btn secondary no-hide-print" onclick="window.print()">🖨️ Print / Save PDF</button>
-        </div>
-      </div>
     </div>
 
     <div class="grid3" style="margin-bottom:16px;">
@@ -2354,6 +2413,44 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    if (act === "toggle-customer") {
+      const id = el.dataset.id;
+      state.expandedCust = state.expandedCust === id ? null : id;
+      render();
+      return;
+    }
+    if (act === "cust-add-order") {
+      const custId = el.dataset.id;
+      const cust = (state.config.customers || []).find(c => c.id === custId);
+      const item = document.getElementById(`cust-quick-item-${custId}`).value.trim();
+      const qty = Number(document.getElementById(`cust-quick-qty-${custId}`).value) || 1;
+      const amount = Number(document.getElementById(`cust-quick-amount-${custId}`).value) || 0;
+      const paid = Number(document.getElementById(`cust-quick-paid-${custId}`).value) || 0;
+      if (!item || !amount) { swalAlert("Required", "Please enter item name and amount", "warning"); return; }
+      const entry = {
+        id: uid(),
+        date: today(),
+        item,
+        quantity: qty,
+        amount,
+        customerId: custId,
+        note: cust ? `Order for ${cust.name}` : "",
+        payments: [
+          {
+            id: uid(),
+            date: today(),
+            amount: paid,
+            receivedBy: state.config.partners[0]?.id || "p1",
+            settled: false,
+            note: paid < amount ? "Advance payment" : "Full payment"
+          }
+        ]
+      };
+      mutate(() => state.income.unshift(entry));
+      toast("📦 Customer order logged successfully!");
+      return;
+    }
+
     if (act === "add-income") {
       const date = document.getElementById("inc-date").value || today();
       const item = document.getElementById("inc-item").value.trim();
@@ -2363,6 +2460,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const paidAmount = paidInput !== "" ? Number(paidInput) : totalAmount;
       const receiverVal = document.getElementById("inc-receivedby").value;
       const [receiverType, receiverId] = receiverVal.split(":");
+      const customerId = document.getElementById("inc-customer") ? document.getElementById("inc-customer").value : "";
       const note = document.getElementById("inc-note").value.trim();
       if (!item || !totalAmount) return;
       const entry = {
@@ -2371,6 +2469,7 @@ document.addEventListener("DOMContentLoaded", () => {
         item,
         quantity,
         amount: totalAmount,
+        customerId,
         note,
         payments: [
           {
