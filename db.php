@@ -57,18 +57,14 @@ function init_db($pdo) {
 }
 
 function verify_passcode($passcode) {
-    try {
-        $passcode = (string)$passcode;
-        $pdo = get_db();
-        $stmt = $pdo->query("SELECT passcode_hash FROM app_auth WHERE id = 1");
-        $row = $stmt->fetch();
-        if ($row && !empty($row['passcode_hash'])) {
-            return password_verify($passcode, trim($row['passcode_hash']));
-        }
-        return $passcode === DEFAULT_PASSCODE;
-    } catch (Exception $e) {
-        return false;
+    $passcode = (string)$passcode;
+    $pdo = get_db();
+    $stmt = $pdo->query("SELECT passcode_hash FROM app_auth WHERE id = 1");
+    $row = $stmt->fetch();
+    if ($row && !empty($row['passcode_hash'])) {
+        return password_verify($passcode, trim($row['passcode_hash']));
     }
+    return $passcode === DEFAULT_PASSCODE;
 }
 
 function update_passcode($new_passcode) {
