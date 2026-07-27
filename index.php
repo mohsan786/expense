@@ -1232,6 +1232,96 @@ async function quickDeleteWorkLog(wlId) {
   }
 }
 
+async function editWorkLog(wlId) {
+  const w = (state.workLogs || []).find(log => log.id === wlId);
+  if (!w) return;
+
+  const workItems = state.workItems || [];
+  const itemOptions = workItems.map(wi => 
+    `<option value="${wi.id}" data-rate="${wi.unitPrice}" data-label="${esc(wi.name)}" ${w.workItemId === wi.id ? 'selected' : ''}>${esc(wi.name)} — ${fmt(wi.unitPrice)} / ${esc(wi.unit||'piece')}</option>`
+  ).join('');
+
+  const { value: formValues } = await Swal.fire({
+    title: '✏️ Edit Work Production Entry',
+    html: `
+      <div style="text-align:left;display:flex;flex-direction:column;gap:10px;">
+        <div>
+          <label style="font-size:12px;font-weight:600;">Date</label>
+          <input id="swal-wl-date" type="date" class="swal2-input" value="${w.date}" style="margin:4px 0 0 0;width:100%;">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;">Select Work Item *</label>
+          <select id="swal-wl-item" class="swal2-input" style="margin:4px 0 0 0;width:100%;">
+            <option value="">— Select item —</option>
+            ${itemOptions}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;">Quantity *</label>
+          <input id="swal-wl-qty" type="number" class="swal2-input" value="${w.quantity}" style="margin:4px 0 0 0;width:100%;">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;">Rate Per Pair/Unit (Rs.) *</label>
+          <input id="swal-wl-rate" type="number" class="swal2-input" value="${w.unitPrice}" style="margin:4px 0 0 0;width:100%;">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;">Note (optional)</label>
+          <input id="swal-wl-note" class="swal2-input" value="${esc(w.note || '')}" placeholder="Details..." style="margin:4px 0 0 0;width:100%;">
+        </div>
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonColor: '#0F172A',
+    didOpen: () => {
+      const sel = document.getElementById('swal-wl-item');
+      if (sel) {
+        sel.addEventListener('change', () => {
+          const opt = sel.options[sel.selectedIndex];
+          if (opt && opt.dataset.rate) {
+            document.getElementById('swal-wl-rate').value = opt.dataset.rate;
+          }
+        });
+      }
+    },
+    preConfirm: () => {
+      const date = document.getElementById('swal-wl-date').value || w.date;
+      const sel = document.getElementById('swal-wl-item');
+      const workItemId = sel ? sel.value : w.workItemId;
+      const opt = sel ? sel.options[sel.selectedIndex] : null;
+      const itemLabel = opt && opt.value ? (opt.dataset.label || opt.text.split(' —')[0]) : w.itemLabel;
+      const quantity = Number(document.getElementById('swal-wl-qty').value);
+      const unitPrice = Number(document.getElementById('swal-wl-rate').value);
+      const note = document.getElementById('swal-wl-note').value.trim();
+
+      if (!quantity || isNaN(quantity) || quantity <= 0) {
+        Swal.showValidationMessage('Please enter a valid quantity greater than zero.');
+        return false;
+      }
+      if (!unitPrice || isNaN(unitPrice) || unitPrice <= 0) {
+        Swal.showValidationMessage('Please enter a valid rate per unit.');
+        return false;
+      }
+      return { date, workItemId, itemLabel, quantity, unitPrice, amount: quantity * unitPrice, note };
+    }
+  });
+
+  if (formValues) {
+    mutate(() => {
+      const target = (state.workLogs || []).find(log => log.id === wlId);
+      if (target) {
+        target.date = formValues.date;
+        if (formValues.workItemId) target.workItemId = formValues.workItemId;
+        if (formValues.itemLabel) target.itemLabel = formValues.itemLabel;
+        target.quantity = formValues.quantity;
+        target.unitPrice = formValues.unitPrice;
+        target.amount = formValues.amount;
+        target.note = formValues.note;
+      }
+    });
+    Swal.fire({ toast: true, icon: 'success', title: 'Work log updated!', timer: 2000, showConfirmButton: false });
+  }
+}
+
 function getPaymentMethodLabel(pm) {
   if (pm === 'bank') return '🏦 Bank';
   if (pm === 'wallet') return '📱 Mobile Wallet';
@@ -2315,7 +2405,10 @@ function renderEmployeeCard(emp, partners) {
                       <td class="mono text-end">${fmt(w.unitPrice)}</td>
                       <td class="mono text-end fw-bold text-success">${fmt(w.amount)}</td>
                       <td class="small text-muted">${w.note ? esc(w.note) : '—'}</td>
-                      <td><button class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:10px;" onclick="quickDeleteWorkLog('${w.id}')" title="Delete">🗑️</button></td>
+                      <td class="text-center">
+                        <button class="btn btn-sm btn-outline-primary py-0 px-1 border-0 me-1" style="font-size:10px;" onclick="editWorkLog('${w.id}')" title="Edit Work Production Entry">✏️</button>
+                        <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0" style="font-size:10px;" onclick="quickDeleteWorkLog('${w.id}')" title="Delete">🗑️</button>
+                      </td>
                     </tr>
                   `).join('')}
               </tbody>
