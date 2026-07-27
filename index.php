@@ -1895,7 +1895,8 @@ function renderEmployees() {
         </div>
         <div class="col-md-6 col-12 mt-2">
           <select class="form-select" id="new-emp-joining-paidby">
-            ${partners.map(p=>`<option value="${p.id}">Peshgi Given By ${esc(p.name)}</option>`).join("")}
+            <option value="business" selected>🏢 Business Funds (Shared by Ratio)</option>
+            ${partners.map(p=>`<option value="${p.id}">Peshgi Given By ${esc(p.name)} individually</option>`).join("")}
           </select>
         </div>
         <div class="col-12" id="new-emp-weekly-wrap">
@@ -2042,7 +2043,7 @@ function renderEmployeeCard(emp, partners) {
       <div class="row g-2 align-items-center mb-2">
         <div class="col-md-2 col-6"><input class="form-control" type="date" id="adv-date-${emp.id}" value="${today()}"></div>
         <div class="col-md-2 col-6"><input class="form-control" type="number" id="adv-amount-${emp.id}" placeholder="Amount"></div>
-        <div class="col-md-3 col-6"><select class="form-select" id="adv-paidby-${emp.id}">${partners.map(p=>`<option value="${p.id}">Given by ${esc(p.name)}</option>`).join("")}</select></div>
+        <div class="col-md-3 col-6"><select class="form-select" id="adv-paidby-${emp.id}"><option value="business" selected>🏢 Business Funds (Shared by Ratio)</option>${partners.map(p=>`<option value="${p.id}">Given by ${esc(p.name)}</option>`).join("")}</select></div>
         <div class="col-md-3 col-6"><input class="form-control" id="adv-note-${emp.id}" placeholder="Note (optional)"></div>
         <div class="col-md-2 col-12"><button class="btn btn-dark fw-bold w-100" data-act="add-advance" data-emp="${emp.id}">+ Log Advance</button></div>
       </div>
@@ -2137,7 +2138,10 @@ function renderEmployeeCard(emp, partners) {
         let label = "";
         if (r.kind === "work") label = `Work: ${esc(r.itemLabel||"Work")} × ${r.quantity}${r.note?" — "+esc(r.note):""}`;
         else if (r.kind === "pay") label = `Salary Payment: Paid by ${esc(partners.find(p=>p.id===r.paidBy)?.name||"—")}${r.deductedAdvances?` (− ${fmt(r.deductedAdvances)} advance)`:""}${r.deductedHeld?` (− ${fmt(r.deductedHeld)} collected)`:""}${r.reimbursedAmount?` (+ ${fmt(r.reimbursedAmount)} reimb.)`:""}${r.note?" — "+esc(r.note):""}`;
-        else if (r.kind === "advance") label = `Advance Given: Paid by ${esc(partners.find(p=>p.id===r.paidBy)?.name||"—")}${r.note?" — "+esc(r.note):""}`;
+        else if (r.kind === "advance") {
+          const payerName = r.paidBy === "business" || !r.paidBy ? "Business Funds (Shared by Ratio)" : (partners.find(p=>p.id===r.paidBy)?.name || "Business Funds");
+          label = `Advance Given: Paid by ${esc(payerName)}${r.note?" — "+esc(r.note):""}`;
+        }
         else if (r.kind === "attendance") {
           const isD = r.deductSalary !== false;
           const loss = dailyRate * (r.status === 'halfday' ? 0.5 : 1);
@@ -2861,7 +2865,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const weeklyRate = Number(document.getElementById("new-emp-weekly")?.value || 0);
       const monthlyRate = Number(document.getElementById("new-emp-monthly")?.value || 0);
       const joiningAdv = Number(document.getElementById("new-emp-joining-adv")?.value || 0);
-      const joiningPaidBy = document.getElementById("new-emp-joining-paidby")?.value || (state.config.partners[0] ? state.config.partners[0].id : undefined);
+      const joiningPaidBy = document.getElementById("new-emp-joining-paidby")?.value || "business";
       const workingDays = type === 'monthly' ? 26 : 6;
       const emp = { 
         id: uid(), 
