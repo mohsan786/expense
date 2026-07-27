@@ -2025,8 +2025,93 @@ function renderEmployeeCard(emp, partners) {
       `;
     }
 
+    const totalAdvGiven = advances.reduce((s, a) => s + Number(a.amount || 0), 0);
+    const totalAdvReturned = payments.reduce((s, p) => s + Number(p.deductedAdvances || 0), 0);
+
+    const advEvents = [
+      ...advances.map(a => ({
+        date: a.date,
+        type: a.isJoiningAdvance ? 'Joining Peshgi (+)' : 'Weekly Kharcha (+)',
+        note: a.note || (a.isJoiningAdvance ? 'Joining Advance (Peshgi)' : 'Weekly Advance'),
+        given: Number(a.amount || 0),
+        returned: 0,
+        paidBy: a.paidBy === 'business' || !a.paidBy ? 'Business Funds' : (partners.find(p=>p.id===a.paidBy)?.name || 'Partner'),
+        settled: a.settled
+      })),
+      ...payments.filter(p => Number(p.deductedAdvances || 0) > 0).map(p => ({
+        date: p.date,
+        type: 'Payday Deduction (-)',
+        note: p.note ? `Salary Payday: ${p.note}` : 'Salary Payday Advance Repayment',
+        given: 0,
+        returned: Number(p.deductedAdvances || 0),
+        paidBy: p.paidBy === 'business' || !p.paidBy ? 'Salary Settlement' : (partners.find(p=>p.id===p.paidBy)?.name || 'Salary Settlement'),
+        settled: true
+      }))
+    ].sort((a, b) => b.date.localeCompare(a.date));
+
+    const advBreakdownTable = advEvents.length ? `
+      <div class="table-responsive mt-2 mb-3">
+        <table class="table table-sm table-bordered align-middle mb-0" style="font-size:12px;">
+          <thead class="table-light mono" style="font-size:11px;">
+            <tr>
+              <th>DATE</th>
+              <th>TYPE</th>
+              <th>NOTE / DETAILS</th>
+              <th class="text-end">ADVANCE GIVEN</th>
+              <th class="text-end">RETURNED / DEDUCTED</th>
+              <th>SOURCE / PAID BY</th>
+              <th>STATUS</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${advEvents.map(ev => `
+              <tr>
+                <td class="mono muted">${esc(ev.date)}</td>
+                <td><span class="badge ${ev.given > 0 ? (ev.type.includes('Peshgi') ? 'bg-warning text-dark' : 'bg-secondary') : 'bg-success'}">${esc(ev.type)}</span></td>
+                <td>${esc(ev.note)}</td>
+                <td class="mono text-end ${ev.given > 0 ? 'fw-bold gold' : 'text-muted'}">${ev.given > 0 ? fmt(ev.given) : '—'}</td>
+                <td class="mono text-end ${ev.returned > 0 ? 'fw-bold text-success' : 'text-muted'}">${ev.returned > 0 ? fmt(ev.returned) : '—'}</td>
+                <td class="small">${esc(ev.paidBy)}</td>
+                <td>${ev.settled ? `<span class="badge bg-light text-dark border">Settled</span>` : `<span class="badge bg-warning text-dark">Active Due</span>`}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+          <tfoot class="table-light mono fw-bold" style="font-size:12px;">
+            <tr>
+              <td colspan="3" class="text-end">TOTALS:</td>
+              <td class="text-end gold">${fmt(totalAdvGiven)}</td>
+              <td class="text-end text-success">${fmt(totalAdvReturned)}</td>
+              <td colspan="2" class="text-end">NET OUTSTANDING: <span class="text-danger">${fmt(outstandingAdv)}</span></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    ` : `<div class="muted small mb-3">No advances given or returned yet.</div>`;
+
     const advanceSection = `
-      <div class="serif small-title">Money given during the week (advance)</div>
+      <div class="serif small-title">💰 Advance Ledger &amp; Return Breakthrough</div>
+      
+      <div class="row g-2 mb-3">
+        <div class="col-md-4 col-12 text-center p-2 rounded bg-light border">
+          <div class="muted small fw-bold" style="font-size:10px;">TOTAL ADVANCES GIVEN</div>
+          <div class="mono strong text-warning" style="font-size:15px;">${fmt(totalAdvGiven)}</div>
+          <div class="muted small" style="font-size:11px;">Peshgi + Kharcha</div>
+        </div>
+        <div class="col-md-4 col-12 text-center p-2 rounded bg-light border">
+          <div class="muted small fw-bold" style="font-size:10px;">TOTAL RETURNED / DEDUCTED</div>
+          <div class="mono strong text-success" style="font-size:15px;">${fmt(totalAdvReturned)}</div>
+          <div class="muted small" style="font-size:11px;">Salary Deductions</div>
+        </div>
+        <div class="col-md-4 col-12 text-center p-2 rounded bg-light border">
+          <div class="muted small fw-bold" style="font-size:10px;">REMAINING OUTSTANDING</div>
+          <div class="mono strong text-danger" style="font-size:15px;">${fmt(outstandingAdv)}</div>
+          <div class="muted small" style="font-size:11px;">Current Net Advance Due</div>
+        </div>
+      </div>
+
+      ${advBreakdownTable}
+
+      <div class="serif small-title mt-3">➕ Log New Weekly Advance (Kharcha)</div>
       <div class="row g-2 align-items-center mb-2">
         <div class="col-md-2 col-6"><input class="form-control" type="date" id="adv-date-${emp.id}" value="${today()}"></div>
         <div class="col-md-2 col-6"><input class="form-control" type="number" id="adv-amount-${emp.id}" placeholder="Amount"></div>
@@ -2034,7 +2119,6 @@ function renderEmployeeCard(emp, partners) {
         <div class="col-md-3 col-6"><input class="form-control" id="adv-note-${emp.id}" placeholder="Note (optional)"></div>
         <div class="col-md-2 col-12"><button class="btn btn-dark fw-bold w-100" data-act="add-advance" data-emp="${emp.id}">+ Log Advance</button></div>
       </div>
-      ${outstandingAdv>0 ? `<div class="gold small" style="margin-bottom:14px">${fmt(outstandingAdv)} given this period — can be deducted automatically on payday below.</div>` : `<div style="margin-bottom:14px"></div>`}
     `;
 
     const coveredList = coveredExpenses.length ? `
