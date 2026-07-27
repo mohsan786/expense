@@ -287,8 +287,6 @@ if (!$employee) {
             </table>
           </div>
 
-          </div>
-
           <button class="btn btn-outline-dark btn-sm fw-bold" onclick="toggleAdvForm()">➕ Log New Weekly Advance (Kharcha)</button>
 
           <!-- Hidden Form for Logging Advance -->
