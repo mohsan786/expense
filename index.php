@@ -982,10 +982,21 @@ async function loadData() {
       state.workLogs = Array.isArray(d.workLogs) ? d.workLogs : [];
       state.workItems = Array.isArray(d.workItems) ? d.workItems : [];
       state.salaryPayments = Array.isArray(d.salaryPayments) ? d.salaryPayments : [];
-      state.advances = Array.isArray(d.advances) ? d.advances : [];
+      const loadedAdvances = Array.isArray(d.advances) ? d.advances : [];
+      state.advances = loadedAdvances.filter(a => !a.isPurchasingCash);
+      
+      let loadedCashHandouts = Array.isArray(d.cashHandouts) ? d.cashHandouts : [];
+      // Migrate any purchasing cash entries from advances into cashHandouts if missing
+      const purchasingFromAdv = loadedAdvances.filter(a => a.isPurchasingCash);
+      purchasingFromAdv.forEach(pa => {
+        if (!loadedCashHandouts.find(c => c.id === pa.id)) {
+          loadedCashHandouts.unshift(pa);
+        }
+      });
+      state.cashHandouts = loadedCashHandouts;
+
       state.vendorPayments = Array.isArray(d.vendorPayments) ? d.vendorPayments : [];
       state.attendanceLogs = Array.isArray(d.attendanceLogs) ? d.attendanceLogs : [];
-      state.cashHandouts = Array.isArray(d.cashHandouts) ? d.cashHandouts : [];
 
       state.config.employees = (state.config.employees || []).map(e => {
         if (e && e.type === "workbased" && !e.items) {

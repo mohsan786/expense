@@ -484,9 +484,7 @@ if (!$employee) {
       const joiningAdvEntry = advances.find(a => a.isJoiningAdvance || (a.note && a.note.toLowerCase().includes("joining")));
       const joiningAdvVal = emp.joiningAdvance || (joiningAdvEntry ? joiningAdvEntry.amount : 0);
 
-      // Separate regular weekly kharcha advances from purchasing cash handouts
-      const purchasingAdv = advances.filter(a => a.isPurchasingCash || (a.note && a.note.toLowerCase().includes("purchasing")));
-      const weeklyAdvEntries = advances.filter(a => !a.isJoiningAdvance && !a.isPurchasingCash && !(a.note && a.note.toLowerCase().includes("joining")) && !(a.note && a.note.toLowerCase().includes("purchasing")));
+      const weeklyAdvEntries = advances.filter(a => !a.isJoiningAdvance && !(a.note && a.note.toLowerCase().includes("joining")));
 
       const totalWeeklyAdvGiven = weeklyAdvEntries.reduce((s, a) => s + Number(a.amount || 0), 0);
       const totalAdvReturned = payments.reduce((s, p) => s + Number(p.deductedAdvances || 0), 0);
@@ -552,7 +550,7 @@ if (!$employee) {
       });
 
       // Calculate Purchasing Cash & Customer Sales Cash Holding vs Out-of-Pocket Reimbursement Owed
-      const rawCashHandouts = (state.data.cashHandouts || []).concat(purchasingAdv).filter(c => c.employeeId === EMP_ID && !c.settled);
+      const rawCashHandouts = (state.data.cashHandouts || []).filter(c => c.employeeId === EMP_ID && !c.settled);
       const uniqueHandouts = Array.from(new Map(rawCashHandouts.map(item => [item.id, item])).values());
       const totalPurchasingHanded = uniqueHandouts.reduce((s, c) => s + Number(c.amount || 0), 0);
       const totalCashHanded = totalPurchasingHanded + salesCashCollected;
@@ -896,8 +894,6 @@ if (!$employee) {
           isPurchasingCash: true,
           settled: false
         };
-        state.data.advances = state.data.advances || [];
-        state.data.advances.unshift(entry);
         state.data.cashHandouts = state.data.cashHandouts || [];
         state.data.cashHandouts.unshift(entry);
       });
@@ -1025,8 +1021,7 @@ if (!$employee) {
       const joiningAdvEntry = advances.find(a => a.isJoiningAdvance || (a.note && a.note.toLowerCase().includes("joining")));
       const joiningAdvVal = emp.joiningAdvance || (joiningAdvEntry ? joiningAdvEntry.amount : 0);
 
-      const purchasingAdv = advances.filter(a => a.isPurchasingCash || (a.note && a.note.toLowerCase().includes("purchasing")));
-      const weeklyAdvEntries = advances.filter(a => !a.isJoiningAdvance && !a.isPurchasingCash && !(a.note && a.note.toLowerCase().includes("joining")) && !(a.note && a.note.toLowerCase().includes("purchasing")));
+      const weeklyAdvEntries = advances.filter(a => !a.isJoiningAdvance && !(a.note && a.note.toLowerCase().includes("joining")));
 
       const totalWeeklyAdvGiven = weeklyAdvEntries.reduce((s, a) => s + Number(a.amount || 0), 0);
       const totalAdvReturned = payments.reduce((s, p) => s + Number(p.deductedAdvances || 0), 0);
@@ -1037,7 +1032,7 @@ if (!$employee) {
       const joiningDeductAmt = state.deductJoiningAdv ? (state.customJoiningDeduct !== null ? Number(state.customJoiningDeduct) : joiningAdvVal) : 0;
       const advDeductVal = Math.min(outstandingAdv, Math.max(0, weeklyDeductAmt + joiningDeductAmt));
 
-      const rawCashHandouts = (state.data.cashHandouts || []).concat(purchasingAdv).filter(c => c.employeeId === EMP_ID && !c.settled);
+      const rawCashHandouts = (state.data.cashHandouts || []).filter(c => c.employeeId === EMP_ID && !c.settled);
       const uniqueHandouts = Array.from(new Map(rawCashHandouts.map(item => [item.id, item])).values());
       const totalCashHanded = uniqueHandouts.reduce((s, c) => s + Number(c.amount || 0), 0);
       const workerExpenses = (state.data.expenses || []).filter(e => e.payerEmployeeId === EMP_ID && !e.settled);
