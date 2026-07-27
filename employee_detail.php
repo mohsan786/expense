@@ -212,6 +212,55 @@ if (!$employee) {
     <div class="row g-4 mb-4">
       <div class="col-lg-7 col-12">
 
+        <!-- Piece-Rate Work Production Breakthrough Card (For Work-Based Employees) -->
+        <?php if ($employee['type'] === 'workbased'): ?>
+          <div class="content-panel" style="background:#F0FDF4;border-color:#86EFAC;">
+            <div class="panel-header" style="color:#166534;">
+              <span>🛠️ Piece-Rate Production &amp; Work Log Breakthrough</span>
+              <span class="badge bg-success text-white mono fs-6" id="badge-total-earned">—</span>
+            </div>
+
+            <div class="small text-muted mb-3">
+              Log production work done (pairs stitched, soles attached, items crafted) by quantity and unit piece rate. Total earned feeds directly into payday salary calculations.
+            </div>
+
+            <div class="table-responsive mb-3">
+              <table class="table table-sm table-hover table-bordered align-middle mb-0 bg-white" style="font-size:12px;">
+                <thead class="table-dark mono" style="font-size:11px;">
+                  <tr>
+                    <th>DATE</th>
+                    <th>ITEM / OPERATION</th>
+                    <th>QTY</th>
+                    <th class="text-end">RATE / PIECE</th>
+                    <th class="text-end">TOTAL EARNED (+)</th>
+                    <th>NOTE</th>
+                    <th>ACTION</th>
+                  </tr>
+                </thead>
+                <tbody id="work-breakdown-body">
+                  <tr><td colspan="7" class="text-center py-3 text-muted">Loading work production logs…</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <button class="btn btn-success btn-sm fw-bold shadow-sm" onclick="toggleWorkForm()">🔨 + Log Work Production Entry</button>
+
+            <!-- Hidden Form for Logging Work Production -->
+            <div id="work-form-wrap" class="mt-3 p-3 border rounded bg-white" style="display:none;">
+              <div class="fw-bold small mb-2 text-dark">Log Work Production Item</div>
+              <div class="row g-2">
+                <div class="col-md-3 col-6"><label class="form-label small mb-1">Date</label><input type="date" id="wl-date" class="form-control form-control-sm" value="<?php echo date('Y-m-d'); ?>"></div>
+                <div class="col-md-5 col-12"><label class="form-label small mb-1">Item / Operation *</label><input id="wl-item" class="form-control form-control-sm" placeholder="e.g. Leather Shoe Upper Stitching"></div>
+                <div class="col-md-2 col-6"><label class="form-label small mb-1">Quantity *</label><input type="number" id="wl-qty" class="form-control form-control-sm" placeholder="e.g. 50" oninput="calcWorkTotal()"></div>
+                <div class="col-md-2 col-6"><label class="form-label small mb-1">Rate / Piece *</label><input type="number" id="wl-rate" class="form-control form-control-sm" placeholder="e.g. 120" oninput="calcWorkTotal()"></div>
+                <div class="col-md-6 col-12"><label class="form-label small mb-1">Note (optional)</label><input id="wl-note" class="form-control form-control-sm" placeholder="Details..."></div>
+                <div class="col-md-6 col-12"><label class="form-label small mb-1">Calculated Total</label><div class="form-control form-control-sm mono fw-bold text-success bg-light" id="wl-total-preview">Rs.0.00</div></div>
+              </div>
+              <button class="btn btn-dark btn-sm fw-bold mt-3" onclick="saveWorkLog()">Submit Work Production Record</button>
+            </div>
+          </div>
+        <?php endif; ?>
+
         <!-- Advance Breakthrough & Ledger Card -->
         <div class="content-panel">
           <div class="panel-header">
@@ -528,12 +577,21 @@ if (!$employee) {
         : Math.max(unpaidWorkEarned - actualAdvDeducted - actualCashHeldDeducted + actualReimbAdded, 0);
 
       // Render KPIs & Cash Holding Boxes
-      document.getElementById('kpi-base').innerText = fmt(baseRate);
-      document.getElementById('kpi-base-sub').innerText = `${emp.type === 'monthly' ? 'Monthly' : 'Weekly'} (${wDays}d)`;
-      document.getElementById('kpi-peshgi').innerText = fmt(joiningAdvVal);
-      document.getElementById('kpi-peshgi-sub').innerText = joiningAdvEntry ? (joiningAdvEntry.paidBy === 'business' ? 'Business Funds' : 'Partner Paid') : 'Peshgi';
-      document.getElementById('kpi-kharcha').innerText = fmt(weeklyAdvVal);
-      document.getElementById('kpi-net').innerText = fmt(suggestedWage);
+      if (emp.type === 'workbased') {
+        document.getElementById('kpi-base').innerText = fmt(totalEarned);
+        document.getElementById('kpi-base-sub').innerText = 'Total Work Production Earned';
+        document.getElementById('kpi-peshgi').innerText = fmt(totalWagePaid);
+        document.getElementById('kpi-peshgi-sub').innerText = 'Wages Paid So Far';
+        document.getElementById('kpi-kharcha').innerText = fmt(outstandingAdv);
+        document.getElementById('kpi-net').innerText = fmt(suggestedWage);
+      } else {
+        document.getElementById('kpi-base').innerText = fmt(baseRate);
+        document.getElementById('kpi-base-sub').innerText = `${emp.type === 'monthly' ? 'Monthly' : 'Weekly'} (${wDays}d)`;
+        document.getElementById('kpi-peshgi').innerText = fmt(joiningAdvVal);
+        document.getElementById('kpi-peshgi-sub').innerText = joiningAdvEntry ? (joiningAdvEntry.paidBy === 'business' ? 'Business Funds' : 'Partner Paid') : 'Peshgi';
+        document.getElementById('kpi-kharcha').innerText = fmt(weeklyAdvVal);
+        document.getElementById('kpi-net').innerText = fmt(suggestedWage);
+      }
       document.getElementById('badge-outstanding').innerText = `Outstanding: ${fmt(outstandingAdv)}`;
 
       if (document.getElementById('box-cash-given')) {
@@ -541,6 +599,31 @@ if (!$employee) {
         document.getElementById('box-cash-spent').innerText = fmt(totalWorkerSpent);
         document.getElementById('box-cash-unspent').innerText = fmt(unspentPurchasingCash);
         document.getElementById('badge-unspent-cash').innerText = unspentPurchasingCash > 0 ? `Unspent: ${fmt(unspentPurchasingCash)}` : 'Settled';
+      }
+
+      // Render Work Production Breakthrough Table for Workbased Employees
+      const workTbody = document.getElementById('work-breakdown-body');
+      if (workTbody) {
+        if (document.getElementById('badge-total-earned')) {
+          document.getElementById('badge-total-earned').innerText = `Total Earned: ${fmt(totalEarned)}`;
+        }
+        if (workLogs.length === 0) {
+          workTbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No work production items logged yet. Click "+ Log Work Production Entry" above.</td></tr>`;
+        } else {
+          workTbody.innerHTML = workLogs.map(w => `
+            <tr>
+              <td class="mono muted">${w.date}</td>
+              <td class="fw-bold">${esc(w.itemLabel || 'Production Item')}</td>
+              <td class="mono text-center">${w.quantity}</td>
+              <td class="mono text-end">${fmt(w.unitPrice)}</td>
+              <td class="mono text-end fw-bold text-success">${fmt(w.amount)}</td>
+              <td class="small text-muted">${w.note ? esc(w.note) : '—'}</td>
+              <td>
+                <button class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:10px;" onclick="deleteWorkLog('${w.id}')" title="Delete Log">🗑️</button>
+              </td>
+            </tr>
+          `).join('');
+        }
       }
 
       // Render Advance Breakthrough Table
@@ -1071,6 +1154,80 @@ if (!$employee) {
           emp.weeklyRate = formValues.weeklyRate;
           emp.joiningAdvance = formValues.joiningAdvance;
         });
+      }
+    }
+
+    function calcWorkTotal() {
+      const qty = Number(document.getElementById('wl-qty')?.value || 0);
+      const rate = Number(document.getElementById('wl-rate')?.value || 0);
+      const tot = qty * rate;
+      if (document.getElementById('wl-total-preview')) {
+        document.getElementById('wl-total-preview').innerText = fmt(tot);
+      }
+    }
+
+    function toggleWorkForm() {
+      const f = document.getElementById('work-form-wrap');
+      if (f) f.style.display = f.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function saveWorkLog() {
+      const date = document.getElementById('wl-date').value || new Date().toISOString().split('T')[0];
+      const itemLabel = document.getElementById('wl-item').value.trim();
+      const quantity = Number(document.getElementById('wl-qty').value);
+      const unitPrice = Number(document.getElementById('wl-rate').value);
+      const note = document.getElementById('wl-note').value.trim();
+
+      if (!itemLabel) {
+        Swal.fire('⚠️ Missing Item Description', 'Please enter item or operation name.', 'warning');
+        return;
+      }
+      if (!quantity || isNaN(quantity) || quantity <= 0) {
+        Swal.fire('⚠️ Invalid Quantity', 'Please enter a valid quantity greater than zero.', 'warning');
+        return;
+      }
+      if (!unitPrice || isNaN(unitPrice) || unitPrice <= 0) {
+        Swal.fire('⚠️ Invalid Unit Rate', 'Please enter a valid unit rate per piece.', 'warning');
+        return;
+      }
+
+      await mutate(() => {
+        state.data.workLogs = state.data.workLogs || [];
+        state.data.workLogs.unshift({
+          id: 'wl_' + Math.random().toString(36).substr(2, 9),
+          employeeId: EMP_ID,
+          date,
+          itemLabel,
+          quantity,
+          unitPrice,
+          amount: quantity * unitPrice,
+          note
+        });
+      });
+
+      document.getElementById('wl-item').value = '';
+      document.getElementById('wl-qty').value = '';
+      document.getElementById('wl-rate').value = '';
+      document.getElementById('wl-note').value = '';
+      if (document.getElementById('wl-total-preview')) document.getElementById('wl-total-preview').innerText = 'Rs.0.00';
+      if (document.getElementById('work-form-wrap')) document.getElementById('work-form-wrap').style.display = 'none';
+      Swal.fire({ icon: 'success', title: '🔨 Work Production Saved!', text: `Recorded ${quantity} units at ${fmt(unitPrice)} (${fmt(quantity * unitPrice)} earned).` });
+    }
+
+    async function deleteWorkLog(wlId) {
+      const confirm = await Swal.fire({
+        title: 'Delete Work Production Log?',
+        text: 'Are you sure you want to remove this work log?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#FF3B30',
+        confirmButtonText: 'Yes, Delete'
+      });
+      if (confirm.isConfirmed) {
+        await mutate(() => {
+          state.data.workLogs = (state.data.workLogs || []).filter(w => w.id !== wlId);
+        });
+        Swal.fire({ toast: true, icon: 'success', title: 'Work log deleted!', timer: 1500, showConfirmButton: false });
       }
     }
 
