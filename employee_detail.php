@@ -294,8 +294,10 @@ if (!$employee) {
     const EMP_ID = <?php echo json_encode($emp_id); ?>;
     let state = {
       data: null,
-      customAdvDeduct: null,
-      deductAdv: true,
+      customWeeklyDeduct: null,
+      customJoiningDeduct: null,
+      deductWeeklyAdv: true,
+      deductJoiningAdv: false,
       includeReimb: true,
       deductHeld: true,
       deductAtt: true
@@ -357,8 +359,10 @@ if (!$employee) {
         }
       });
 
-      let partialAdvVal = state.customAdvDeduct !== null ? Number(state.customAdvDeduct) : (weeklyAdvVal > 0 ? weeklyAdvVal : outstandingAdv);
-      let actualAdvDeducted = state.deductAdv ? Math.min(outstandingAdv, Math.max(0, partialAdvVal)) : 0;
+      // Calculate separate advance deductions
+      const weeklyDeductAmt = state.deductWeeklyAdv ? (state.customWeeklyDeduct !== null ? Number(state.customWeeklyDeduct) : weeklyAdvVal) : 0;
+      const joiningDeductAmt = state.deductJoiningAdv ? (state.customJoiningDeduct !== null ? Number(state.customJoiningDeduct) : joiningAdvVal) : 0;
+      const actualAdvDeducted = Math.min(outstandingAdv, Math.max(0, weeklyDeductAmt + joiningDeductAmt));
 
       const totalEarned = workLogs.reduce((s, w) => s + w.amount, 0);
       const totalWagePaid = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
@@ -426,22 +430,52 @@ if (!$employee) {
 
         ${outstandingAdv > 0 ? `
           <div class="p-3 border rounded bg-white mb-3">
-            <div class="form-check mb-2">
-              <input class="form-check-input" type="checkbox" id="chk-deduct-adv" ${state.deductAdv ? 'checked' : ''} onchange="state.deductAdv=this.checked;render();">
-              <label class="form-check-input-label fw-bold small" for="chk-deduct-adv">Deduct Advance from Payday</label>
-            </div>
-            ${state.deductAdv ? `
-              <div class="d-flex align-items-center gap-2 mb-2">
-                <span class="small muted">Deduct Amount:</span>
-                <input class="form-control form-control-sm mono fw-bold" type="number" id="pay-adv-deduct-amt" value="${partialAdvVal}" style="max-width:130px;" oninput="state.customAdvDeduct=this.value;render();">
-                <span class="small muted">(out of ${fmt(outstandingAdv)})</span>
-              </div>
-              <div class="d-flex gap-2">
-                <button class="btn btn-link p-0 text-decoration-none small" style="font-size:11px;" onclick="state.customAdvDeduct='${weeklyAdvVal}';render();">⚡ Deduct Weekly Kharcha (${fmt(weeklyAdvVal)})</button>
-                <span class="text-muted small">|</span>
-                <button class="btn btn-link p-0 text-decoration-none small" style="font-size:11px;" onclick="state.customAdvDeduct='${outstandingAdv}';render();">⚡ Deduct Full (${fmt(outstandingAdv)})</button>
+            <div class="fw-bold small text-dark mb-2">Advance Deductions Control</div>
+
+            <!-- Weekly Kharcha Checkbox (Default CHECKED) -->
+            ${weeklyAdvVal > 0 ? `
+              <div class="p-2 border rounded mb-2 bg-light">
+                <div class="d-flex align-items-center justify-content-between gap-2">
+                  <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" id="chk-weekly-adv" ${state.deductWeeklyAdv ? 'checked' : ''} onchange="state.deductWeeklyAdv=this.checked;render();">
+                    <label class="form-check-label fw-bold small text-dark" for="chk-weekly-adv">
+                      ⚡ Deduct Weekly Kharcha (${fmt(weeklyAdvVal)})
+                    </label>
+                  </div>
+                  ${state.deductWeeklyAdv ? `
+                    <input class="form-control form-control-sm mono fw-bold" type="number" style="max-width:110px;" 
+                      value="${state.customWeeklyDeduct !== null ? state.customWeeklyDeduct : weeklyAdvVal}" 
+                      oninput="state.customWeeklyDeduct=this.value;render();">
+                  ` : ''}
+                </div>
+                <div class="text-muted small mt-1" style="font-size:11px;margin-left:24px;">Default: Checked (Deduct from weekly payday)</div>
               </div>
             ` : ''}
+
+            <!-- Joining Peshgi Checkbox (Default UNCHECKED) -->
+            ${joiningAdvVal > 0 ? `
+              <div class="p-2 border rounded bg-light">
+                <div class="d-flex align-items-center justify-content-between gap-2">
+                  <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" id="chk-joining-adv" ${state.deductJoiningAdv ? 'checked' : ''} onchange="state.deductJoiningAdv=this.checked;render();">
+                    <label class="form-check-label fw-bold small text-dark" for="chk-joining-adv">
+                      🏢 Deduct Joining Peshgi (${fmt(joiningAdvVal)})
+                    </label>
+                  </div>
+                  ${state.deductJoiningAdv ? `
+                    <input class="form-control form-control-sm mono fw-bold" type="number" style="max-width:110px;" 
+                      value="${state.customJoiningDeduct !== null ? state.customJoiningDeduct : joiningAdvVal}" 
+                      oninput="state.customJoiningDeduct=this.value;render();">
+                  ` : ''}
+                </div>
+                <div class="text-muted small mt-1" style="font-size:11px;margin-left:24px;">Default: Unchecked (Long-term advance)</div>
+              </div>
+            ` : ''}
+
+            <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center small">
+              <span class="fw-bold">Total Advances Deducted:</span>
+              <span class="mono fw-bold text-danger">${fmt(actualAdvDeducted)}</span>
+            </div>
           </div>
         ` : ''}
 
@@ -549,20 +583,13 @@ if (!$employee) {
       const totalAdvReturned = payments.reduce((s, p) => s + Number(p.deductedAdvances || 0), 0);
       const outstandingAdv = Math.max(0, totalAdvGiven - totalAdvReturned);
 
-      const partialAdvInput = document.getElementById('pay-adv-deduct-amt')?.value;
-      let advDeductVal = 0;
-      if (state.deductAdv && outstandingAdv > 0) {
-        const rawPartial = partialAdvInput !== undefined ? Number(partialAdvInput) : outstandingAdv;
-        if (isNaN(rawPartial) || rawPartial < 0) {
-          Swal.fire('⚠️ Invalid Advance Deduction', 'Advance deduction amount cannot be negative.', 'warning');
-          return;
-        }
-        if (rawPartial > outstandingAdv) {
-          Swal.fire('⚠️ Advance Deduction Limit Exceeded', `Cannot deduct ${fmt(rawPartial)}. Outstanding advance is only ${fmt(outstandingAdv)}.`, 'warning');
-          return;
-        }
-        advDeductVal = rawPartial;
-      }
+      const joiningAdvEntry = advances.find(a => a.isJoiningAdvance || (a.note && a.note.toLowerCase().includes("joining")));
+      const joiningAdvVal = emp.joiningAdvance || (joiningAdvEntry ? joiningAdvEntry.amount : 0);
+      const weeklyAdvVal = Math.max(0, outstandingAdv - (joiningAdvEntry && !joiningAdvEntry.settled ? joiningAdvEntry.amount : 0));
+
+      const weeklyDeductAmt = state.deductWeeklyAdv ? (state.customWeeklyDeduct !== null ? Number(state.customWeeklyDeduct) : weeklyAdvVal) : 0;
+      const joiningDeductAmt = state.deductJoiningAdv ? (state.customJoiningDeduct !== null ? Number(state.customJoiningDeduct) : joiningAdvVal) : 0;
+      const advDeductVal = Math.min(outstandingAdv, Math.max(0, weeklyDeductAmt + joiningDeductAmt));
 
       const date = document.getElementById('pay-date').value || new Date().toISOString().split('T')[0];
       const amountInput = document.getElementById('pay-amount').value;
