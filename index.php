@@ -727,6 +727,7 @@ async function showEditEmployeeModal(id) {
       `<div><label style="font-size:12px;font-weight:600;">Payment Type</label><select id="swal-emp-type" class="swal2-input" style="margin:4px 0 0 0;width:100%;"><option value="weekly" ${emp.type==='weekly'?'selected':''}>Weekly Rate</option><option value="monthly" ${emp.type==='monthly'?'selected':''}>Monthly Base</option><option value="workbased" ${emp.type==='workbased'?'selected':''}>Piece-Rate (Work Based)</option></select></div>` +
       `<div><label style="font-size:12px;font-weight:600;">Weekly Rate (if applicable)</label><input id="swal-emp-weekly" type="number" class="swal2-input" value="${emp.weeklyRate||0}" style="margin:4px 0 0 0;width:100%;"></div>` +
       `<div><label style="font-size:12px;font-weight:600;">Monthly Base Rate (if applicable)</label><input id="swal-emp-monthly" type="number" class="swal2-input" value="${emp.monthlyRate||0}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Joining Advance / Peshgi Amount</label><input id="swal-emp-joining-adv" type="number" class="swal2-input" value="${emp.joiningAdvance||0}" style="margin:4px 0 0 0;width:100%;"></div>` +
       `<div><label style="font-size:12px;font-weight:600;">Working Days / Cycle (6/wk or 26/mo)</label><input id="swal-emp-workdays" type="number" class="swal2-input" value="${emp.workingDays||(emp.type==='monthly'?26:6)}" style="margin:4px 0 0 0;width:100%;"></div>` +
       `</div>`,
     focusConfirm: false,
@@ -740,12 +741,13 @@ async function showEditEmployeeModal(id) {
       const type = document.getElementById('swal-emp-type').value;
       const weeklyRate = Number(document.getElementById('swal-emp-weekly').value || 0);
       const monthlyRate = Number(document.getElementById('swal-emp-monthly').value || 0);
+      const joiningAdvance = Number(document.getElementById('swal-emp-joining-adv').value || 0);
       const workingDays = Number(document.getElementById('swal-emp-workdays').value || (type === 'monthly' ? 26 : 6));
       if (!name) {
         Swal.showValidationMessage('Please enter employee name');
         return false;
       }
-      return { name, phone, type, weeklyRate, monthlyRate, workingDays };
+      return { name, phone, type, weeklyRate, monthlyRate, joiningAdvance, workingDays };
     }
   });
 
@@ -756,6 +758,7 @@ async function showEditEmployeeModal(id) {
       emp.type = formValues.type;
       emp.weeklyRate = formValues.weeklyRate;
       emp.monthlyRate = formValues.monthlyRate;
+      emp.joiningAdvance = formValues.joiningAdvance;
       emp.workingDays = formValues.workingDays;
       if (emp.type === 'workbased' && !emp.items) emp.items = [];
     });
@@ -1876,7 +1879,7 @@ function renderEmployees() {
   return `
     <div class="panel">
       <div class="serif strong" style="margin-bottom:4px">Add Employee Profile</div>
-      <div class="muted small" style="margin-bottom:12px">Register workers for weekly/monthly salary or piece-rate work.</div>
+      <div class="muted small" style="margin-bottom:12px">Register workers for weekly/monthly salary or piece-rate work, and set their joining advance (Peshgi).</div>
       <div class="row g-2 align-items-center">
         <div class="col-md-4 col-12"><input class="form-control" id="new-emp-name" placeholder="Full Name (e.g. Ali Raza)"></div>
         <div class="col-md-4 col-12"><input class="form-control" id="new-emp-phone" placeholder="Phone (e.g. 0300-1234567)"></div>
@@ -1887,20 +1890,28 @@ function renderEmployees() {
             <option value="workbased">Work-based (piece rate)</option>
           </select>
         </div>
+        <div class="col-md-6 col-12 mt-2">
+          <input class="form-control" id="new-emp-joining-adv" type="number" placeholder="Joining Advance / Peshgi (optional)">
+        </div>
+        <div class="col-md-6 col-12 mt-2">
+          <select class="form-select" id="new-emp-joining-paidby">
+            ${partners.map(p=>`<option value="${p.id}">Peshgi Given By ${esc(p.name)}</option>`).join("")}
+          </select>
+        </div>
         <div class="col-12" id="new-emp-weekly-wrap">
-          <div class="d-flex gap-2 align-items-center mt-1">
+          <div class="d-flex gap-2 align-items-center mt-2">
             <input class="form-control" id="new-emp-weekly" type="number" placeholder="Weekly salary amount" style="max-width:240px">
             <button class="btn btn-dark fw-bold px-4" data-act="add-employee">👤 + Add Employee</button>
           </div>
         </div>
         <div class="col-12" id="new-emp-monthly-wrap" style="display:none;">
-          <div class="d-flex gap-2 align-items-center mt-1">
+          <div class="d-flex gap-2 align-items-center mt-2">
             <input class="form-control" id="new-emp-monthly" type="number" placeholder="Monthly salary amount" style="max-width:240px">
             <button class="btn btn-dark fw-bold px-4" data-act="add-employee">👤 + Add Employee</button>
           </div>
         </div>
         <div class="col-12" id="new-emp-work-wrap" style="display:none;">
-          <div class="d-flex gap-2 align-items-center mt-1">
+          <div class="d-flex gap-2 align-items-center mt-2">
             <span class="muted small">Piece-rate work items will be added after profile creation.</span>
             <button class="btn btn-dark fw-bold px-4" data-act="add-employee">👤 + Add Employee</button>
           </div>
@@ -1924,6 +1935,9 @@ function renderEmployeeCard(emp, partners) {
   const totalEarned = workLogs.reduce((s, w) => s + w.amount, 0);
   const totalWagePaid = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
   const outstandingAdv = empOutstandingAdvance(emp.id);
+  const joiningAdvEntry = advances.find(a => a.isJoiningAdvance || (a.note && a.note.toLowerCase().includes("joining")));
+  const joiningAdvVal = emp.joiningAdvance || (joiningAdvEntry ? joiningAdvEntry.amount : 0);
+  const weeklyAdvVal = Math.max(0, outstandingAdv - (joiningAdvEntry && !joiningAdvEntry.settled ? joiningAdvEntry.amount : 0));
   const outstandingReimb = empOutstandingReimbursement(emp.id);
   const outstandingHeld = empOutstandingHeldIncome(emp.id);
   const owed = emp.type === "workbased" ? (totalEarned - totalWagePaid - outstandingAdv - outstandingHeld + outstandingReimb) : null;
@@ -2157,7 +2171,8 @@ function renderEmployeeCard(emp, partners) {
         <div class="emp-head-right">
           ${emp.type==="workbased" ? `<span class="mono small strong ${owed>0?'text-danger':'text-success'}">${owed>0?`owes ${fmt(owed)}`:"settled"}</span>` : ""}
           ${unsettledAbs.length>0 ? `<span class="mono small strong text-danger">absent ${unsettledAbs.length}d (${fmt(absenceDeductionVal)})</span>` : ""}
-          ${outstandingAdv>0 ? `<span class="mono small strong text-warning">advance ${fmt(outstandingAdv)}</span>` : ""}
+          ${joiningAdvVal>0 ? `<span class="mono small strong text-warning" title="Joining Advance (Peshgi)">Peshgi ${fmt(joiningAdvVal)}</span>` : ""}
+          ${weeklyAdvVal>0 ? `<span class="mono small strong gold" title="Weekly Advances (Kharcha)">Kharcha ${fmt(weeklyAdvVal)}</span>` : ""}
           ${outstandingReimb>0 ? `<span class="mono small strong text-danger">reimburse ${fmt(outstandingReimb)}</span>` : ""}
           ${outstandingHeld>0 ? `<span class="mono small strong text-danger">holding ${fmt(outstandingHeld)}</span>` : ""}
           <button class="icon-btn" data-act="edit-employee" data-id="${emp.id}" title="Edit Employee">✏️</button>
@@ -2845,6 +2860,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!name) return;
       const weeklyRate = Number(document.getElementById("new-emp-weekly")?.value || 0);
       const monthlyRate = Number(document.getElementById("new-emp-monthly")?.value || 0);
+      const joiningAdv = Number(document.getElementById("new-emp-joining-adv")?.value || 0);
+      const joiningPaidBy = document.getElementById("new-emp-joining-paidby")?.value || (state.config.partners[0] ? state.config.partners[0].id : undefined);
       const workingDays = type === 'monthly' ? 26 : 6;
       const emp = { 
         id: uid(), 
@@ -2853,10 +2870,25 @@ document.addEventListener("DOMContentLoaded", () => {
         type, 
         weeklyRate: type === 'weekly' ? weeklyRate : 0, 
         monthlyRate: type === 'monthly' ? monthlyRate : 0, 
+        joiningAdvance: joiningAdv,
         workingDays, 
         items: type === "workbased" ? [] : undefined 
       };
-      mutate(() => { state.config.employees.push(emp); });
+      mutate(() => {
+        state.config.employees.push(emp);
+        if (joiningAdv > 0) {
+          state.advances.unshift({
+            id: uid(),
+            employeeId: emp.id,
+            date: today(),
+            amount: joiningAdv,
+            paidBy: joiningPaidBy,
+            note: "Joining Advance (Peshgi)",
+            settled: false,
+            isJoiningAdvance: true
+          });
+        }
+      });
       return;
     }
     if (act === "edit-employee") {
