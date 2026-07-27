@@ -248,13 +248,9 @@ if (!$employee) {
             <!-- Hidden Form for Logging Work Production -->
             <div id="work-form-wrap" class="mt-3 p-3 border rounded bg-white" style="display:none;">
               <div class="fw-bold small mb-2 text-dark">Log Work Production Item</div>
-              <div class="row g-2">
-                <div class="col-md-3 col-6"><label class="form-label small mb-1">Date</label><input type="date" id="wl-date" class="form-control form-control-sm" value="<?php echo date('Y-m-d'); ?>"></div>
-                <div class="col-md-5 col-12"><label class="form-label small mb-1">Item / Operation *</label><input id="wl-item" class="form-control form-control-sm" placeholder="e.g. Leather Shoe Upper Stitching"></div>
-                <div class="col-md-2 col-6"><label class="form-label small mb-1">Quantity *</label><input type="number" id="wl-qty" class="form-control form-control-sm" placeholder="e.g. 50" oninput="calcWorkTotal()"></div>
-                <div class="col-md-2 col-6"><label class="form-label small mb-1">Rate / Piece *</label><input type="number" id="wl-rate" class="form-control form-control-sm" placeholder="e.g. 120" oninput="calcWorkTotal()"></div>
-                <div class="col-md-6 col-12"><label class="form-label small mb-1">Note (optional)</label><input id="wl-note" class="form-control form-control-sm" placeholder="Details..."></div>
-                <div class="col-md-6 col-12"><label class="form-label small mb-1">Calculated Total</label><div class="form-control form-control-sm mono fw-bold text-success bg-light" id="wl-total-preview">Rs.0.00</div></div>
+              <div id="work-form-inner">
+                <!-- Populated dynamically based on workItems catalog -->
+                <div class="text-muted small text-center p-2">Loading work items catalog…</div>
               </div>
               <button class="btn btn-dark btn-sm fw-bold mt-3" onclick="saveWorkLog()">Submit Work Production Record</button>
             </div>
@@ -625,6 +621,34 @@ if (!$employee) {
               </td>
             </tr>
           `).join('');
+        }
+      }
+
+      // Populate Work Log Form with item dropdown from catalog
+      const workFormInner = document.getElementById('work-form-inner');
+      if (workFormInner) {
+        const workItems = state.data.workItems || [];
+        if (workItems.length === 0) {
+          workFormInner.innerHTML = `
+            <div class="alert alert-warning py-2 mb-0" style="font-size:13px;">
+              ⚠️ No work items defined yet. Go to the <strong>Employees page → 🛠️ Work Items Catalog</strong> to add items with rates first.
+            </div>`;
+        } else {
+          const opts = workItems.map(wi => `<option value="${wi.id}" data-rate="${wi.unitPrice}" data-label="${esc(wi.name)}">${esc(wi.name)} — ${fmt(wi.unitPrice)} / ${esc(wi.unit||'piece')}</option>`).join('');
+          workFormInner.innerHTML = `
+            <div class="row g-2">
+              <div class="col-md-3 col-6"><label class="form-label small mb-1">Date</label><input type="date" id="wl-date" class="form-control form-control-sm" value="${new Date().toISOString().split('T')[0]}"></div>
+              <div class="col-md-5 col-12"><label class="form-label small mb-1">Select Item *</label>
+                <select id="wl-item-sel" class="form-select form-select-sm" onchange="onItemSelect()">
+                  <option value="">— Select a work item —</option>
+                  ${opts}
+                </select>
+              </div>
+              <div class="col-md-2 col-6"><label class="form-label small mb-1">Quantity *</label><input type="number" id="wl-qty" class="form-control form-control-sm" placeholder="e.g. 50" oninput="calcWorkTotal()"></div>
+              <div class="col-md-2 col-6"><label class="form-label small mb-1">Rate (auto)</label><input type="number" id="wl-rate" class="form-control form-control-sm bg-light" placeholder="Auto-filled" readonly></div>
+              <div class="col-md-6 col-12"><label class="form-label small mb-1">Note (optional)</label><input id="wl-note" class="form-control form-control-sm" placeholder="Details..."></div>
+              <div class="col-md-6 col-12"><label class="form-label small mb-1">Total Earned</label><div class="form-control form-control-sm mono fw-bold text-success bg-light" id="wl-total-preview">Rs.0.00</div></div>
+            </div>`;
         }
       }
 
@@ -1173,23 +1197,32 @@ if (!$employee) {
       if (f) f.style.display = f.style.display === 'none' ? 'block' : 'none';
     }
 
-    async function saveWorkLog() {
-      const date = document.getElementById('wl-date').value || new Date().toISOString().split('T')[0];
-      const itemLabel = document.getElementById('wl-item').value.trim();
-      const quantity = Number(document.getElementById('wl-qty').value);
-      const unitPrice = Number(document.getElementById('wl-rate').value);
-      const note = document.getElementById('wl-note').value.trim();
+    function onItemSelect() {
+      const sel = document.getElementById('wl-item-sel');
+      if (!sel) return;
+      const opt = sel.options[sel.selectedIndex];
+      const rate = opt ? Number(opt.dataset.rate || 0) : 0;
+      const rateEl = document.getElementById('wl-rate');
+      if (rateEl) rateEl.value = rate || '';
+      calcWorkTotal();
+    }
 
-      if (!itemLabel) {
-        Swal.fire('⚠️ Missing Item Description', 'Please enter item or operation name.', 'warning');
+    async function saveWorkLog() {
+      const date = document.getElementById('wl-date')?.value || new Date().toISOString().split('T')[0];
+      const sel = document.getElementById('wl-item-sel');
+      const selectedOpt = sel ? sel.options[sel.selectedIndex] : null;
+      const workItemId = sel ? sel.value : '';
+      const itemLabel = selectedOpt ? (selectedOpt.dataset.label || selectedOpt.text.split(' —')[0]) : '';
+      const quantity = Number(document.getElementById('wl-qty')?.value || 0);
+      const unitPrice = Number(document.getElementById('wl-rate')?.value || 0);
+      const note = document.getElementById('wl-note')?.value.trim() || '';
+
+      if (!workItemId) {
+        Swal.fire('⚠️ No Item Selected', 'Please select a work item from the dropdown.', 'warning');
         return;
       }
       if (!quantity || isNaN(quantity) || quantity <= 0) {
         Swal.fire('⚠️ Invalid Quantity', 'Please enter a valid quantity greater than zero.', 'warning');
-        return;
-      }
-      if (!unitPrice || isNaN(unitPrice) || unitPrice <= 0) {
-        Swal.fire('⚠️ Invalid Unit Rate', 'Please enter a valid unit rate per piece.', 'warning');
         return;
       }
 
@@ -1198,6 +1231,7 @@ if (!$employee) {
         state.data.workLogs.unshift({
           id: 'wl_' + Math.random().toString(36).substr(2, 9),
           employeeId: EMP_ID,
+          workItemId,
           date,
           itemLabel,
           quantity,
@@ -1207,13 +1241,16 @@ if (!$employee) {
         });
       });
 
-      document.getElementById('wl-item').value = '';
-      document.getElementById('wl-qty').value = '';
-      document.getElementById('wl-rate').value = '';
-      document.getElementById('wl-note').value = '';
+      if (sel) sel.selectedIndex = 0;
+      const rateEl = document.getElementById('wl-rate');
+      if (rateEl) rateEl.value = '';
+      const qtyEl = document.getElementById('wl-qty');
+      if (qtyEl) qtyEl.value = '';
+      const noteEl = document.getElementById('wl-note');
+      if (noteEl) noteEl.value = '';
       if (document.getElementById('wl-total-preview')) document.getElementById('wl-total-preview').innerText = 'Rs.0.00';
       if (document.getElementById('work-form-wrap')) document.getElementById('work-form-wrap').style.display = 'none';
-      Swal.fire({ icon: 'success', title: '🔨 Work Production Saved!', text: `Recorded ${quantity} units at ${fmt(unitPrice)} (${fmt(quantity * unitPrice)} earned).` });
+      Swal.fire({ icon: 'success', title: '🔨 Work Production Saved!', text: `Recorded ${quantity} × ${itemLabel} = ${fmt(quantity * unitPrice)} earned.` });
     }
 
     async function deleteWorkLog(wlId) {

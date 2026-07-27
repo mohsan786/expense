@@ -979,6 +979,7 @@ async function loadData() {
       state.expenses = Array.isArray(d.expenses) ? d.expenses : [];
       state.income = Array.isArray(d.income) ? d.income : [];
       state.workLogs = Array.isArray(d.workLogs) ? d.workLogs : [];
+      state.workItems = Array.isArray(d.workItems) ? d.workItems : [];
       state.salaryPayments = Array.isArray(d.salaryPayments) ? d.salaryPayments : [];
       state.advances = Array.isArray(d.advances) ? d.advances : [];
       state.vendorPayments = Array.isArray(d.vendorPayments) ? d.vendorPayments : [];
@@ -997,6 +998,7 @@ async function loadData() {
       state.expenses = [];
       state.income = [];
       state.workLogs = [];
+      state.workItems = [];
       state.salaryPayments = [];
       state.advances = [];
       state.vendorPayments = [];
@@ -1017,6 +1019,7 @@ async function persist() {
       expenses: state.expenses,
       income: state.income,
       workLogs: state.workLogs,
+      workItems: state.workItems || [],
       salaryPayments: state.salaryPayments,
       advances: state.advances,
       vendorPayments: state.vendorPayments,
@@ -1049,27 +1052,70 @@ function calcQuickWorkTotal(safeId) {
   if (el) el.textContent = fmt(qty * rate);
 }
 
+// ── Work Item Catalog Functions ────────────────────────────────────────────────
+function addWorkItem() {
+  const name = document.getElementById('wi-name')?.value.trim() || '';
+  const rate = Number(document.getElementById('wi-rate')?.value || 0);
+  const unit = document.getElementById('wi-unit')?.value.trim() || 'piece';
+  const desc = document.getElementById('wi-desc')?.value.trim() || '';
+
+  if (!name) { swalAlert('Missing Name', 'Please enter an item or operation name.', 'warning'); return; }
+  if (!rate || rate <= 0) { swalAlert('Invalid Rate', 'Please enter a valid rate per piece.', 'warning'); return; }
+
+  mutate(() => {
+    state.workItems = state.workItems || [];
+    state.workItems.push({ id: uid(), name, unitPrice: rate, unit, description: desc });
+  });
+
+  document.getElementById('wi-name').value = '';
+  document.getElementById('wi-rate').value = '';
+  document.getElementById('wi-unit').value = '';
+  document.getElementById('wi-desc').value = '';
+  Swal.fire({ toast: true, icon: 'success', title: `✅ Work item "${name}" added!`, timer: 1800, showConfirmButton: false, position: 'top-end' });
+}
+
+async function deleteWorkItem(wiId) {
+  const res = await Swal.fire({ title: 'Delete Work Item?', text: 'This will not affect already logged work entries.', icon: 'warning', showCancelButton: true, confirmButtonColor: '#FF3B30', confirmButtonText: 'Delete' });
+  if (res.isConfirmed) {
+    mutate(() => { state.workItems = (state.workItems || []).filter(wi => wi.id !== wiId); });
+    Swal.fire({ toast: true, icon: 'success', title: 'Item deleted from catalog!', timer: 1500, showConfirmButton: false });
+  }
+}
+
+function onQuickItemSelect(safeId) {
+  const sel = document.getElementById('qwl-item-' + safeId);
+  if (!sel) return;
+  const opt = sel.options[sel.selectedIndex];
+  const rate = opt ? Number(opt.dataset.rate || 0) : 0;
+  const rateEl = document.getElementById('qwl-rate-' + safeId);
+  if (rateEl) { rateEl.value = rate || ''; }
+  calcQuickWorkTotal(safeId);
+}
+
 async function quickSaveWorkLog(empId, safeId) {
   const dateEl = document.getElementById('qwl-date-' + safeId);
-  const itemEl = document.getElementById('qwl-item-' + safeId);
+  const selEl  = document.getElementById('qwl-item-' + safeId);
   const qtyEl  = document.getElementById('qwl-qty-'  + safeId);
   const rateEl = document.getElementById('qwl-rate-' + safeId);
   const noteEl = document.getElementById('qwl-note-' + safeId);
 
   const date = dateEl?.value || today();
-  const itemLabel = itemEl?.value.trim() || '';
-  const quantity  = Number(qtyEl?.value  || 0);
-  const unitPrice = Number(rateEl?.value || 0);
-  const note      = noteEl?.value.trim() || '';
+  const selectedOpt = selEl?.options[selEl.selectedIndex];
+  const workItemId  = selEl?.value || '';
+  const itemLabel   = selectedOpt ? (selectedOpt.dataset.label || selectedOpt.text) : '';
+  const quantity    = Number(qtyEl?.value  || 0);
+  const unitPrice   = Number(rateEl?.value || 0);
+  const note        = noteEl?.value.trim() || '';
 
-  if (!itemLabel) { swalAlert('Missing Item', 'Please enter item or operation name.', 'warning'); return; }
+  if (!workItemId) { swalAlert('No Item Selected', 'Please select a work item from the dropdown.', 'warning'); return; }
   if (!quantity || quantity <= 0) { swalAlert('Invalid Quantity', 'Enter a valid quantity > 0.', 'warning'); return; }
-  if (!unitPrice || unitPrice <= 0) { swalAlert('Invalid Rate', 'Enter a valid unit rate > 0.', 'warning'); return; }
+  if (!unitPrice || unitPrice <= 0) { swalAlert('No Rate', 'The selected item has no rate set. Check the Work Items Catalog.', 'warning'); return; }
 
   mutate(() => {
     state.workLogs.unshift({
       id: uid(),
       employeeId: empId,
+      workItemId,
       date,
       itemLabel,
       quantity,
@@ -1079,9 +1125,9 @@ async function quickSaveWorkLog(empId, safeId) {
     });
   });
 
-  if (itemEl) itemEl.value = '';
-  if (qtyEl)  qtyEl.value = '';
+  if (selEl)  selEl.selectedIndex = 0;
   if (rateEl) rateEl.value = '';
+  if (qtyEl)  qtyEl.value = '';
   if (noteEl) noteEl.value = '';
   const totEl = document.getElementById('qwl-total-' + safeId);
   if (totEl) totEl.textContent = 'Rs.0.00';
@@ -1984,6 +2030,17 @@ function renderExpenses() {
 function renderEmployees() {
   const partners = state.config.partners;
   const empHtml = state.config.employees.map(emp => renderEmployeeCard(emp, partners)).join("");
+  const workItemsHtml = (state.workItems || []).map(wi => `
+    <div class="d-flex align-items-center justify-content-between p-2 mb-1 rounded bg-white border" style="font-size:13px;">
+      <div class="d-flex align-items-center gap-3">
+        <span class="fw-bold">${esc(wi.name)}</span>
+        <span class="badge bg-success text-white mono">${fmt(wi.unitPrice)} / ${esc(wi.unit || 'piece')}</span>
+        ${wi.description ? `<span class="text-muted small">${esc(wi.description)}</span>` : ''}
+      </div>
+      <button class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:11px;" onclick="deleteWorkItem('${wi.id}')">🗑️</button>
+    </div>
+  `).join('');
+
   return `
     <div class="panel">
       <div class="serif strong" style="margin-bottom:4px">Add Employee Profile</div>
@@ -2027,9 +2084,51 @@ function renderEmployees() {
         </div>
       </div>
     </div>
+
+    <!-- Work Items Catalog Panel -->
+    <div class="panel" style="background:#F0FDF4;border:1px solid #86EFAC;">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+          <div class="serif strong" style="color:#166534;">🛠️ Work Items Catalog (Piece-Rate Items)</div>
+          <div class="muted small">Define all work items and their rates here first. Workers select from this list when logging production work.</div>
+        </div>
+      </div>
+
+      <!-- Add new work item form -->
+      <div class="row g-2 align-items-end mb-3 p-3 rounded bg-white border">
+        <div class="col-md-4 col-12">
+          <label class="form-label small fw-bold mb-1" style="color:#166534;">Item / Operation Name *</label>
+          <input class="form-control" id="wi-name" placeholder="e.g. Leather Upper Stitching">
+        </div>
+        <div class="col-md-2 col-6">
+          <label class="form-label small fw-bold mb-1" style="color:#166534;">Rate (Rs.) *</label>
+          <input class="form-control" id="wi-rate" type="number" placeholder="e.g. 120">
+        </div>
+        <div class="col-md-2 col-6">
+          <label class="form-label small fw-bold mb-1" style="color:#166534;">Unit</label>
+          <input class="form-control" id="wi-unit" placeholder="e.g. pair, piece, dozen">
+        </div>
+        <div class="col-md-2 col-12">
+          <label class="form-label small fw-bold mb-1" style="color:#166534;">Description (optional)</label>
+          <input class="form-control" id="wi-desc" placeholder="Short description">
+        </div>
+        <div class="col-md-2 col-12">
+          <button class="btn btn-success fw-bold w-100" onclick="addWorkItem()">+ Add Item</button>
+        </div>
+      </div>
+
+      <!-- Existing work items list -->
+      <div id="work-items-list">
+        ${(state.workItems || []).length === 0
+          ? `<div class="text-center text-muted p-3" style="font-size:13px;">No work items defined yet. Add your first item above (e.g. "Leather Upper Stitching" at Rs.120/pair).</div>`
+          : workItemsHtml}
+      </div>
+    </div>
+
     ${state.config.employees.length===0 ? `<div class="empty-msg">No employees yet — add one above.</div>` : empHtml}
   `;
 }
+
 
 function renderEmployeeCard(emp, partners) {
   const workLogs = empWorkLogs(emp.id);
@@ -2124,18 +2223,46 @@ function renderEmployeeCard(emp, partners) {
             </table>
           </div>
 
-          <!-- Quick Log Work Form -->
+          <!-- Quick Log Work Form (Dropdown-Based) -->
           <div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:10px;padding:14px;">
             <div style="font-weight:700;font-size:12px;color:#166534;margin-bottom:10px;">🔨 Quick Log Work Production</div>
+            ${(state.workItems || []).length === 0 ? `
+              <div class="text-muted text-center p-2" style="font-size:12px;">
+                ⚠️ No work items defined yet. Go to <strong>🛠️ Work Items Catalog</strong> above to add items first, then come back to log work.
+              </div>
+            ` : `
             <div class="row g-2">
-              <div class="col-md-2 col-6"><label class="form-label" style="font-size:10px;margin-bottom:2px;">Date</label><input type="date" id="qwl-date-${safeId}" class="form-control form-control-sm" value="${new Date().toISOString().split('T')[0]}"></div>
-              <div class="col-md-4 col-12"><label class="form-label" style="font-size:10px;margin-bottom:2px;">Item / Operation *</label><input id="qwl-item-${safeId}" class="form-control form-control-sm" placeholder="e.g. Leather Upper Stitching"></div>
-              <div class="col-md-2 col-6"><label class="form-label" style="font-size:10px;margin-bottom:2px;">Quantity *</label><input type="number" id="qwl-qty-${safeId}" class="form-control form-control-sm" placeholder="e.g. 50" oninput="calcQuickWorkTotal('${safeId}')"></div>
-              <div class="col-md-2 col-6"><label class="form-label" style="font-size:10px;margin-bottom:2px;">Rate / Piece *</label><input type="number" id="qwl-rate-${safeId}" class="form-control form-control-sm" placeholder="e.g. 120" oninput="calcQuickWorkTotal('${safeId}')"></div>
-              <div class="col-md-2 col-12"><label class="form-label" style="font-size:10px;margin-bottom:2px;">Total</label><div class="form-control form-control-sm mono fw-bold text-success bg-white" id="qwl-total-${safeId}" style="font-size:12px;">Rs.0.00</div></div>
-              <div class="col-md-8 col-12"><input id="qwl-note-${safeId}" class="form-control form-control-sm" placeholder="Note (optional)"></div>
-              <div class="col-md-4 col-12"><button class="btn btn-success btn-sm fw-bold w-100" onclick="quickSaveWorkLog('${emp.id}','${safeId}')">✅ Save Work Entry</button></div>
+              <div class="col-md-2 col-6">
+                <label class="form-label" style="font-size:10px;margin-bottom:2px;">Date</label>
+                <input type="date" id="qwl-date-${safeId}" class="form-control form-control-sm" value="${new Date().toISOString().split('T')[0]}">
+              </div>
+              <div class="col-md-4 col-12">
+                <label class="form-label" style="font-size:10px;margin-bottom:2px;">Select Item *</label>
+                <select id="qwl-item-${safeId}" class="form-select form-select-sm" onchange="onQuickItemSelect('${safeId}')">
+                  <option value="">— Select a work item —</option>
+                  ${(state.workItems || []).map(wi => `<option value="${wi.id}" data-rate="${wi.unitPrice}" data-label="${esc(wi.name)}" data-unit="${esc(wi.unit||'piece')}">${esc(wi.name)} (${fmt(wi.unitPrice)}/${esc(wi.unit||'piece')})</option>`).join('')}
+                </select>
+              </div>
+              <div class="col-md-2 col-6">
+                <label class="form-label" style="font-size:10px;margin-bottom:2px;">Quantity *</label>
+                <input type="number" id="qwl-qty-${safeId}" class="form-control form-control-sm" placeholder="e.g. 50" oninput="calcQuickWorkTotal('${safeId}')">
+              </div>
+              <div class="col-md-2 col-6">
+                <label class="form-label" style="font-size:10px;margin-bottom:2px;">Rate (auto-filled)</label>
+                <input type="number" id="qwl-rate-${safeId}" class="form-control form-control-sm bg-light" placeholder="Auto" readonly>
+              </div>
+              <div class="col-md-2 col-12">
+                <label class="form-label" style="font-size:10px;margin-bottom:2px;">Total Earned</label>
+                <div class="form-control form-control-sm mono fw-bold text-success bg-white" id="qwl-total-${safeId}" style="font-size:12px;">Rs.0.00</div>
+              </div>
+              <div class="col-md-8 col-12">
+                <input id="qwl-note-${safeId}" class="form-control form-control-sm" placeholder="Note (optional)">
+              </div>
+              <div class="col-md-4 col-12">
+                <button class="btn btn-success btn-sm fw-bold w-100" onclick="quickSaveWorkLog('${emp.id}','${safeId}')">✅ Save Work Entry</button>
+              </div>
             </div>
+            `}
           </div>
         </div>
         ` : `
