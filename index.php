@@ -1965,12 +1965,9 @@ function renderEmployees() {
 }
 
 function renderEmployeeCard(emp, partners) {
-  const expanded = state.expandedEmp === emp.id;
   const workLogs = empWorkLogs(emp.id);
   const payments = empSalaryPayments(emp.id);
   const advances = empAdvances(emp.id);
-  const coveredExpenses = empCoveredExpenses(emp.id);
-  const heldIncome = empHeldIncome(emp.id);
   const attLogs = empAttendanceLogs(emp.id);
   const unsettledAbs = empUnsettledAbsences(emp.id);
   const absenceDeductionVal = empAbsenceDeduction(emp);
@@ -1983,397 +1980,36 @@ function renderEmployeeCard(emp, partners) {
   const outstandingReimb = empOutstandingReimbursement(emp.id);
   const outstandingHeld = empOutstandingHeldIncome(emp.id);
   const owed = emp.type === "workbased" ? (totalEarned - totalWagePaid - outstandingAdv - outstandingHeld + outstandingReimb) : null;
-  const deductAdv = state.deductAdvance[emp.id] !== false;
-  const includeReimb = state.includeReimbursement[emp.id] !== false;
-  const deductHeld = state.deductHeldIncome[emp.id] !== false;
-  const deductAtt = state.deductAttendance[emp.id] !== false;
 
-  const unpaidWorkEarned = Math.max(0, totalEarned - totalWagePaid);
   const defaultWD = emp.type === "monthly" ? 26 : 6;
   const wDays = emp.workingDays || defaultWD;
   const baseRate = emp.type === "monthly" ? Number(emp.monthlyRate || 0) : Number(emp.weeklyRate || 0);
-  const dailyRate = baseRate / (wDays > 0 ? wDays : defaultWD);
-
-  let partialAdvVal = state.customAdvDeduct?.[emp.id] !== undefined 
-    ? Number(state.customAdvDeduct[emp.id]) 
-    : (weeklyAdvVal > 0 ? weeklyAdvVal : outstandingAdv);
-
-  let actualAdvDeducted = deductAdv ? Math.min(outstandingAdv, Math.max(0, partialAdvVal)) : 0;
-
-  const suggestedWage = (emp.type === "weekly" || emp.type === "monthly")
-    ? Math.max(baseRate - actualAdvDeducted - (deductHeld ? outstandingHeld : 0) - (deductAtt ? absenceDeductionVal : 0), 0)
-    : Math.max(unpaidWorkEarned - actualAdvDeducted - (deductHeld ? outstandingHeld : 0), 0);
-  const suggestedTotal = suggestedWage + (includeReimb ? outstandingReimb : 0);
-  const items = emp.items || [];
 
   const headSub = emp.type === "weekly"
     ? `weekly · ${fmt(emp.weeklyRate)} (${wDays}d/wk)`
     : (emp.type === "monthly"
       ? `monthly · ${fmt(emp.monthlyRate)} (${wDays}d/mo)`
-      : (items.length ? `work-based · ${items.length} item type${items.length>1?"s":""}` : "work-based · no items yet"));
-
-  let body = "";
-  if (expanded) {
-    let workSection = "";
-    if (emp.type === "workbased") {
-      const itemChips = items.map(it => `<span class="item-chip">${esc(it.label)} · ${fmt(it.rate)}<button data-act="edit-item" data-emp="${emp.id}" data-item="${it.id}" style="border:none;background:none;cursor:pointer;padding:0 2px;" title="Edit Item">✏️</button><button data-act="delete-item" data-emp="${emp.id}" data-item="${it.id}" style="border:none;background:none;cursor:pointer;padding:0 2px;color:var(--rust);" title="Delete Item">🗑️</button></span>`).join("");
-      workSection = `
-        <div class="serif small-title">Work items &amp; prices</div>
-        <div style="margin-bottom:8px">${itemChips || `<span class="muted small">No items yet — add one below.</span>`}</div>
-        <div class="row g-2 align-items-center mb-2">
-          <div class="col-md-5 col-12"><input class="form-control" id="item-label-${emp.id}" placeholder="Item name (e.g. Stitching)"></div>
-          <div class="col-md-4 col-7"><input class="form-control" id="item-rate-${emp.id}" type="number" placeholder="Price per piece"></div>
-          <div class="col-md-3 col-5"><button class="btn btn-dark fw-bold w-100" data-act="add-item" data-emp="${emp.id}">+ Add item</button></div>
-        </div>
-        <div class="divider"></div>
-        <div class="serif small-title">Log work</div>
-        ${items.length ? `
-          <div class="row g-2 align-items-center mb-2">
-            <div class="col-md-2 col-6"><input class="form-control" type="date" id="work-date-${emp.id}" value="${today()}"></div>
-            <div class="col-md-4 col-12"><select class="form-select" id="work-item-${emp.id}">${items.map(it=>`<option value="${it.id}">${esc(it.label)} · ${fmt(it.rate)}</option>`).join("")}</select></div>
-            <div class="col-md-2 col-6"><input class="form-control" type="number" id="work-qty-${emp.id}" placeholder="Qty"></div>
-            <div class="col-md-2 col-6"><input class="form-control" id="work-note-${emp.id}" placeholder="Note (optional)"></div>
-            <div class="col-md-2 col-12"><button class="btn btn-dark fw-bold w-100" data-act="add-work" data-emp="${emp.id}">+ Log</button></div>
-          </div>
-        ` : `<div class="muted small" style="margin-bottom:10px">Add a work item above first.</div>`}
-        <div class="muted small" style="margin-bottom:14px">Total earned: <span class="mono strong">${fmt(totalEarned)}</span></div>
-      `;
-    }
-
-    let attendanceSection = "";
-    if (emp.type === "weekly" || emp.type === "monthly") {
-      const cycleText = emp.type === "monthly" ? `${wDays} working days/month` : `${wDays} working days/week`;
-      const attListHtml = unsettledAbs.length ? `
-        <div style="margin:8px 0 12px 0;">
-          <div class="muted small strong" style="margin-bottom:4px;">Unsettled Absences Logged:</div>
-          ${unsettledAbs.map(a => {
-            const isDeduct = a.deductSalary !== false;
-            const mult = a.status === 'halfday' ? 0.5 : 1;
-            const loss = dailyRate * mult;
-            const tag = isDeduct ? `<span class="badge bg-danger">Deduct -${fmt(loss)}</span>` : `<span class="badge bg-success">Paid Leave ($0)</span>`;
-            return `<div class="history-row" style="align-items:center;">
-              <span class="mono muted" style="width:90px">${esc(a.date)}</span>
-              <span style="flex:1">${a.status === 'halfday' ? 'Half Day' : 'Full Day'} ${a.note ? `— ${esc(a.note)}` : ''} ${tag}</span>
-              <button data-act="delete-attendance" data-id="${a.id}" style="border:none;background:none;cursor:pointer;color:var(--rust);font-size:12px;" title="Delete Absence Record">🗑️</button>
-            </div>`;
-          }).join("")}
-        </div>
-      ` : `<div class="muted small" style="margin-bottom:10px">No absences logged for this period.</div>`;
-
-      attendanceSection = `
-        <div class="serif small-title">📅 Attendance &amp; Absences</div>
-        <div class="muted small" style="margin-bottom:8px">Daily Rate: <span class="mono strong">${fmt(dailyRate)}</span> (${cycleText}). Log absent days and choose whether to deduct salary or count as paid leave.</div>
-        <div class="row g-2 align-items-center mb-2">
-          <div class="col-md-2 col-6"><input class="form-control" type="date" id="att-date-${emp.id}" value="${today()}"></div>
-          <div class="col-md-3 col-6">
-            <select class="form-select" id="att-status-${emp.id}">
-              <option value="absent">Full Day Absent</option>
-              <option value="halfday">Half Day</option>
-            </select>
-          </div>
-          <div class="col-md-3 col-6">
-            <select class="form-select" id="att-deduct-${emp.id}">
-              <option value="yes">Deduct Salary (Unpaid)</option>
-              <option value="no">Paid Leave (No Deduct)</option>
-            </select>
-          </div>
-          <div class="col-md-2 col-6"><input class="form-control" id="att-note-${emp.id}" placeholder="Reason (optional)"></div>
-          <div class="col-md-2 col-12"><button class="btn btn-dark fw-bold w-100" data-act="add-attendance" data-emp="${emp.id}">+ Log Absence</button></div>
-        </div>
-        ${attListHtml}
-        <div class="divider"></div>
-      `;
-    }
-
-    const totalAdvGiven = advances.reduce((s, a) => s + Number(a.amount || 0), 0);
-    const totalAdvReturned = payments.reduce((s, p) => s + Number(p.deductedAdvances || 0), 0);
-
-    const advEvents = [
-      ...advances.map(a => ({
-        date: a.date,
-        type: a.isJoiningAdvance ? 'Joining Peshgi (+)' : 'Weekly Kharcha (+)',
-        note: a.note || (a.isJoiningAdvance ? 'Joining Advance (Peshgi)' : 'Weekly Advance'),
-        given: Number(a.amount || 0),
-        returned: 0,
-        paidBy: a.paidBy === 'business' || !a.paidBy ? 'Business Funds' : (partners.find(p=>p.id===a.paidBy)?.name || 'Partner'),
-        settled: a.settled
-      })),
-      ...payments.filter(p => Number(p.deductedAdvances || 0) > 0).map(p => ({
-        date: p.date,
-        type: 'Payday Deduction (-)',
-        note: p.note ? `Salary Payday: ${p.note}` : 'Salary Payday Advance Repayment',
-        given: 0,
-        returned: Number(p.deductedAdvances || 0),
-        paidBy: p.paidBy === 'business' || !p.paidBy ? 'Salary Settlement' : (partners.find(p=>p.id===p.paidBy)?.name || 'Salary Settlement'),
-        settled: true
-      }))
-    ].sort((a, b) => b.date.localeCompare(a.date));
-
-    const advBreakdownTable = advEvents.length ? `
-      <div class="table-responsive mt-2 mb-3">
-        <table class="table table-sm table-bordered align-middle mb-0" style="font-size:12px;">
-          <thead class="table-light mono" style="font-size:11px;">
-            <tr>
-              <th>DATE</th>
-              <th>TYPE</th>
-              <th>NOTE / DETAILS</th>
-              <th class="text-end">ADVANCE GIVEN</th>
-              <th class="text-end">RETURNED / DEDUCTED</th>
-              <th>SOURCE / PAID BY</th>
-              <th>STATUS</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${advEvents.map(ev => `
-              <tr>
-                <td class="mono muted">${esc(ev.date)}</td>
-                <td><span class="badge ${ev.given > 0 ? (ev.type.includes('Peshgi') ? 'bg-warning text-dark' : 'bg-secondary') : 'bg-success'}">${esc(ev.type)}</span></td>
-                <td>${esc(ev.note)}</td>
-                <td class="mono text-end ${ev.given > 0 ? 'fw-bold gold' : 'text-muted'}">${ev.given > 0 ? fmt(ev.given) : '—'}</td>
-                <td class="mono text-end ${ev.returned > 0 ? 'fw-bold text-success' : 'text-muted'}">${ev.returned > 0 ? fmt(ev.returned) : '—'}</td>
-                <td class="small">${esc(ev.paidBy)}</td>
-                <td>${ev.settled ? `<span class="badge bg-light text-dark border">Settled</span>` : `<span class="badge bg-warning text-dark">Active Due</span>`}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-          <tfoot class="table-light mono fw-bold" style="font-size:12px;">
-            <tr>
-              <td colspan="3" class="text-end">TOTALS:</td>
-              <td class="text-end gold">${fmt(totalAdvGiven)}</td>
-              <td class="text-end text-success">${fmt(totalAdvReturned)}</td>
-              <td colspan="2" class="text-end">NET OUTSTANDING: <span class="text-danger">${fmt(outstandingAdv)}</span></td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    ` : `<div class="muted small mb-3">No advances given or returned yet.</div>`;
-
-    const advanceSection = `
-      <div class="serif small-title">💰 Advance Ledger &amp; Return Breakthrough</div>
-      
-      <div class="row g-2 mb-3">
-        <div class="col-md-4 col-12 text-center p-2 rounded bg-light border">
-          <div class="muted small fw-bold" style="font-size:10px;">TOTAL ADVANCES GIVEN</div>
-          <div class="mono strong text-warning" style="font-size:15px;">${fmt(totalAdvGiven)}</div>
-          <div class="muted small" style="font-size:11px;">Peshgi + Kharcha</div>
-        </div>
-        <div class="col-md-4 col-12 text-center p-2 rounded bg-light border">
-          <div class="muted small fw-bold" style="font-size:10px;">TOTAL RETURNED / DEDUCTED</div>
-          <div class="mono strong text-success" style="font-size:15px;">${fmt(totalAdvReturned)}</div>
-          <div class="muted small" style="font-size:11px;">Salary Deductions</div>
-        </div>
-        <div class="col-md-4 col-12 text-center p-2 rounded bg-light border">
-          <div class="muted small fw-bold" style="font-size:10px;">REMAINING OUTSTANDING</div>
-          <div class="mono strong text-danger" style="font-size:15px;">${fmt(outstandingAdv)}</div>
-          <div class="muted small" style="font-size:11px;">Current Net Advance Due</div>
-        </div>
-      </div>
-
-      ${advBreakdownTable}
-
-      <div class="serif small-title mt-3">➕ Log New Weekly Advance (Kharcha)</div>
-      <div class="row g-2 align-items-center mb-2">
-        <div class="col-md-2 col-6"><input class="form-control" type="date" id="adv-date-${emp.id}" value="${today()}"></div>
-        <div class="col-md-2 col-6"><input class="form-control" type="number" id="adv-amount-${emp.id}" placeholder="Amount"></div>
-        <div class="col-md-3 col-6"><select class="form-select" id="adv-paidby-${emp.id}"><option value="business" selected>🏢 Business Funds (Shared by Ratio)</option>${partners.map(p=>`<option value="${p.id}">Given by ${esc(p.name)}</option>`).join("")}</select></div>
-        <div class="col-md-3 col-6"><input class="form-control" id="adv-note-${emp.id}" placeholder="Note (optional)"></div>
-        <div class="col-md-2 col-12"><button class="btn btn-dark fw-bold w-100" data-act="add-advance" data-emp="${emp.id}">+ Log Advance</button></div>
-      </div>
-    `;
-
-    const coveredList = coveredExpenses.length ? `
-      <div class="serif small-title">Expenses they've covered</div>
-      ${coveredExpenses.map(x => `<div class="history-row"><span class="mono muted" style="width:90px">${esc(x.date)}</span><span style="flex:1">${esc(x.description)} ${x.settled?`<span class="badge bg-success">reimbursed</span>`:`<span class="badge bg-warning text-dark">awaiting</span>`}</span><span class="mono strong gold">${fmt(x.amount)}</span></div>`).join("")}
-      <div style="margin-bottom:14px"></div>
-    ` : "";
-
-    const heldList = heldIncome.length ? `
-      <div class="serif small-title">Cash they've collected from customers</div>
-      ${heldIncome.map(x => `<div class="history-row"><span class="mono muted" style="width:90px">${esc(x.date)}</span><span style="flex:1">${esc(x.item)} ${x.settled?`<span class="badge bg-success">settled</span>`:`<span class="badge bg-warning text-dark">holding</span>`}</span><span class="mono strong text-danger">${fmt(x.amount)}</span></div>`).join("")}
-      <div style="margin-bottom:14px"></div>
-    ` : "";
-
-    let deductAttRow = ((emp.type === "weekly" || emp.type === "monthly") && unsettledAbs.length > 0) ? `
-      <label class="checkbox-row"><input type="checkbox" ${deductAtt?"checked":""} data-act="toggle-attendance" data-emp="${emp.id}"> Deduct ${fmt(absenceDeductionVal)} for ${unsettledAbs.length} absence record(s)</label>
-    ` : "";
-    let deductAdvRow = outstandingAdv > 0 ? `
-      <div style="background:#F8FAFC;padding:10px 14px;border-radius:10px;border:1px solid #E2E8F0;margin-bottom:10px;">
-        <div class="d-flex gap-3 align-items-center flex-wrap">
-          <label class="checkbox-row mb-0" style="font-weight:600;">
-            <input type="checkbox" ${deductAdv?"checked":""} data-act="toggle-deduct" data-emp="${emp.id}">
-            Deduct Advance from Payment
-          </label>
-          ${deductAdv ? `
-            <div class="d-flex align-items-center gap-2">
-              <span class="small muted">Amount to deduct:</span>
-              <input class="form-control form-control-sm" type="number" id="pay-adv-deduct-amt-${emp.id}" 
-                value="${partialAdvVal}" 
-                placeholder="Amount" 
-                style="max-width:130px;font-weight:700;" 
-                oninput="state.customAdvDeduct=state.customAdvDeduct||{};state.customAdvDeduct['${emp.id}']=this.value;render();">
-              <span class="small muted">(out of ${fmt(outstandingAdv)} total)</span>
-            </div>
-          ` : ''}
-        </div>
-        ${deductAdv && weeklyAdvVal > 0 && joiningAdvVal > 0 ? `
-          <div class="mt-2 pt-1 border-top" style="display:flex;gap:12px;align-items:center;">
-            <button class="btn btn-link btn-sm p-0 text-decoration-none small fw-bold" style="font-size:11.5px;color:var(--teal);" 
-              onclick="state.customAdvDeduct=state.customAdvDeduct||{};state.customAdvDeduct['${emp.id}']='${weeklyAdvVal}';render();">
-              ⚡ Quick Set: Deduct Weekly Kharcha Only (${fmt(weeklyAdvVal)})
-            </button>
-            <span class="muted small">|</span>
-            <button class="btn btn-link btn-sm p-0 text-decoration-none small fw-bold" style="font-size:11.5px;color:var(--teal);" 
-              onclick="state.customAdvDeduct=state.customAdvDeduct||{};state.customAdvDeduct['${emp.id}']='${outstandingAdv}';render();">
-              ⚡ Quick Set: Deduct Full Advance (${fmt(outstandingAdv)})
-            </button>
-          </div>
-        ` : ''}
-      </div>
-    ` : "";
-    let deductHeldRow = outstandingHeld>0 ? `
-      <label class="checkbox-row"><input type="checkbox" ${deductHeld?"checked":""} data-act="toggle-held" data-emp="${emp.id}"> Deduct the ${fmt(outstandingHeld)} they collected from customers from this payment</label>
-    ` : "";
-    let includeReimbRow = outstandingReimb>0 ? `
-      <label class="checkbox-row"><input type="checkbox" ${includeReimb?"checked":""} data-act="toggle-reimb" data-emp="${emp.id}"> Add the ${fmt(outstandingReimb)} expense reimbursement to this payment</label>
-    ` : "";
-    let payNote = "";
-    if (emp.type === "weekly" || emp.type === "monthly") {
-      const isMonthly = emp.type === "monthly";
-      const rateLabel = isMonthly ? `Monthly rate ${fmt(emp.monthlyRate)}` : `Weekly rate ${fmt(emp.weeklyRate)}`;
-      const parts = [rateLabel];
-      if (unsettledAbs.length > 0) parts.push(`${deductAtt ? "− absence penalty " + fmt(absenceDeductionVal) : "(absence penalty waived)"}`);
-      if (outstandingAdv>0) parts.push(`${deductAdv?"− advance "+fmt(actualAdvDeducted):"(advance not deducted)"}`);
-      if (outstandingHeld>0) parts.push(`${deductHeld?"− collected "+fmt(outstandingHeld):"(collected cash not deducted)"}`);
-      if (outstandingReimb>0) parts.push(`${includeReimb?"+ reimbursement "+fmt(outstandingReimb):"(reimbursement not included)"}`);
-      payNote = `${parts.join(" ")} = <span class="mono strong">${fmt(suggestedTotal)}</span> due.`;
-    } else {
-      const parts = [`Earned ${fmt(totalEarned)}`];
-      if (totalWagePaid > 0) parts.push(`(paid ${fmt(totalWagePaid)})`);
-      if (outstandingAdv>0) parts.push(`${deductAdv?"− advance "+fmt(outstandingAdv):"(advance not deducted)"}`);
-      if (outstandingHeld>0) parts.push(`${deductHeld?"− collected "+fmt(outstandingHeld):"(collected cash not deducted)"}`);
-      if (outstandingReimb>0) parts.push(`${includeReimb?"+ reimbursement "+fmt(outstandingReimb):"(reimbursement not included)"}`);
-      payNote = `${parts.join(" ")} = <span class="mono strong">${fmt(suggestedTotal)}</span> due today.`;
-    }
-
-    const payTitle = emp.type === "weekly" ? "Pay this week" : (emp.type === "monthly" ? "Pay this month" : "Log a payment");
-    const paySection = `
-      <div class="serif small-title">${payTitle}</div>
-      <div class="row g-2 align-items-center mb-2">
-        <div class="col-md-2 col-6"><input class="form-control" type="date" id="pay-date-${emp.id}" value="${today()}"></div>
-        <div class="col-md-2 col-6"><input class="form-control" type="number" id="pay-amount-${emp.id}" placeholder="${suggestedTotal > 0 ? String(suggestedTotal) : 'Amount'}"></div>
-        <div class="col-md-3 col-6"><select class="form-select" id="pay-paidby-${emp.id}">${partners.map(p=>`<option value="${p.id}">Paid by ${esc(p.name)}</option>`).join("")}</select></div>
-        <div class="col-md-3 col-6"><input class="form-control" id="pay-note-${emp.id}" placeholder="Note (optional)"></div>
-        <div class="col-md-2 col-12"><button class="btn btn-dark fw-bold w-100" data-act="add-payment" data-emp="${emp.id}">+ Pay</button></div>
-      </div>
-      ${deductAttRow}${deductAdvRow}${deductHeldRow}${includeReimbRow}
-      ${payNote ? `<div class="muted small" style="margin-bottom:14px">${payNote}</div>` : `<div style="margin-bottom:14px"></div>`}
-    `;
-
-    const historyItems = [
-      ...workLogs.map(w => ({ ...w, kind: "work" })),
-      ...payments.map(p => ({ ...p, kind: "pay" })),
-      ...advances.map(a => ({ ...a, kind: "advance" })),
-      ...attLogs.map(a => ({ ...a, kind: "attendance" })),
-    ].sort((a, b) => (a.date < b.date ? 1 : -1));
-
-    const activeTab = (state.cardTab && state.cardTab[emp.id]) || (historyItems.length ? "history" : "form");
-
-    const tabHeader = `
-      <div class="d-flex gap-2 mb-3 pb-2 border-bottom">
-        <button class="btn btn-sm ${activeTab==='history'?'btn-dark':'btn-outline-dark'} fw-bold" data-act="set-card-tab" data-id="${emp.id}" data-tab="history">
-          📜 History &amp; Ledger (${historyItems.length})
-        </button>
-        <button class="btn btn-sm ${activeTab==='form'?'btn-dark':'btn-outline-dark'} fw-bold" data-act="set-card-tab" data-id="${emp.id}" data-tab="form">
-          ✍️ Log Work, Attendance &amp; Payments
-        </button>
-      </div>
-    `;
-
-    const historyHtml = historyItems.length ? `
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <span class="mono muted small fw-bold">TRANSACTION HISTORY</span>
-        <button class="btn btn-sm btn-outline-dark fw-bold" data-act="set-card-tab" data-id="${emp.id}" data-tab="form">
-          + Log Entry
-        </button>
-      </div>
-      ${historyItems.map(r => {
-        let label = "";
-        if (r.kind === "work") label = `Work: ${esc(r.itemLabel||"Work")} × ${r.quantity}${r.note?" — "+esc(r.note):""}`;
-        else if (r.kind === "pay") label = `Salary Payment: Paid by ${esc(partners.find(p=>p.id===r.paidBy)?.name||"—")}${r.deductedAdvances?` (− ${fmt(r.deductedAdvances)} advance)`:""}${r.deductedHeld?` (− ${fmt(r.deductedHeld)} collected)`:""}${r.reimbursedAmount?` (+ ${fmt(r.reimbursedAmount)} reimb.)`:""}${r.note?" — "+esc(r.note):""}`;
-        else if (r.kind === "advance") {
-          const payerName = r.paidBy === "business" || !r.paidBy ? "Business Funds (Shared by Ratio)" : (partners.find(p=>p.id===r.paidBy)?.name || "Business Funds");
-          label = `Advance Given: Paid by ${esc(payerName)}${r.note?" — "+esc(r.note):""}`;
-        }
-        else if (r.kind === "attendance") {
-          const isD = r.deductSalary !== false;
-          const loss = dailyRate * (r.status === 'halfday' ? 0.5 : 1);
-          label = `Absence (${r.status === 'halfday' ? 'Half Day' : 'Full Day'}): ${r.note ? esc(r.note) + " — " : ""}${isD ? `Salary Deducted (-${fmt(loss)})` : 'Paid Leave (No Deduct)'}`;
-        }
-        const color = r.kind==="work" ? "var(--teal)" : (r.kind==="advance" ? "var(--gold)" : (r.kind==="attendance" ? "var(--rust)" : "var(--rust)"));
-        const sign = r.kind==="work" ? "+" : "-";
-        const amt = r.kind==="pay" ? (r.amount + (r.reimbursedAmount||0)) : (r.kind==="attendance" ? (r.deductSalary !== false ? dailyRate * (r.status === 'halfday' ? 0.5 : 1) : 0) : r.amount);
-        return `<div class="history-row"><span class="mono muted" style="width:95px">${esc(r.date)}</span><span style="flex:1">${label}</span><span class="mono strong" style="color:${color}">${sign}${fmt(amt)}</span></div>`;
-      }).join("")}
-    ` : `
-      <div class="empty-msg">No work or payment history yet. Use the tab above to log work or payments.</div>
-    `;
-
-    const formsContent = `<div style="display:flex;flex-direction:column;gap:14px;">${workSection}${attendanceSection}${advanceSection}${coveredList}${heldList}${paySection}</div>`;
-
-    const tabContent = activeTab === "history" ? historyHtml : formsContent;
-
-    const summaryBar = `
-      <div class="row g-2 mb-3 p-2 rounded border" style="background:#F8FAFC;border-color:#E2E8F0 !important;">
-        <div class="col-md-3 col-6 text-center border-end">
-          <div class="text-uppercase muted small fw-bold" style="font-size:10px;">SALARY RATE</div>
-          <div class="mono strong text-dark" style="font-size:15px;">${fmt(baseRate)}</div>
-          <div class="muted small" style="font-size:11px;">${emp.type==='monthly'?'Monthly':'Weekly'} (${wDays}d)</div>
-        </div>
-        <div class="col-md-3 col-6 text-center border-end">
-          <div class="text-uppercase muted small fw-bold" style="font-size:10px;">JOINING PESHGI</div>
-          <div class="mono strong text-warning" style="font-size:15px;">${fmt(joiningAdvVal)}</div>
-          <div class="muted small" style="font-size:11px;">${joiningAdvEntry ? (joiningAdvEntry.paidBy==='business'?'Business Funds':'Partner') : 'Peshgi'}</div>
-        </div>
-        <div class="col-md-3 col-6 text-center border-end">
-          <div class="text-uppercase muted small fw-bold" style="font-size:10px;">WEEKLY ADVANCE</div>
-          <div class="mono strong gold" style="font-size:15px;">${fmt(weeklyAdvVal)}</div>
-          <div class="muted small" style="font-size:11px;">Kharcha Given</div>
-        </div>
-        <div class="col-md-3 col-6 text-center">
-          <div class="text-uppercase muted small fw-bold" style="font-size:10px;">SUGGESTED NET DUE</div>
-          <div class="mono strong text-success" style="font-size:15px;">${fmt(suggestedTotal)}</div>
-          <div class="muted small" style="font-size:11px;">Net Payday</div>
-        </div>
-      </div>
-    `;
-
-    body = `<div class="card-body">${summaryBar}${tabHeader}${tabContent}</div>`;
-  }
+      : "work-based");
 
   return `
-    <div class="panel emp-card">
-      <div class="emp-head" style="cursor:default;">
-        <div class="emp-head-left" style="display:flex;align-items:center;gap:8px;">
-          <button class="btn btn-sm ${expanded?'btn-dark':'btn-outline-dark'} fw-bold" data-act="toggle-employee" data-id="${emp.id}" style="padding:2px 10px;font-size:12px;">
-            ${expanded ? "▾ Close Details" : "▸ Open Details"}
-          </button>
+    <div class="panel emp-card mb-2" style="padding:14px 18px;">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
           <span class="serif strong" style="font-size:16px;">${esc(emp.name)}</span>
           ${emp.phone ? `<span class="muted small">📞 ${esc(emp.phone)}</span>` : ""}
-          <span class="muted small">— ${headSub}</span>
+          <span class="badge bg-light text-dark border">— ${headSub}</span>
         </div>
-        <div class="emp-head-right">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
           ${emp.type==="workbased" ? `<span class="mono small strong ${owed>0?'text-danger':'text-success'}">${owed>0?`owes ${fmt(owed)}`:"settled"}</span>` : ""}
           ${unsettledAbs.length>0 ? `<span class="mono small strong text-danger">absent ${unsettledAbs.length}d (${fmt(absenceDeductionVal)})</span>` : ""}
           ${joiningAdvVal>0 ? `<span class="mono small strong text-warning" title="Joining Advance (Peshgi)">Peshgi ${fmt(joiningAdvVal)}</span>` : ""}
           ${weeklyAdvVal>0 ? `<span class="mono small strong gold" title="Weekly Advances (Kharcha)">Kharcha ${fmt(weeklyAdvVal)}</span>` : ""}
-          ${outstandingReimb>0 ? `<span class="mono small strong text-danger">reimburse ${fmt(outstandingReimb)}</span>` : ""}
-          ${outstandingHeld>0 ? `<span class="mono small strong text-danger">holding ${fmt(outstandingHeld)}</span>` : ""}
-          <a href="employee_detail.php?id=${emp.id}" class="btn btn-sm btn-dark fw-bold me-1" style="padding:2px 8px;font-size:11.5px;" title="Open Dedicated Standalone Page">🚀 Full Page</a>
-          <button class="icon-btn" data-act="edit-employee" data-id="${emp.id}" title="Edit Employee">✏️</button>
-          <button class="icon-btn" data-act="delete-employee" data-id="${emp.id}" title="Delete Employee" style="color:var(--rust);margin-left:4px">🗑️</button>
+          
+          <a href="employee_detail.php?id=${emp.id}" class="btn btn-sm btn-dark fw-bold px-3 py-1" style="font-size:12px;" title="View Employee Ledger & Details">👁️ View Details</a>
+          <button class="icon-btn" data-act="edit-employee" data-id="${emp.id}" title="Edit Profile">✏️</button>
+          <button class="icon-btn" data-act="delete-employee" data-id="${emp.id}" title="Delete Employee" style="color:var(--rust);margin-left:2px">🗑️</button>
         </div>
       </div>
-      ${body}
     </div>
   `;
 }
