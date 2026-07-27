@@ -1546,6 +1546,9 @@ if (!$employee) {
         `<option value="${p.id}" ${emp.joiningPaidBy === p.id ? 'selected' : ''}>Given by ${esc(p.name)} individually</option>`
       ).join('');
 
+      const joiningAdvEntry = (state.data.advances || []).find(a => a.employeeId === emp.id && (a.isJoiningAdvance || (a.note && a.note.toLowerCase().includes("joining"))));
+      const isOpeningCurrent = joiningAdvEntry ? (joiningAdvEntry.isOpeningAdvance !== false) : (emp.joiningIsOpening !== false);
+
       const { value: formValues } = await Swal.fire({
         title: 'Edit Employee Profile',
         html: `
@@ -1561,6 +1564,12 @@ if (!$employee) {
                 ${partnerOptions}
               </select>
             </div>
+            <div><label style="font-size:12px;font-weight:600;">Peshgi Outflow Type</label>
+              <select id="swal-emp-joining-isopening" class="swal2-input" style="margin:4px 0 0 0;width:100%;">
+                <option value="true" ${isOpeningCurrent ? 'selected' : ''}>⏳ Opening / Pre-existing Advance (Exclude from current Outflows)</option>
+                <option value="false" ${!isOpeningCurrent ? 'selected' : ''}>💸 Current Outflow (Paid out during active period)</option>
+              </select>
+            </div>
           </div>
         `,
         showCancelButton: true,
@@ -1572,11 +1581,12 @@ if (!$employee) {
           const weeklyRate = Number(document.getElementById('swal-emp-weekly').value || 0);
           const joiningAdvance = Number(document.getElementById('swal-emp-joining-adv').value || 0);
           const joiningPaidBy = document.getElementById('swal-emp-joining-paidby').value || 'business';
+          const joiningIsOpening = document.getElementById('swal-emp-joining-isopening').value === 'true';
           if (!name) {
             Swal.showValidationMessage('Please enter employee name.');
             return false;
           }
-          return { name, phone, monthlyRate, weeklyRate, joiningAdvance, joiningPaidBy };
+          return { name, phone, monthlyRate, weeklyRate, joiningAdvance, joiningPaidBy, joiningIsOpening };
         }
       });
 
@@ -1588,11 +1598,13 @@ if (!$employee) {
           emp.weeklyRate = formValues.weeklyRate;
           emp.joiningAdvance = formValues.joiningAdvance;
           emp.joiningPaidBy = formValues.joiningPaidBy;
+          emp.joiningIsOpening = formValues.joiningIsOpening;
 
           const joiningAdvEntry = (state.data.advances || []).find(a => a.employeeId === emp.id && (a.isJoiningAdvance || (a.note && a.note.toLowerCase().includes("joining"))));
           if (joiningAdvEntry) {
             joiningAdvEntry.amount = formValues.joiningAdvance;
             joiningAdvEntry.paidBy = formValues.joiningPaidBy;
+            joiningAdvEntry.isOpeningAdvance = formValues.joiningIsOpening;
           } else if (formValues.joiningAdvance > 0) {
             state.data.advances = state.data.advances || [];
             state.data.advances.unshift({
@@ -1603,7 +1615,8 @@ if (!$employee) {
               paidBy: formValues.joiningPaidBy,
               note: "Joining Advance (Peshgi)",
               settled: false,
-              isJoiningAdvance: true
+              isJoiningAdvance: true,
+              isOpeningAdvance: formValues.joiningIsOpening
             });
           }
         });

@@ -762,6 +762,9 @@ async function showEditEmployeeModal(id) {
   const emp = state.config.employees.find(e => e.id === id);
   if (!emp) return;
   const partners = state.config.partners;
+  const joiningAdvEntry = state.advances.find(a => a.employeeId === emp.id && (a.isJoiningAdvance || (a.note && a.note.toLowerCase().includes("joining"))));
+  const isOpeningCurrent = joiningAdvEntry ? (joiningAdvEntry.isOpeningAdvance !== false) : (emp.joiningIsOpening !== false);
+
   const { value: formValues } = await Swal.fire({
     title: 'Edit Employee Profile',
     html:
@@ -773,6 +776,7 @@ async function showEditEmployeeModal(id) {
       `<div><label style="font-size:12px;font-weight:600;">Monthly Base Rate (if applicable)</label><input id="swal-emp-monthly" type="number" class="swal2-input" value="${emp.monthlyRate||0}" style="margin:4px 0 0 0;width:100%;"></div>` +
       `<div><label style="font-size:12px;font-weight:600;">Joining Advance / Peshgi Amount</label><input id="swal-emp-joining-adv" type="number" class="swal2-input" value="${emp.joiningAdvance||0}" style="margin:4px 0 0 0;width:100%;"></div>` +
       `<div><label style="font-size:12px;font-weight:600;">Peshgi Paid Source</label><select id="swal-emp-joining-paidby" class="swal2-input" style="margin:4px 0 0 0;width:100%;"><option value="business" ${(emp.joiningPaidBy||'business')==='business'?'selected':''}>🏢 Business Funds (Shared by Ratio)</option>${partners.map(p=>`<option value="${p.id}" ${emp.joiningPaidBy===p.id?'selected':''}>Given by ${esc(p.name)} individually</option>`).join("")}</select></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Peshgi Outflow Type</label><select id="swal-emp-joining-isopening" class="swal2-input" style="margin:4px 0 0 0;width:100%;"><option value="true" ${isOpeningCurrent?'selected':''}>⏳ Opening / Pre-existing Advance (Exclude from current Outflows)</option><option value="false" ${!isOpeningCurrent?'selected':''}>💸 Current Outflow (Paid out during active period)</option></select></div>` +
       `<div><label style="font-size:12px;font-weight:600;">Working Days / Cycle (6/wk or 26/mo)</label><input id="swal-emp-workdays" type="number" class="swal2-input" value="${emp.workingDays||(emp.type==='monthly'?26:6)}" style="margin:4px 0 0 0;width:100%;"></div>` +
       `</div>`,
     focusConfirm: false,
@@ -788,12 +792,13 @@ async function showEditEmployeeModal(id) {
       const monthlyRate = Number(document.getElementById('swal-emp-monthly').value || 0);
       const joiningAdvance = Number(document.getElementById('swal-emp-joining-adv').value || 0);
       const joiningPaidBy = document.getElementById('swal-emp-joining-paidby').value || 'business';
+      const joiningIsOpening = document.getElementById('swal-emp-joining-isopening').value === 'true';
       const workingDays = Number(document.getElementById('swal-emp-workdays').value || (type === 'monthly' ? 26 : 6));
       if (!name) {
         Swal.showValidationMessage('Please enter employee name');
         return false;
       }
-      return { name, phone, type, weeklyRate, monthlyRate, joiningAdvance, joiningPaidBy, workingDays };
+      return { name, phone, type, weeklyRate, monthlyRate, joiningAdvance, joiningPaidBy, joiningIsOpening, workingDays };
     }
   });
 
@@ -806,6 +811,7 @@ async function showEditEmployeeModal(id) {
       emp.monthlyRate = formValues.monthlyRate;
       emp.joiningAdvance = formValues.joiningAdvance;
       emp.joiningPaidBy = formValues.joiningPaidBy;
+      emp.joiningIsOpening = formValues.joiningIsOpening;
       emp.workingDays = formValues.workingDays;
       if (emp.type === 'workbased' && !emp.items) emp.items = [];
 
@@ -813,6 +819,7 @@ async function showEditEmployeeModal(id) {
       if (joiningAdvEntry) {
         joiningAdvEntry.amount = formValues.joiningAdvance;
         joiningAdvEntry.paidBy = formValues.joiningPaidBy;
+        joiningAdvEntry.isOpeningAdvance = formValues.joiningIsOpening;
       } else if (formValues.joiningAdvance > 0) {
         state.advances.unshift({
           id: uid(),
@@ -822,7 +829,8 @@ async function showEditEmployeeModal(id) {
           paidBy: formValues.joiningPaidBy,
           note: "Joining Advance (Peshgi)",
           settled: false,
-          isJoiningAdvance: true
+          isJoiningAdvance: true,
+          isOpeningAdvance: formValues.joiningIsOpening
         });
       }
     });
@@ -1328,12 +1336,19 @@ function getIncomeBalance(sale) {
   return Math.max(0, Number(sale.amount || 0) - getIncomePaid(sale));
 }
 
+function isOpeningAdv(x) {
+  if (x && x.isOpeningAdvance !== undefined) return !!x.isOpeningAdvance;
+  if (x && x.isOpening !== undefined) return !!x.isOpening;
+  if (x && (x.isJoiningAdvance || (x.note && x.note.toLowerCase().includes("joining")))) return true;
+  return false;
+}
+
 function totalRatio() { return state.config.partners.reduce((s, p) => s + Number(p.ratio || 0), 0); }
 function totalIncome() { return state.income.reduce((s, x) => s + getIncomePaid(x), 0); }
 function totalOutflow() {
   const exp = state.expenses.reduce((s, x) => s + Number(x.amount || 0), 0);
   const sal = state.salaryPayments.reduce((s, x) => s + Number(x.amount || 0), 0);
-  const adv = state.advances.reduce((s, x) => s + Number(x.amount || 0), 0);
+  const adv = state.advances.filter(x => !isOpeningAdv(x)).reduce((s, x) => s + Number(x.amount || 0), 0);
   return exp + sal + adv;
 }
 function netProfit() { return totalIncome() - totalOutflow(); }
@@ -1345,7 +1360,7 @@ function partnerStats() {
     const opCap = Number(p.openingCapital || 0);
     const expPaid = state.expenses.filter(x => x.paidBy === p.id).reduce((s, x) => s + Number(x.amount || 0), 0);
     const salPaid = state.salaryPayments.filter(x => x.paidBy === p.id).reduce((s, x) => s + Number(x.amount || 0) + Number(x.reimbursedAmount || 0), 0);
-    const advPaid = state.advances.filter(x => x.paidBy === p.id).reduce((s, x) => s + Number(x.amount || 0), 0);
+    const advPaid = state.advances.filter(x => x.paidBy === p.id && !isOpeningAdv(x)).reduce((s, x) => s + Number(x.amount || 0), 0);
     const vendPaid = state.vendorPayments.filter(x => x.paidBy === p.id).reduce((s, x) => s + Number(x.amount || 0), 0);
     const paid = opCap + expPaid + salPaid + advPaid + vendPaid;
     const received = state.income.reduce((s, sale) => {
@@ -2495,7 +2510,7 @@ function renderReports() {
   const repSales = state.income.filter(s => inRange(s.date));
   const repExpenses = state.expenses.filter(e => inRange(e.date));
   const repSalaryPayments = state.salaryPayments.filter(p => inRange(p.date));
-  const repAdvances = state.advances.filter(a => inRange(a.date));
+  const repAdvances = state.advances.filter(a => inRange(a.date) && !isOpeningAdv(a));
   const repAttendance = (state.attendanceLogs || []).filter(a => inRange(a.date));
 
   const totalOrderValue = repSales.reduce((s, x) => s + Number(x.amount || 0), 0);
