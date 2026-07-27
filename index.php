@@ -1082,6 +1082,60 @@ async function deleteWorkItem(wiId) {
   }
 }
 
+async function editWorkItem(wiId) {
+  const wi = (state.workItems || []).find(w => w.id === wiId);
+  if (!wi) return;
+
+  const { value: form } = await Swal.fire({
+    title: '✏️ Edit Work Item',
+    html: `
+      <div style="text-align:left;display:flex;flex-direction:column;gap:10px;">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:#166534;">Item / Operation Name *</label>
+          <input id="swl-wi-name" class="swal2-input" value="${esc(wi.name)}" placeholder="e.g. Leather Upper Stitching" style="margin:4px 0 0 0;width:100%;">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:#166534;">Rate per Unit (Rs.) *</label>
+          <input id="swl-wi-rate" type="number" class="swal2-input" value="${wi.unitPrice}" placeholder="e.g. 120" style="margin:4px 0 0 0;width:100%;">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:#166534;">Unit</label>
+          <input id="swl-wi-unit" class="swal2-input" value="${esc(wi.unit || 'piece')}" placeholder="e.g. pair, piece, dozen" style="margin:4px 0 0 0;width:100%;">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:#166534;">Description (optional)</label>
+          <input id="swl-wi-desc" class="swal2-input" value="${esc(wi.description || '')}" placeholder="Short description" style="margin:4px 0 0 0;width:100%;">
+        </div>
+      </div>`,
+    showCancelButton: true,
+    confirmButtonColor: '#166534',
+    confirmButtonText: '💾 Save Changes',
+    focusConfirm: false,
+    preConfirm: () => {
+      const name = document.getElementById('swl-wi-name').value.trim();
+      const rate = Number(document.getElementById('swl-wi-rate').value);
+      const unit = document.getElementById('swl-wi-unit').value.trim() || 'piece';
+      const desc = document.getElementById('swl-wi-desc').value.trim();
+      if (!name) { Swal.showValidationMessage('⚠️ Item name is required'); return false; }
+      if (!rate || rate <= 0) { Swal.showValidationMessage('⚠️ Rate must be greater than zero'); return false; }
+      return { name, rate, unit, desc };
+    }
+  });
+
+  if (form) {
+    mutate(() => {
+      const item = (state.workItems || []).find(w => w.id === wiId);
+      if (item) {
+        item.name = form.name;
+        item.unitPrice = form.rate;
+        item.unit = form.unit;
+        item.description = form.desc;
+      }
+    });
+    Swal.fire({ toast: true, icon: 'success', title: `✅ "${form.name}" updated!`, text: `New rate: ${fmt(form.rate)} / ${form.unit}`, timer: 2500, showConfirmButton: false, position: 'top-end' });
+  }
+}
+
 function onQuickItemSelect(safeId) {
   const sel = document.getElementById('qwl-item-' + safeId);
   if (!sel) return;
@@ -2032,12 +2086,15 @@ function renderEmployees() {
   const empHtml = state.config.employees.map(emp => renderEmployeeCard(emp, partners)).join("");
   const workItemsHtml = (state.workItems || []).map(wi => `
     <div class="d-flex align-items-center justify-content-between p-2 mb-1 rounded bg-white border" style="font-size:13px;">
-      <div class="d-flex align-items-center gap-3">
+      <div class="d-flex align-items-center gap-3 flex-wrap">
         <span class="fw-bold">${esc(wi.name)}</span>
         <span class="badge bg-success text-white mono">${fmt(wi.unitPrice)} / ${esc(wi.unit || 'piece')}</span>
         ${wi.description ? `<span class="text-muted small">${esc(wi.description)}</span>` : ''}
       </div>
-      <button class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:11px;" onclick="deleteWorkItem('${wi.id}')">🗑️</button>
+      <div class="d-flex gap-1">
+        <button class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:11px;" onclick="editWorkItem('${wi.id}')" title="Edit Item">✏️ Edit</button>
+        <button class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:11px;" onclick="deleteWorkItem('${wi.id}')" title="Delete Item">🗑️</button>
+      </div>
     </div>
   `).join('');
 
