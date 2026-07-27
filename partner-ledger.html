@@ -2178,7 +2178,32 @@ function renderEmployeeCard(emp, partners) {
 
     const tabContent = activeTab === "history" ? historyHtml : formsContent;
 
-    body = `<div class="card-body">${tabHeader}${tabContent}</div>`;
+    const summaryBar = `
+      <div class="row g-2 mb-3 p-2 rounded border" style="background:#F8FAFC;border-color:#E2E8F0 !important;">
+        <div class="col-md-3 col-6 text-center border-end">
+          <div class="text-uppercase muted small fw-bold" style="font-size:10px;">SALARY RATE</div>
+          <div class="mono strong text-dark" style="font-size:15px;">${fmt(baseRate)}</div>
+          <div class="muted small" style="font-size:11px;">${emp.type==='monthly'?'Monthly':'Weekly'} (${wDays}d)</div>
+        </div>
+        <div class="col-md-3 col-6 text-center border-end">
+          <div class="text-uppercase muted small fw-bold" style="font-size:10px;">JOINING PESHGI</div>
+          <div class="mono strong text-warning" style="font-size:15px;">${fmt(joiningAdvVal)}</div>
+          <div class="muted small" style="font-size:11px;">${joiningAdvEntry ? (joiningAdvEntry.paidBy==='business'?'Business Funds':'Partner') : 'Peshgi'}</div>
+        </div>
+        <div class="col-md-3 col-6 text-center border-end">
+          <div class="text-uppercase muted small fw-bold" style="font-size:10px;">WEEKLY ADVANCE</div>
+          <div class="mono strong gold" style="font-size:15px;">${fmt(weeklyAdvVal)}</div>
+          <div class="muted small" style="font-size:11px;">Kharcha Given</div>
+        </div>
+        <div class="col-md-3 col-6 text-center">
+          <div class="text-uppercase muted small fw-bold" style="font-size:10px;">SUGGESTED NET DUE</div>
+          <div class="mono strong text-success" style="font-size:15px;">${fmt(suggestedTotal)}</div>
+          <div class="muted small" style="font-size:11px;">Net Payday</div>
+        </div>
+      </div>
+    `;
+
+    body = `<div class="card-body">${summaryBar}${tabHeader}${tabContent}</div>`;
   }
 
   return `
