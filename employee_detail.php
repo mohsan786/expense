@@ -276,10 +276,11 @@ if (!$employee) {
                   <th class="text-end">RETURNED (-)</th>
                   <th>SOURCE</th>
                   <th>STATUS</th>
+                  <th class="text-center">ACTION</th>
                 </tr>
               </thead>
               <tbody id="adv-breakdown-body">
-                <tr><td colspan="7" class="text-center py-3 text-muted">Loading advance ledger…</td></tr>
+                <tr><td colspan="8" class="text-center py-3 text-muted">Loading advance ledger…</td></tr>
               </tbody>
             </table>
           </div>
@@ -660,7 +661,9 @@ if (!$employee) {
           given: Number(a.amount || 0),
           returned: 0,
           paidBy: a.paidBy === 'business' || !a.paidBy ? 'Business Funds' : (partners.find(p=>p.id===a.paidBy)?.name || 'Partner'),
-          settled: a.settled
+          settled: a.settled,
+          objType: 'advance',
+          id: a.id
         })),
         ...payments.filter(p => Number(p.deductedAdvances || 0) > 0).map(p => ({
           date: p.date,
@@ -669,13 +672,15 @@ if (!$employee) {
           given: 0,
           returned: Number(p.deductedAdvances || 0),
           paidBy: p.paidBy === 'business' || !p.paidBy ? 'Salary Settlement' : (partners.find(p=>p.id===p.paidBy)?.name || 'Salary Settlement'),
-          settled: true
+          settled: true,
+          objType: 'payment',
+          id: p.id
         }))
       ].sort((a, b) => b.date.localeCompare(a.date));
 
       const advTbody = document.getElementById('adv-breakdown-body');
       if (advEvents.length === 0) {
-        advTbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No advances given or returned yet.</td></tr>`;
+        advTbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">No advances given or returned yet.</td></tr>`;
       } else {
         advTbody.innerHTML = advEvents.map(ev => `
           <tr>
@@ -686,6 +691,12 @@ if (!$employee) {
             <td class="mono text-end ${ev.returned > 0 ? 'fw-bold text-success' : 'text-muted'}">${ev.returned > 0 ? fmt(ev.returned) : '—'}</td>
             <td class="small">${ev.paidBy}</td>
             <td>${ev.settled ? `<span class="badge bg-light text-dark border">Settled</span>` : `<span class="badge bg-warning text-dark">Active Due</span>`}</td>
+            <td class="text-center">
+              ${ev.objType === 'advance' 
+                ? `<button class="btn btn-sm btn-outline-danger py-0 px-2 border-0" onclick="deleteAdvance('${ev.id}')" title="Delete Advance">🗑️</button>`
+                : `<span class="text-muted small" title="Delete Payday Deduction from Salary Settlement panel">-</span>`
+              }
+            </td>
           </tr>
         `).join('');
       }
@@ -870,6 +881,25 @@ if (!$employee) {
     function togglePurchasingForm() {
       const f = document.getElementById('purchasing-form-wrap');
       f.style.display = f.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function deleteAdvance(id) {
+      const confirm = await Swal.fire({
+        title: 'Delete Advance?',
+        text: "Are you sure you want to delete this advance? This will remove it from the employee's balance.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!'
+      });
+
+      if (confirm.isConfirmed) {
+        await mutate(() => {
+          state.data.advances = state.data.advances.filter(a => a.id !== id);
+        });
+        Swal.fire({ icon: 'success', title: 'Deleted!', text: 'The advance has been deleted.' });
+      }
     }
 
     async function savePurchasingCash() {
