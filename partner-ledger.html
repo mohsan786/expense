@@ -2308,6 +2308,7 @@ function renderEmployeeCard(emp, partners) {
           ${weeklyAdvVal>0 ? `<span class="mono small strong gold" title="Weekly Advances (Kharcha)">Kharcha ${fmt(weeklyAdvVal)}</span>` : ""}
           ${outstandingReimb>0 ? `<span class="mono small strong" style="color:var(--rust)">reimburse ${fmt(outstandingReimb)}</span>` : ""}
           ${outstandingHeld>0 ? `<span class="mono small strong" style="color:var(--rust)">holding ${fmt(outstandingHeld)}</span>` : ""}
+          <a href="employee_detail.php?id=${emp.id}" class="btn btn-sm btn-dark fw-bold me-1" style="padding:2px 8px;font-size:11.5px;" title="Open Dedicated Standalone Page">🚀 Full Page</a>
           <button class="icon-btn" data-act="edit-employee" data-id="${emp.id}" title="Edit Employee">✏️</button>
           <button class="icon-btn" data-act="delete-employee" data-id="${emp.id}" title="Delete Employee" style="color:var(--rust);margin-left:4px">🗑️</button>
         </div>

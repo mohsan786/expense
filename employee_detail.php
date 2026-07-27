@@ -1,0 +1,660 @@
+<?php
+require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/db.php';
+
+if (!is_authenticated()) {
+    header('Location: index.php');
+    exit;
+}
+
+$emp_id = isset($_GET['id']) ? trim($_GET['id']) : '';
+$data = get_ledger_data() ?: [
+    'config' => ['currency' => 'Rs.', 'partners' => [], 'employees' => []],
+    'expenses' => [],
+    'income' => [],
+    'advances' => [],
+    'salaryPayments' => [],
+    'attendanceLogs' => [],
+    'workLogs' => []
+];
+
+$employees = $data['config']['employees'] ?? [];
+$partners = $data['config']['partners'] ?? [];
+$currency = $data['config']['currency'] ?? 'Rs.';
+
+$employee = null;
+foreach ($employees as $e) {
+    if ($e['id'] === $emp_id) {
+        $employee = $e;
+        break;
+    }
+}
+
+if (!$employee) {
+    header('Location: index.php');
+    exit;
+}
+
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><?php echo htmlspecialchars($employee['name']); ?> — Employee Ledger | Velto LS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --surface: #FFFFFF;
+      --text: #0F172A;
+      --muted: #64748B;
+      --border: #E2E8F0;
+      --primary: #0F172A;
+      --teal: #0D9488;
+      --teal-bg: #CCFBF1;
+      --gold: #D97706;
+      --gold-bg: #FEF3C7;
+      --rust: #DC2626;
+      --rust-bg: #FEE2E2;
+      --card-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
+    }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      padding-bottom: 60px;
+    }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .serif { font-family: 'Newsreader', serif; }
+    
+    .navbar-custom {
+      background: #0F172A;
+      color: #FFF;
+      padding: 14px 24px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: var(--card-shadow);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px -3px rgba(15, 23, 42, 0.08);
+    }
+    .kpi-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .kpi-value {
+      font-size: 24px;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    
+    .content-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: var(--card-shadow);
+      margin-bottom: 24px;
+    }
+    .panel-header {
+      font-size: 18px;
+      font-weight: 700;
+      font-family: 'Newsreader', serif;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .history-row {
+      display: flex;
+      align-items: center;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .history-row:last-child { border-bottom: none; }
+    
+    .badge-custom {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header Navigation -->
+  <header class="navbar-custom d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex align-items-center gap-3">
+      <a href="index.php" class="btn btn-outline-light btn-sm fw-bold px-3">← Back to Main Ledger</a>
+      <div>
+        <h4 class="mb-0 fw-bold serif" style="letter-spacing:-0.5px;"><?php echo htmlspecialchars($employee['name']); ?></h4>
+        <small class="text-light opacity-75">
+          <?php echo $employee['phone'] ? '📞 ' . htmlspecialchars($employee['phone']) . ' · ' : ''; ?>
+          <?php echo ucfirst($employee['type']); ?> Salary Model
+        </small>
+      </div>
+    </div>
+    <div>
+      <button class="btn btn-sm btn-light fw-bold px-3" onclick="showEditModal()">✏️ Edit Profile</button>
+    </div>
+  </header>
+
+  <div class="container-fluid px-md-5">
+
+    <!-- KPI Dashboard Summary Cards -->
+    <div class="row g-3 mb-4" id="kpi-container">
+      <div class="col-md-3 col-6">
+        <div class="kpi-card">
+          <div class="kpi-title">Salary Base Rate</div>
+          <div class="kpi-value text-dark" id="kpi-base">—</div>
+          <div class="small text-muted" id="kpi-base-sub">Cycle Rate</div>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        <div class="kpi-card">
+          <div class="kpi-title">Joining Peshgi</div>
+          <div class="kpi-value text-warning" id="kpi-peshgi">—</div>
+          <div class="small text-muted" id="kpi-peshgi-sub">Initial Advance</div>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        <div class="kpi-card">
+          <div class="kpi-title">Weekly Kharcha</div>
+          <div class="kpi-value text-amber" style="color:var(--gold);" id="kpi-kharcha">—</div>
+          <div class="small text-muted">Active Advances Taken</div>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        <div class="kpi-card" style="border-color:var(--teal);">
+          <div class="kpi-title">Suggested Net Payday</div>
+          <div class="kpi-value text-teal" style="color:var(--teal);" id="kpi-net">—</div>
+          <div class="small text-muted">Calculated Settlement</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action & Form Section -->
+    <div class="row g-4 mb-4">
+      <div class="col-lg-7 col-12">
+
+        <!-- Advance Breakthrough & Ledger Card -->
+        <div class="content-panel">
+          <div class="panel-header">
+            <span>💰 Advance Ledger &amp; Return Breakthrough</span>
+            <span class="badge bg-light text-dark border mono fs-6" id="badge-outstanding">—</span>
+          </div>
+
+          <div class="table-responsive mb-3">
+            <table class="table table-sm table-hover table-bordered align-middle mb-0" style="font-size:12.5px;">
+              <thead class="table-dark mono" style="font-size:11px;">
+                <tr>
+                  <th>DATE</th>
+                  <th>TYPE</th>
+                  <th>NOTE / DETAILS</th>
+                  <th class="text-end">GIVEN (+)</th>
+                  <th class="text-end">RETURNED (-)</th>
+                  <th>SOURCE</th>
+                  <th>STATUS</th>
+                </tr>
+              </thead>
+              <tbody id="adv-breakdown-body">
+                <tr><td colspan="7" class="text-center py-3 text-muted">Loading advance ledger…</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <button class="btn btn-outline-dark btn-sm fw-bold" onclick="toggleAdvForm()">➕ Log New Weekly Advance (Kharcha)</button>
+
+          <!-- Hidden Form for Logging Advance -->
+          <div id="adv-form-wrap" class="mt-3 p-3 border rounded bg-light" style="display:none;">
+            <div class="fw-bold small mb-2 text-dark">Log Weekly Kharcha Advance</div>
+            <div class="row g-2">
+              <div class="col-md-3 col-6"><input type="date" id="adv-date" class="form-control form-control-sm" value="<?php echo date('Y-m-d'); ?>"></div>
+              <div class="col-md-3 col-6"><input type="number" id="adv-amount" class="form-control form-control-sm" placeholder="Amount"></div>
+              <div class="col-md-3 col-6">
+                <select id="adv-paidby" class="form-select form-select-sm">
+                  <option value="business" selected>🏢 Business Funds</option>
+                  <?php foreach ($partners as $p): ?>
+                    <option value="<?php echo htmlspecialchars($p['id']); ?>"><?php echo htmlspecialchars($p['name']); ?></option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+              <div class="col-md-3 col-6"><input id="adv-note" class="form-control form-control-sm" placeholder="Note (optional)"></div>
+            </div>
+            <button class="btn btn-dark btn-sm fw-bold mt-2" onclick="saveAdvance()">Submit Advance</button>
+          </div>
+        </div>
+
+        <!-- Full Transaction History Card -->
+        <div class="content-panel">
+          <div class="panel-header">
+            <span>📜 Transaction History Log</span>
+          </div>
+          <div id="history-container">
+            <div class="text-muted small">Loading transaction history…</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Payday & Operations -->
+      <div class="col-lg-5 col-12">
+
+        <!-- Payday Settlement Panel -->
+        <div class="content-panel" style="background:#FAF5FF;border-color:#E9D5FF;">
+          <div class="panel-header" style="color:#6B21A8;">
+            <span>💵 Payday Salary Settlement</span>
+          </div>
+
+          <div id="payday-box-wrap">
+            <div class="text-muted small">Loading payday details…</div>
+          </div>
+        </div>
+
+        <!-- Attendance Logging Panel -->
+        <div class="content-panel">
+          <div class="panel-header">
+            <span>📅 Log Attendance / Absence</span>
+          </div>
+          <div class="row g-2">
+            <div class="col-6"><label class="form-label small mb-1">Date</label><input type="date" id="att-date" class="form-control form-control-sm" value="<?php echo date('Y-m-d'); ?>"></div>
+            <div class="col-6"><label class="form-label small mb-1">Status</label><select id="att-status" class="form-select form-select-sm"><option value="absent">Full Day Absent</option><option value="halfday">Half Day</option></select></div>
+            <div class="col-12"><label class="form-label small mb-1">Salary Penalty</label><select id="att-deduct" class="form-select form-select-sm"><option value="yes">Deduct Salary (Unpaid)</option><option value="no">Paid Leave (No Deduct)</option></select></div>
+            <div class="col-12"><label class="form-label small mb-1">Reason</label><input id="att-note" class="form-control form-control-sm" placeholder="Reason (optional)"></div>
+          </div>
+          <button class="btn btn-dark btn-sm fw-bold mt-3 w-100" onclick="saveAttendance()">+ Log Absence Record</button>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const EMP_ID = <?php echo json_encode($emp_id); ?>;
+    let state = {
+      data: null,
+      customAdvDeduct: null,
+      deductAdv: true,
+      includeReimb: true,
+      deductHeld: true,
+      deductAtt: true
+    };
+
+    function fmt(n) {
+      const c = state.data ? state.data.config.currency : 'Rs.';
+      return `${c}${Number(n || 0).toFixed(2)}`;
+    }
+
+    async function loadData() {
+      const res = await fetch('api.php?action=load');
+      const json = await res.json();
+      if (json.success && json.data) {
+        state.data = json.data;
+        render();
+      }
+    }
+
+    async function mutate(fn) {
+      fn();
+      await fetch('api.php?action=save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: state.data })
+      });
+      render();
+    }
+
+    function render() {
+      if (!state.data) return;
+      const emp = state.data.config.employees.find(e => e.id === EMP_ID);
+      if (!emp) return;
+
+      const partners = state.data.config.partners || [];
+      const advances = (state.data.advances || []).filter(a => a.employeeId === EMP_ID);
+      const payments = (state.data.salaryPayments || []).filter(p => p.employeeId === EMP_ID);
+      const workLogs = (state.data.workLogs || []).filter(w => w.employeeId === EMP_ID);
+      const attLogs = (state.data.attendanceLogs || []).filter(a => a.employeeId === EMP_ID);
+      const unsettledAbs = attLogs.filter(a => !a.settled && a.status !== 'present');
+
+      const joiningAdvEntry = advances.find(a => a.isJoiningAdvance || (a.note && a.note.toLowerCase().includes("joining")));
+      const joiningAdvVal = emp.joiningAdvance || (joiningAdvEntry ? joiningAdvEntry.amount : 0);
+
+      const totalAdvGiven = advances.reduce((s, a) => s + Number(a.amount || 0), 0);
+      const totalAdvReturned = payments.reduce((s, p) => s + Number(p.deductedAdvances || 0), 0);
+      const outstandingAdv = Math.max(0, totalAdvGiven - totalAdvReturned);
+      const weeklyAdvVal = Math.max(0, outstandingAdv - (joiningAdvEntry && !joiningAdvEntry.settled ? joiningAdvEntry.amount : 0));
+
+      const defaultWD = emp.type === "monthly" ? 26 : 6;
+      const wDays = emp.workingDays || defaultWD;
+      const baseRate = emp.type === "monthly" ? Number(emp.monthlyRate || 0) : Number(emp.weeklyRate || 0);
+      const dailyRate = baseRate / (wDays > 0 ? wDays : defaultWD);
+
+      let absenceDeductionVal = 0;
+      unsettledAbs.forEach(a => {
+        if (a.deductSalary !== false) {
+          absenceDeductionVal += dailyRate * (a.status === 'halfday' ? 0.5 : 1);
+        }
+      });
+
+      let partialAdvVal = state.customAdvDeduct !== null ? Number(state.customAdvDeduct) : (weeklyAdvVal > 0 ? weeklyAdvVal : outstandingAdv);
+      let actualAdvDeducted = state.deductAdv ? Math.min(outstandingAdv, Math.max(0, partialAdvVal)) : 0;
+
+      const totalEarned = workLogs.reduce((s, w) => s + w.amount, 0);
+      const totalWagePaid = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+      const unpaidWorkEarned = Math.max(0, totalEarned - totalWagePaid);
+
+      const suggestedWage = (emp.type === "weekly" || emp.type === "monthly")
+        ? Math.max(baseRate - actualAdvDeducted - (state.deductAtt ? absenceDeductionVal : 0), 0)
+        : Math.max(unpaidWorkEarned - actualAdvDeducted, 0);
+
+      // Render KPIs
+      document.getElementById('kpi-base').innerText = fmt(baseRate);
+      document.getElementById('kpi-base-sub').innerText = `${emp.type === 'monthly' ? 'Monthly' : 'Weekly'} (${wDays}d)`;
+      document.getElementById('kpi-peshgi').innerText = fmt(joiningAdvVal);
+      document.getElementById('kpi-peshgi-sub').innerText = joiningAdvEntry ? (joiningAdvEntry.paidBy === 'business' ? 'Business Funds' : 'Partner Paid') : 'Peshgi';
+      document.getElementById('kpi-kharcha').innerText = fmt(weeklyAdvVal);
+      document.getElementById('kpi-net').innerText = fmt(suggestedWage);
+      document.getElementById('badge-outstanding').innerText = `Outstanding: ${fmt(outstandingAdv)}`;
+
+      // Render Advance Breakthrough Table
+      const advEvents = [
+        ...advances.map(a => ({
+          date: a.date,
+          type: a.isJoiningAdvance ? 'Joining Peshgi (+)' : 'Weekly Kharcha (+)',
+          note: a.note || (a.isJoiningAdvance ? 'Joining Advance (Peshgi)' : 'Weekly Advance'),
+          given: Number(a.amount || 0),
+          returned: 0,
+          paidBy: a.paidBy === 'business' || !a.paidBy ? 'Business Funds' : (partners.find(p=>p.id===a.paidBy)?.name || 'Partner'),
+          settled: a.settled
+        })),
+        ...payments.filter(p => Number(p.deductedAdvances || 0) > 0).map(p => ({
+          date: p.date,
+          type: 'Payday Deduction (-)',
+          note: p.note ? `Salary Payday: ${p.note}` : 'Salary Payday Advance Repayment',
+          given: 0,
+          returned: Number(p.deductedAdvances || 0),
+          paidBy: p.paidBy === 'business' || !p.paidBy ? 'Salary Settlement' : (partners.find(p=>p.id===p.paidBy)?.name || 'Salary Settlement'),
+          settled: true
+        }))
+      ].sort((a, b) => b.date.localeCompare(a.date));
+
+      const advTbody = document.getElementById('adv-breakdown-body');
+      if (advEvents.length === 0) {
+        advTbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No advances given or returned yet.</td></tr>`;
+      } else {
+        advTbody.innerHTML = advEvents.map(ev => `
+          <tr>
+            <td class="mono muted">${ev.date}</td>
+            <td><span class="badge ${ev.given > 0 ? (ev.type.includes('Peshgi') ? 'bg-warning text-dark' : 'bg-secondary') : 'bg-success'}">${ev.type}</span></td>
+            <td>${ev.note}</td>
+            <td class="mono text-end ${ev.given > 0 ? 'fw-bold text-amber' : 'text-muted'}">${ev.given > 0 ? fmt(ev.given) : '—'}</td>
+            <td class="mono text-end ${ev.returned > 0 ? 'fw-bold text-success' : 'text-muted'}">${ev.returned > 0 ? fmt(ev.returned) : '—'}</td>
+            <td class="small">${ev.paidBy}</td>
+            <td>${ev.settled ? `<span class="badge bg-light text-dark border">Settled</span>` : `<span class="badge bg-warning text-dark">Active Due</span>`}</td>
+          </tr>
+        `).join('');
+      }
+
+      // Render Payday Settlement Box
+      const paydayWrap = document.getElementById('payday-box-wrap');
+      paydayWrap.innerHTML = `
+        <div class="mb-3">
+          <div class="fw-bold mb-1">Suggested Wage Amount: <span class="mono text-success fs-5">${fmt(suggestedWage)}</span></div>
+          <div class="small text-muted mb-2">Calculated from base rate minus advance deductions &amp; absence penalties.</div>
+        </div>
+
+        ${outstandingAdv > 0 ? `
+          <div class="p-3 border rounded bg-white mb-3">
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" id="chk-deduct-adv" ${state.deductAdv ? 'checked' : ''} onchange="state.deductAdv=this.checked;render();">
+              <label class="form-check-input-label fw-bold small" for="chk-deduct-adv">Deduct Advance from Payday</label>
+            </div>
+            ${state.deductAdv ? `
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="small muted">Deduct Amount:</span>
+                <input class="form-control form-control-sm mono fw-bold" type="number" id="pay-adv-deduct-amt" value="${partialAdvVal}" style="max-width:130px;" oninput="state.customAdvDeduct=this.value;render();">
+                <span class="small muted">(out of ${fmt(outstandingAdv)})</span>
+              </div>
+              <div class="d-flex gap-2">
+                <button class="btn btn-link p-0 text-decoration-none small" style="font-size:11px;" onclick="state.customAdvDeduct='${weeklyAdvVal}';render();">⚡ Deduct Weekly Kharcha (${fmt(weeklyAdvVal)})</button>
+                <span class="text-muted small">|</span>
+                <button class="btn btn-link p-0 text-decoration-none small" style="font-size:11px;" onclick="state.customAdvDeduct='${outstandingAdv}';render();">⚡ Deduct Full (${fmt(outstandingAdv)})</button>
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
+
+        <div class="row g-2 mb-3">
+          <div class="col-6"><label class="form-label small mb-1">Pay Date</label><input type="date" id="pay-date" class="form-control form-control-sm" value="<?php echo date('Y-m-d'); ?>"></div>
+          <div class="col-6"><label class="form-label small mb-1">Custom Wage Override</label><input type="number" id="pay-amount" class="form-control form-control-sm" placeholder="${suggestedWage}"></div>
+          <div class="col-12"><label class="form-label small mb-1">Paid By Partner</label><select id="pay-paidby" class="form-select form-select-sm">${partners.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</select></div>
+          <div class="col-12"><label class="form-label small mb-1">Payment Note</label><input id="pay-note" class="form-control form-control-sm" placeholder="e.g. Weekly payday salary"></div>
+        </div>
+
+        <button class="btn btn-success btn-lg w-100 fw-bold shadow-sm" onclick="savePayday()">💰 Settle Salary Payday</button>
+      `;
+
+      // Render Transaction History Log
+      const historyItems = [
+        ...workLogs.map(w => ({ ...w, kind: "work" })),
+        ...payments.map(p => ({ ...p, kind: "pay" })),
+        ...advances.map(a => ({ ...a, kind: "advance" })),
+        ...attLogs.map(a => ({ ...a, kind: "attendance" })),
+      ].sort((a, b) => b.date.localeCompare(a.date));
+
+      const histWrap = document.getElementById('history-container');
+      if (historyItems.length === 0) {
+        histWrap.innerHTML = `<div class="text-muted small py-2">No transaction history recorded yet.</div>`;
+      } else {
+        histWrap.innerHTML = historyItems.map(r => {
+          let label = "";
+          if (r.kind === "work") label = `Work: ${r.itemLabel||"Work"} × ${r.quantity}${r.note?" — "+r.note:""}`;
+          else if (r.kind === "pay") label = `Salary Payment: Paid by ${partners.find(p=>p.id===r.paidBy)?.name||"—"}${r.deductedAdvances?` (− ${fmt(r.deductedAdvances)} advance)`:""}${r.note?" — "+r.note:""}`;
+          else if (r.kind === "advance") {
+            const payerName = r.paidBy === "business" || !r.paidBy ? "Business Funds" : (partners.find(p=>p.id===r.paidBy)?.name || "Business Funds");
+            label = `Advance Given: Paid by ${payerName}${r.note?" — "+r.note:""}`;
+          } else if (r.kind === "attendance") {
+            const isD = r.deductSalary !== false;
+            const loss = dailyRate * (r.status === 'halfday' ? 0.5 : 1);
+            label = `Absence (${r.status === 'halfday' ? 'Half Day' : 'Full Day'}): ${r.note ? r.note + " — " : ""}${isD ? `Salary Deducted (-${fmt(loss)})` : 'Paid Leave'}`;
+          }
+          const color = r.kind==="work" ? "var(--teal)" : (r.kind==="advance" ? "var(--gold)" : (r.kind==="attendance" ? "var(--rust)" : "var(--rust)"));
+          const sign = r.kind==="work" ? "+" : "-";
+          const amt = r.kind==="pay" ? (r.amount + (r.reimbursedAmount||0)) : (r.kind==="attendance" ? (r.deductSalary !== false ? dailyRate * (r.status === 'halfday' ? 0.5 : 1) : 0) : r.amount);
+          return `<div class="history-row"><span class="mono text-muted" style="width:95px">${r.date}</span><span style="flex:1">${label}</span><span class="mono strong" style="color:${color}">${sign}${fmt(amt)}</span></div>`;
+        }).join('');
+      }
+    }
+
+    function toggleAdvForm() {
+      const f = document.getElementById('adv-form-wrap');
+      f.style.display = f.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function saveAdvance() {
+      const amount = Number(document.getElementById('adv-amount').value);
+      const date = document.getElementById('adv-date').value || new Date().toISOString().split('T')[0];
+      const paidBy = document.getElementById('adv-paidby').value;
+      const note = document.getElementById('adv-note').value.trim();
+
+      if (!amount || isNaN(amount) || amount <= 0) {
+        Swal.fire('⚠️ Invalid Amount', 'Please enter a valid advance amount greater than zero.', 'warning');
+        return;
+      }
+
+      await mutate(() => {
+        state.data.advances.unshift({
+          id: 'adv_' + Math.random().toString(36).substr(2, 9),
+          employeeId: EMP_ID,
+          date,
+          amount,
+          paidBy,
+          note,
+          settled: false
+        });
+      });
+
+      document.getElementById('adv-form-wrap').style.display = 'none';
+      Swal.fire({ toast: true, icon: 'success', title: '💵 Advance recorded!', timer: 2000, showConfirmButton: false });
+    }
+
+    async function saveAttendance() {
+      const date = document.getElementById('att-date').value || new Date().toISOString().split('T')[0];
+      const status = document.getElementById('att-status').value;
+      const deductSalary = document.getElementById('att-deduct').value === 'yes';
+      const note = document.getElementById('att-note').value.trim();
+
+      await mutate(() => {
+        state.data.attendanceLogs = state.data.attendanceLogs || [];
+        state.data.attendanceLogs.unshift({
+          id: 'att_' + Math.random().toString(36).substr(2, 9),
+          employeeId: EMP_ID,
+          date,
+          status,
+          deductSalary,
+          note,
+          settled: false
+        });
+      });
+
+      Swal.fire({ toast: true, icon: 'success', title: '📅 Absence recorded!', timer: 2000, showConfirmButton: false });
+    }
+
+    async function savePayday() {
+      const emp = state.data.config.employees.find(e => e.id === EMP_ID);
+      const advances = (state.data.advances || []).filter(a => a.employeeId === EMP_ID);
+      const payments = (state.data.salaryPayments || []).filter(p => p.employeeId === EMP_ID);
+      const totalAdvGiven = advances.reduce((s, a) => s + Number(a.amount || 0), 0);
+      const totalAdvReturned = payments.reduce((s, p) => s + Number(p.deductedAdvances || 0), 0);
+      const outstandingAdv = Math.max(0, totalAdvGiven - totalAdvReturned);
+
+      const partialAdvInput = document.getElementById('pay-adv-deduct-amt')?.value;
+      let advDeductVal = 0;
+      if (state.deductAdv && outstandingAdv > 0) {
+        const rawPartial = partialAdvInput !== undefined ? Number(partialAdvInput) : outstandingAdv;
+        if (isNaN(rawPartial) || rawPartial < 0) {
+          Swal.fire('⚠️ Invalid Advance Deduction', 'Advance deduction amount cannot be negative.', 'warning');
+          return;
+        }
+        if (rawPartial > outstandingAdv) {
+          Swal.fire('⚠️ Advance Deduction Limit Exceeded', `Cannot deduct ${fmt(rawPartial)}. Outstanding advance is only ${fmt(outstandingAdv)}.`, 'warning');
+          return;
+        }
+        advDeductVal = rawPartial;
+      }
+
+      const date = document.getElementById('pay-date').value || new Date().toISOString().split('T')[0];
+      const amountInput = document.getElementById('pay-amount').value;
+      const paidBy = document.getElementById('pay-paidby').value;
+      const note = document.getElementById('pay-note').value.trim();
+
+      const defaultWD = emp.type === "monthly" ? 26 : 6;
+      const wDays = emp.workingDays || defaultWD;
+      const baseRate = emp.type === "monthly" ? Number(emp.monthlyRate || 0) : Number(emp.weeklyRate || 0);
+
+      const suggestedWage = Math.max(baseRate - advDeductVal, 0);
+      const wageAmount = amountInput !== "" ? Number(amountInput) : suggestedWage;
+
+      if (isNaN(wageAmount) || wageAmount < 0) {
+        Swal.fire('⚠️ Invalid Payment Amount', 'Payment amount cannot be negative.', 'warning');
+        return;
+      }
+
+      await mutate(() => {
+        state.data.salaryPayments.unshift({
+          id: 'pay_' + Math.random().toString(36).substr(2, 9),
+          employeeId: EMP_ID,
+          date,
+          amount: wageAmount,
+          reimbursedAmount: 0,
+          paidBy,
+          note,
+          deductedAdvances: advDeductVal,
+          deductedHeld: 0,
+          deductedAbsences: 0
+        });
+
+        if (advDeductVal > 0) {
+          let rem = advDeductVal;
+          const empAdv = state.data.advances
+            .filter(a => a.employeeId === EMP_ID && !a.settled)
+            .sort((a, b) => (a.isJoiningAdvance ? 1 : 0) - (b.isJoiningAdvance ? 1 : 0));
+
+          for (let a of empAdv) {
+            if (rem <= 0) break;
+            if (rem >= a.amount) {
+              rem -= a.amount;
+              a.settled = true;
+            } else {
+              a.amount -= rem;
+              rem = 0;
+            }
+          }
+        }
+      });
+
+      Swal.fire({ icon: 'success', title: '🎉 Payday Settled!', text: 'Salary payment and advance deductions recorded successfully.' });
+    }
+
+    async function showEditModal() {
+      const emp = state.data.config.employees.find(e => e.id === EMP_ID);
+      const partners = state.data.config.partners || [];
+      const { value: formValues } = await Swal.fire({
+        title: 'Edit Employee Profile',
+        html: `
+          <div style="text-align:left;display:flex;flex-direction:column;gap:10px;">
+            <div><label style="font-size:12px;font-weight:600;">Employee Name</label><input id="swal-emp-name" class="swal2-input" value="${emp.name||''}" style="margin:4px 0 0 0;width:100%;"></div>
+            <div><label style="font-size:12px;font-weight:600;">Phone Number</label><input id="swal-emp-phone" class="swal2-input" value="${emp.phone||''}" style="margin:4px 0 0 0;width:100%;"></div>
+            <div><label style="font-size:12px;font-weight:600;">Monthly Base Rate</label><input id="swal-emp-monthly" type="number" class="swal2-input" value="${emp.monthlyRate||0}" style="margin:4px 0 0 0;width:100%;"></div>
+            <div><label style="font-size:12px;font-weight:600;">Weekly Rate</label><input id="swal-emp-weekly" type="number" class="swal2-input" value="${emp.weeklyRate||0}" style="margin:4px 0 0 0;width:100%;"></div>
+            <div><label style="font-size:12px;font-weight:600;">Joining Advance (Peshgi)</label><input id="swal-emp-joining-adv" type="number" class="swal2-input" value="${emp.joiningAdvance||0}" style="margin:4px 0 0 0;width:100%;"></div>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonColor: '#0F172A',
+        preConfirm: () => {
+          const name = document.getElementById('swal-emp-name').value.trim();
+          const phone = document.getElementById('swal-emp-phone').value.trim();
+          const monthlyRate = Number(document.getElementById('swal-emp-monthly').value || 0);
+          const weeklyRate = Number(document.getElementById('swal-emp-weekly').value || 0);
+          const joiningAdvance = Number(document.getElementById('swal-emp-joining-adv').value || 0);
+          return { name, phone, monthlyRate, weeklyRate, joiningAdvance };
+        }
+      });
+
+      if (formValues) {
+        await mutate(() => {
+          emp.name = formValues.name;
+          emp.phone = formValues.phone;
+          emp.monthlyRate = formValues.monthlyRate;
+          emp.weeklyRate = formValues.weeklyRate;
+          emp.joiningAdvance = formValues.joiningAdvance;
+        });
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadData);
+  </script>
+</body>
+</html>
