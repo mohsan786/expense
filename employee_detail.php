@@ -449,6 +449,10 @@ if (!$employee) {
       return `${c}${Number(n || 0).toFixed(2)}`;
     }
 
+    function esc(str) {
+      return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
     async function loadData() {
       const res = await fetch('api.php?action=load');
       const json = await res.json();
