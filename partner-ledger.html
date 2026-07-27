@@ -899,6 +899,7 @@ async function loadData() {
       state.advances = Array.isArray(d.advances) ? d.advances : [];
       state.vendorPayments = Array.isArray(d.vendorPayments) ? d.vendorPayments : [];
       state.attendanceLogs = Array.isArray(d.attendanceLogs) ? d.attendanceLogs : [];
+      state.cashHandouts = Array.isArray(d.cashHandouts) ? d.cashHandouts : [];
 
       state.config.employees = (state.config.employees || []).map(e => {
         if (e && e.type === "workbased" && !e.items) {
@@ -916,6 +917,7 @@ async function loadData() {
       state.advances = [];
       state.vendorPayments = [];
       state.attendanceLogs = [];
+      state.cashHandouts = [];
     }
   } catch (e) {
     state.saveErr = true;
@@ -926,7 +928,7 @@ async function loadData() {
 
 async function persist() {
   try {
-    const payload = JSON.stringify({ config: state.config, expenses: state.expenses, income: state.income, workLogs: state.workLogs, salaryPayments: state.salaryPayments, advances: state.advances, vendorPayments: state.vendorPayments, attendanceLogs: state.attendanceLogs });
+    const payload = JSON.stringify({ config: state.config, expenses: state.expenses, income: state.income, workLogs: state.workLogs, salaryPayments: state.salaryPayments, advances: state.advances, vendorPayments: state.vendorPayments, attendanceLogs: state.attendanceLogs, cashHandouts: state.cashHandouts || [] });
     const r = await setStoredData("ledger-data", payload);
     state.saveErr = !r;
   } catch (e) { state.saveErr = true; }

@@ -945,6 +945,7 @@ async function loadData() {
       state.advances = Array.isArray(d.advances) ? d.advances : [];
       state.vendorPayments = Array.isArray(d.vendorPayments) ? d.vendorPayments : [];
       state.attendanceLogs = Array.isArray(d.attendanceLogs) ? d.attendanceLogs : [];
+      state.cashHandouts = Array.isArray(d.cashHandouts) ? d.cashHandouts : [];
 
       state.config.employees = (state.config.employees || []).map(e => {
         if (e && e.type === "workbased" && !e.items) {
@@ -962,6 +963,7 @@ async function loadData() {
       state.advances = [];
       state.vendorPayments = [];
       state.attendanceLogs = [];
+      state.cashHandouts = [];
     }
   } catch (e) {
     state.saveErr = true;
@@ -980,7 +982,8 @@ async function persist() {
       salaryPayments: state.salaryPayments,
       advances: state.advances,
       vendorPayments: state.vendorPayments,
-      attendanceLogs: state.attendanceLogs
+      attendanceLogs: state.attendanceLogs,
+      cashHandouts: state.cashHandouts || []
     };
     const res = await apiCall('save', { data: payload });
     state.saveErr = !res.success;

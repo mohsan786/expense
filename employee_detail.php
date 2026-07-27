@@ -393,10 +393,14 @@ if (!$employee) {
       const joiningAdvEntry = advances.find(a => a.isJoiningAdvance || (a.note && a.note.toLowerCase().includes("joining")));
       const joiningAdvVal = emp.joiningAdvance || (joiningAdvEntry ? joiningAdvEntry.amount : 0);
 
-      const totalAdvGiven = advances.reduce((s, a) => s + Number(a.amount || 0), 0);
+      // Separate regular weekly kharcha advances from purchasing cash handouts
+      const purchasingAdv = advances.filter(a => a.isPurchasingCash || (a.note && a.note.toLowerCase().includes("purchasing")));
+      const weeklyAdvEntries = advances.filter(a => !a.isJoiningAdvance && !a.isPurchasingCash && !(a.note && a.note.toLowerCase().includes("joining")) && !(a.note && a.note.toLowerCase().includes("purchasing")));
+
+      const totalWeeklyAdvGiven = weeklyAdvEntries.reduce((s, a) => s + Number(a.amount || 0), 0);
       const totalAdvReturned = payments.reduce((s, p) => s + Number(p.deductedAdvances || 0), 0);
-      const outstandingAdv = Math.max(0, totalAdvGiven - totalAdvReturned);
-      const weeklyAdvVal = Math.max(0, outstandingAdv - (joiningAdvEntry && !joiningAdvEntry.settled ? joiningAdvEntry.amount : 0));
+      const weeklyAdvVal = Math.max(0, totalWeeklyAdvGiven - totalAdvReturned);
+      const outstandingAdv = weeklyAdvVal + (joiningAdvEntry && !joiningAdvEntry.settled ? joiningAdvEntry.amount : 0);
 
       const defaultWD = emp.type === "monthly" ? 26 : 6;
       const wDays = emp.workingDays || defaultWD;
@@ -416,7 +420,6 @@ if (!$employee) {
       const actualAdvDeducted = Math.min(outstandingAdv, Math.max(0, weeklyDeductAmt + joiningDeductAmt));
 
       // Calculate Purchasing Cash & Errands Holding
-      const purchasingAdv = advances.filter(a => a.isPurchasingCash || (a.note && a.note.toLowerCase().includes("purchasing")));
       const rawCashHandouts = (state.data.cashHandouts || []).concat(purchasingAdv).filter(c => c.employeeId === EMP_ID && !c.settled);
       const uniqueHandouts = Array.from(new Map(rawCashHandouts.map(item => [item.id, item])).values());
       const totalCashHanded = uniqueHandouts.reduce((s, c) => s + Number(c.amount || 0), 0);
