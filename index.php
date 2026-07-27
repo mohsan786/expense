@@ -3,21 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Velto LS — Business Expense & Payroll Ledger</title>
-<link rel="icon" type="image/jpeg" href="favicon.jpg">
-<link rel="apple-touch-icon" href="favicon.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>
-  /* Executive Black & White Theme */
+  /* Luxury Monochrome / Black & White Executive Theme */
   :root {
     --paper: #F8FAFC;
     --ink: #000000;
     --rule: #E2E8F0;
     --panel: #FFFFFF;
     --muted: #64748B;
+    --dark-surface: #090D16;
   }
+  
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #0F172A;
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .serif { font-family: 'Newsreader', serif; }
 
   .app-shell {
     display: flex;
@@ -187,33 +195,34 @@
   }
   .kpi-card {
     border-radius: 16px;
-    padding: 20px;
+    padding: 22px;
     color: #FFFFFF;
     display: flex;
     align-items: center;
     gap: 16px;
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.18);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease;
   }
   .kpi-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 14px 30px -5px rgba(0, 0, 0, 0.25);
+    transform: translateY(-4px);
+    box-shadow: 0 16px 35px -5px rgba(0, 0, 0, 0.3);
   }
-  .kpi-income { background: linear-gradient(135deg, #09090B 0%, #18181B 100%); border: 1px solid #27272A; }
+  .kpi-income { background: linear-gradient(135deg, #000000 0%, #18181B 100%); border: 1px solid #27272A; }
   .kpi-expense { background: linear-gradient(135deg, #18181B 0%, #27272A 100%); border: 1px solid #3F3F46; }
-  .kpi-profit { background: linear-gradient(135deg, #000000 0%, #18181B 100%); border: 1px solid #27272A; }
+  .kpi-profit { background: linear-gradient(135deg, #090D16 0%, #18181B 100%); border: 1px solid #27272A; }
   .kpi-due { background: linear-gradient(135deg, #27272A 0%, #3F3F46 100%); border: 1px solid #52525B; }
 
   .kpi-icon {
-    font-size: 26px;
-    background: rgba(255, 255, 255, 0.15);
-    width: 50px;
-    height: 50px;
+    font-size: 24px;
+    background: rgba(255, 255, 255, 0.1);
+    width: 52px;
+    height: 52px;
     border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
   }
   .kpi-label {
     font-size: 11px;

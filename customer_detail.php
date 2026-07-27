@@ -66,36 +66,38 @@ if (!$customer) {
     .serif { font-family: 'Newsreader', serif; }
     
     .navbar-custom {
-      background: #0F172A;
+      background: #090D16;
       color: #FFF;
-      padding: 14px 24px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      padding: 16px 28px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      border-bottom: 1px solid #1E293B;
     }
     
     .kpi-card {
-      background: var(--surface);
+      background: #FFFFFF;
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 20px;
-      box-shadow: var(--card-shadow);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      padding: 22px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease;
     }
     .kpi-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 25px -3px rgba(15, 23, 42, 0.08);
+      transform: translateY(-3px);
+      box-shadow: 0 16px 30px -5px rgba(0, 0, 0, 0.1);
     }
     .kpi-title {
       font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.8px;
       color: var(--muted);
       margin-bottom: 6px;
     }
     .kpi-value {
-      font-size: 24px;
+      font-size: 26px;
       font-weight: 800;
       font-family: 'JetBrains Mono', monospace;
+      letter-spacing: -0.5px;
     }
     
     .content-panel {
