@@ -245,6 +245,57 @@ if (!$employee) {
           </div>
         </div>
 
+        <!-- Purchasing Cash & Material Errands Ledger Card -->
+        <div class="content-panel" style="background:#FFFBEB;border-color:#FCD34D;">
+          <div class="panel-header" style="color:#92400E;">
+            <span>🛍️ Purchasing Cash &amp; Material Errands Ledger</span>
+            <span class="badge bg-warning text-dark border mono fs-6" id="badge-unspent-cash">—</span>
+          </div>
+
+          <div class="small text-muted mb-3">
+            Track money handed to worker for purchasing factory materials or running errands. Any unspent cash not returned is automatically tracked and deducted on payday.
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-md-4 col-12 text-center p-2 rounded bg-white border">
+              <div class="muted small fw-bold" style="font-size:10px;">TOTAL CASH HANDED</div>
+              <div class="mono strong text-warning" style="font-size:15px;" id="box-cash-given">—</div>
+            </div>
+            <div class="col-md-4 col-12 text-center p-2 rounded bg-white border">
+              <div class="muted small fw-bold" style="font-size:10px;">MATERIAL EXPENSES SPENT</div>
+              <div class="mono strong text-success" style="font-size:15px;" id="box-cash-spent">—</div>
+            </div>
+            <div class="col-md-4 col-12 text-center p-2 rounded bg-white border">
+              <div class="muted small fw-bold" style="font-size:10px;">UNSPENT CASH HELD</div>
+              <div class="mono strong text-danger" style="font-size:15px;" id="box-cash-unspent">—</div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-warning btn-sm fw-bold text-dark" onclick="togglePurchasingForm()">➕ Hand Cash for Purchases</button>
+            <button class="btn btn-outline-dark btn-sm fw-bold" onclick="showReturnCashModal()">💵 Record Returned Cash</button>
+          </div>
+
+          <!-- Hidden Form for Logging Purchasing Cash Handout -->
+          <div id="purchasing-form-wrap" class="mt-3 p-3 border rounded bg-white" style="display:none;">
+            <div class="fw-bold small mb-2 text-dark">Hand Cash to Worker for Material Purchases / Errands</div>
+            <div class="row g-2">
+              <div class="col-md-3 col-6"><input type="date" id="pcash-date" class="form-control form-control-sm" value="<?php echo date('Y-m-d'); ?>"></div>
+              <div class="col-md-3 col-6"><input type="number" id="pcash-amount" class="form-control form-control-sm" placeholder="Amount (e.g. 8000)"></div>
+              <div class="col-md-3 col-6">
+                <select id="pcash-paidby" class="form-select form-select-sm">
+                  <option value="business" selected>🏢 Business Funds</option>
+                  <?php foreach ($partners as $p): ?>
+                    <option value="<?php echo htmlspecialchars($p['id']); ?>"><?php echo htmlspecialchars($p['name']); ?></option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+              <div class="col-md-3 col-6"><input id="pcash-note" class="form-control form-control-sm" placeholder="Purpose (e.g. Buying leather)"></div>
+            </div>
+            <button class="btn btn-dark btn-sm fw-bold mt-2" onclick="savePurchasingCash()">Give Purchasing Cash</button>
+          </div>
+        </div>
+
         <!-- Full Transaction History Card -->
         <div class="content-panel">
           <div class="panel-header">
@@ -364,15 +415,23 @@ if (!$employee) {
       const joiningDeductAmt = state.deductJoiningAdv ? (state.customJoiningDeduct !== null ? Number(state.customJoiningDeduct) : joiningAdvVal) : 0;
       const actualAdvDeducted = Math.min(outstandingAdv, Math.max(0, weeklyDeductAmt + joiningDeductAmt));
 
+      // Calculate Purchasing Cash & Errands Holding
+      const cashHandouts = (state.data.cashHandouts || []).filter(c => c.employeeId === EMP_ID && !c.settled);
+      const totalCashHanded = cashHandouts.reduce((s, c) => s + Number(c.amount || 0), 0);
+      const workerExpenses = (state.data.expenses || []).filter(e => e.payerEmployeeId === EMP_ID && !e.settled);
+      const totalWorkerSpent = workerExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+      const unspentPurchasingCash = Math.max(0, totalCashHanded - totalWorkerSpent);
+      const actualCashHeldDeducted = (state.deductCashHeld && unspentPurchasingCash > 0) ? unspentPurchasingCash : 0;
+
       const totalEarned = workLogs.reduce((s, w) => s + w.amount, 0);
       const totalWagePaid = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
       const unpaidWorkEarned = Math.max(0, totalEarned - totalWagePaid);
 
       const suggestedWage = (emp.type === "weekly" || emp.type === "monthly")
-        ? Math.max(baseRate - actualAdvDeducted - (state.deductAtt ? absenceDeductionVal : 0), 0)
-        : Math.max(unpaidWorkEarned - actualAdvDeducted, 0);
+        ? Math.max(baseRate - actualAdvDeducted - actualCashHeldDeducted - (state.deductAtt ? absenceDeductionVal : 0), 0)
+        : Math.max(unpaidWorkEarned - actualAdvDeducted - actualCashHeldDeducted, 0);
 
-      // Render KPIs
+      // Render KPIs & Cash Holding Boxes
       document.getElementById('kpi-base').innerText = fmt(baseRate);
       document.getElementById('kpi-base-sub').innerText = `${emp.type === 'monthly' ? 'Monthly' : 'Weekly'} (${wDays}d)`;
       document.getElementById('kpi-peshgi').innerText = fmt(joiningAdvVal);
@@ -380,6 +439,13 @@ if (!$employee) {
       document.getElementById('kpi-kharcha').innerText = fmt(weeklyAdvVal);
       document.getElementById('kpi-net').innerText = fmt(suggestedWage);
       document.getElementById('badge-outstanding').innerText = `Outstanding: ${fmt(outstandingAdv)}`;
+
+      if (document.getElementById('box-cash-given')) {
+        document.getElementById('box-cash-given').innerText = fmt(totalCashHanded);
+        document.getElementById('box-cash-spent').innerText = fmt(totalWorkerSpent);
+        document.getElementById('box-cash-unspent').innerText = fmt(unspentPurchasingCash);
+        document.getElementById('badge-unspent-cash').innerText = unspentPurchasingCash > 0 ? `Unspent: ${fmt(unspentPurchasingCash)}` : 'Settled';
+      }
 
       // Render Advance Breakthrough Table
       const advEvents = [
@@ -425,12 +491,12 @@ if (!$employee) {
       paydayWrap.innerHTML = `
         <div class="mb-3">
           <div class="fw-bold mb-1">Suggested Wage Amount: <span class="mono text-success fs-5">${fmt(suggestedWage)}</span></div>
-          <div class="small text-muted mb-2">Calculated from base rate minus advance deductions &amp; absence penalties.</div>
+          <div class="small text-muted mb-2">Calculated from base rate minus advance deductions, unspent purchasing cash &amp; absence penalties.</div>
         </div>
 
-        ${outstandingAdv > 0 ? `
+        ${(outstandingAdv > 0 || unspentPurchasingCash > 0) ? `
           <div class="p-3 border rounded bg-white mb-3">
-            <div class="fw-bold small text-dark mb-2">Advance Deductions Control</div>
+            <div class="fw-bold small text-dark mb-2">Payday Deductions Control</div>
 
             <!-- Weekly Kharcha Checkbox (Default CHECKED) -->
             ${weeklyAdvVal > 0 ? `
@@ -449,6 +515,22 @@ if (!$employee) {
                   ` : ''}
                 </div>
                 <div class="text-muted small mt-1" style="font-size:11px;margin-left:24px;">Default: Checked (Deduct from weekly payday)</div>
+              </div>
+            ` : ''}
+
+            <!-- Unspent Purchasing Cash Checkbox (Default CHECKED) -->
+            ${unspentPurchasingCash > 0 ? `
+              <div class="p-2 border rounded mb-2 bg-light" style="border-color:#FCD34D !important;background:#FEF3C7 !important;">
+                <div class="d-flex align-items-center justify-content-between gap-2">
+                  <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" id="chk-cash-held" ${state.deductCashHeld ? 'checked' : ''} onchange="state.deductCashHeld=this.checked;render();">
+                    <label class="form-check-label fw-bold small text-dark" for="chk-cash-held">
+                      🛍️ Deduct Unspent Purchasing Cash (${fmt(unspentPurchasingCash)})
+                    </label>
+                  </div>
+                  <span class="mono fw-bold text-danger">${fmt(unspentPurchasingCash)}</span>
+                </div>
+                <div class="text-muted small mt-1" style="font-size:11px;margin-left:24px;">Cash given for purchasing material not returned (Default: Checked).</div>
               </div>
             ` : ''}
 
@@ -473,8 +555,8 @@ if (!$employee) {
             ` : ''}
 
             <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center small">
-              <span class="fw-bold">Total Advances Deducted:</span>
-              <span class="mono fw-bold text-danger">${fmt(actualAdvDeducted)}</span>
+              <span class="fw-bold">Total Deducted:</span>
+              <span class="mono fw-bold text-danger">${fmt(actualAdvDeducted + actualCashHeldDeducted)}</span>
             </div>
           </div>
         ` : ''}
@@ -524,6 +606,101 @@ if (!$employee) {
     function toggleAdvForm() {
       const f = document.getElementById('adv-form-wrap');
       f.style.display = f.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function togglePurchasingForm() {
+      const f = document.getElementById('purchasing-form-wrap');
+      f.style.display = f.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function savePurchasingCash() {
+      const amount = Number(document.getElementById('pcash-amount').value);
+      const date = document.getElementById('pcash-date').value || new Date().toISOString().split('T')[0];
+      const paidBy = document.getElementById('pcash-paidby').value;
+      const note = document.getElementById('pcash-note').value.trim() || 'Purchasing Material Cash';
+
+      if (!amount || isNaN(amount) || amount <= 0) {
+        Swal.fire('⚠️ Invalid Amount', 'Please enter a valid cash amount greater than zero.', 'warning');
+        return;
+      }
+
+      await mutate(() => {
+        state.data.cashHandouts = state.data.cashHandouts || [];
+        state.data.cashHandouts.unshift({
+          id: 'ch_' + Math.random().toString(36).substr(2, 9),
+          employeeId: EMP_ID,
+          date,
+          amount,
+          paidBy,
+          note,
+          settled: false
+        });
+      });
+
+      document.getElementById('purchasing-form-wrap').style.display = 'none';
+      Swal.fire({ icon: 'success', title: '🛍️ Purchasing Cash Given!', text: `Recorded ${fmt(amount)} cash handed to worker for purchases.` });
+    }
+
+    async function showReturnCashModal() {
+      const cashHandouts = (state.data.cashHandouts || []).filter(c => c.employeeId === EMP_ID && !c.settled);
+      const totalCashHanded = cashHandouts.reduce((s, c) => s + Number(c.amount || 0), 0);
+      const workerExpenses = (state.data.expenses || []).filter(e => e.payerEmployeeId === EMP_ID && !e.settled);
+      const totalWorkerSpent = workerExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+      const unspentPurchasingCash = Math.max(0, totalCashHanded - totalWorkerSpent);
+
+      if (unspentPurchasingCash <= 0) {
+        Swal.fire('ℹ️ No Cash Outstanding', 'Worker does not currently hold any unspent purchasing cash.', 'info');
+        return;
+      }
+
+      const { value: formValues } = await Swal.fire({
+        title: 'Return Unspent Purchasing Cash',
+        html: `
+          <div style="text-align:left;display:flex;flex-direction:column;gap:10px;">
+            <div style="background:#FEF3C7;padding:10px;border-radius:6px;font-size:13px;" class="mono">
+              <strong>Unspent Cash Held:</strong> <span style="color:var(--rust);font-weight:700;">${fmt(unspentPurchasingCash)}</span>
+            </div>
+            <div><label style="font-size:12px;font-weight:600;">Return Date</label><input id="swal-ret-date" type="date" class="swal2-input" value="${new Date().toISOString().split('T')[0]}" style="margin:4px 0 0 0;width:100%;"></div>
+            <div><label style="font-size:12px;font-weight:600;">Amount Returned *</label><input id="swal-ret-amount" type="number" class="swal2-input" value="${unspentPurchasingCash}" style="margin:4px 0 0 0;width:100%;"></div>
+            <div><label style="font-size:12px;font-weight:600;">Received By Partner</label><select id="swal-ret-receiver" class="swal2-input" style="margin:4px 0 0 0;width:100%;">${state.data.config.partners.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</select></div>
+            <div><label style="font-size:12px;font-weight:600;">Note (optional)</label><input id="swal-ret-note" class="swal2-input" placeholder="e.g. Remaining cash returned after purchasing" style="margin:4px 0 0 0;width:100%;"></div>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonColor: '#0F172A',
+        preConfirm: () => {
+          const date = document.getElementById('swal-ret-date').value || new Date().toISOString().split('T')[0];
+          const amount = Number(document.getElementById('swal-ret-amount').value);
+          const receiver = document.getElementById('swal-ret-receiver').value;
+          const note = document.getElementById('swal-ret-note').value.trim();
+
+          if (!amount || isNaN(amount) || amount <= 0) {
+            Swal.showValidationMessage('Please enter a valid amount greater than zero.');
+            return false;
+          }
+          if (amount > unspentPurchasingCash) {
+            Swal.showValidationMessage(`Return amount cannot exceed held cash (${fmt(unspentPurchasingCash)}).`);
+            return false;
+          }
+          return { date, amount, receiver, note };
+        }
+      });
+
+      if (formValues) {
+        await mutate(() => {
+          state.data.expenses = state.data.expenses || [];
+          state.data.expenses.unshift({
+            id: 'exp_' + Math.random().toString(36).substr(2, 9),
+            date: formValues.date,
+            description: `Unspent Cash Returned by Worker (${formValues.note || 'Cash Return'})`,
+            amount: -formValues.amount,
+            payerEmployeeId: EMP_ID,
+            paidBy: formValues.receiver,
+            settled: false
+          });
+        });
+        Swal.fire({ icon: 'success', title: '💵 Cash Returned!', text: 'Unspent cash returned to business/partner.' });
+      }
     }
 
     async function saveAdvance() {
