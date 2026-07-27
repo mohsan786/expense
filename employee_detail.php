@@ -416,8 +416,10 @@ if (!$employee) {
       const actualAdvDeducted = Math.min(outstandingAdv, Math.max(0, weeklyDeductAmt + joiningDeductAmt));
 
       // Calculate Purchasing Cash & Errands Holding
-      const cashHandouts = (state.data.cashHandouts || []).filter(c => c.employeeId === EMP_ID && !c.settled);
-      const totalCashHanded = cashHandouts.reduce((s, c) => s + Number(c.amount || 0), 0);
+      const purchasingAdv = advances.filter(a => a.isPurchasingCash || (a.note && a.note.toLowerCase().includes("purchasing")));
+      const rawCashHandouts = (state.data.cashHandouts || []).concat(purchasingAdv).filter(c => c.employeeId === EMP_ID && !c.settled);
+      const uniqueHandouts = Array.from(new Map(rawCashHandouts.map(item => [item.id, item])).values());
+      const totalCashHanded = uniqueHandouts.reduce((s, c) => s + Number(c.amount || 0), 0);
       const workerExpenses = (state.data.expenses || []).filter(e => e.payerEmployeeId === EMP_ID && !e.settled);
       const totalWorkerSpent = workerExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
       const unspentPurchasingCash = Math.max(0, totalCashHanded - totalWorkerSpent);
@@ -625,16 +627,20 @@ if (!$employee) {
       }
 
       await mutate(() => {
-        state.data.cashHandouts = state.data.cashHandouts || [];
-        state.data.cashHandouts.unshift({
-          id: 'ch_' + Math.random().toString(36).substr(2, 9),
+        const entry = {
+          id: 'adv_' + Math.random().toString(36).substr(2, 9),
           employeeId: EMP_ID,
           date,
           amount,
           paidBy,
           note,
+          isPurchasingCash: true,
           settled: false
-        });
+        };
+        state.data.advances = state.data.advances || [];
+        state.data.advances.unshift(entry);
+        state.data.cashHandouts = state.data.cashHandouts || [];
+        state.data.cashHandouts.unshift(entry);
       });
 
       document.getElementById('purchasing-form-wrap').style.display = 'none';
