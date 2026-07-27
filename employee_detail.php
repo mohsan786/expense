@@ -382,6 +382,25 @@ if (!$employee) {
             </div>
             <button class="btn btn-dark btn-sm fw-bold mt-2" onclick="savePurchasingCash()">Give Purchasing Cash</button>
           </div>
+
+          <!-- Purchasing Cash Ledger Records Table -->
+          <div class="mt-3 table-responsive bg-white rounded border">
+            <table class="table table-sm table-hover align-middle mb-0" style="font-size:13px;">
+              <thead class="table-light">
+                <tr>
+                  <th>Date</th>
+                  <th>Type / Purpose</th>
+                  <th>Source / Receiver</th>
+                  <th class="text-end">Amount</th>
+                  <th>Status</th>
+                  <th class="text-center" style="width:90px;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="pcash-breakdown-body">
+                <tr><td colspan="6" class="text-center text-muted py-3">Loading purchasing cash records…</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <!-- Full Transaction History Card -->
@@ -597,6 +616,90 @@ if (!$employee) {
         document.getElementById('box-cash-spent').innerText = fmt(totalWorkerSpent);
         document.getElementById('box-cash-unspent').innerText = fmt(unspentPurchasingCash);
         document.getElementById('badge-unspent-cash').innerText = unspentPurchasingCash > 0 ? `Unspent: ${fmt(unspentPurchasingCash)}` : 'Settled';
+      }
+
+      // Render Purchasing Cash Ledger Records Table
+      const pcashTbody = document.getElementById('pcash-breakdown-body');
+      if (pcashTbody) {
+        const rawHandoutsAll = (state.data.cashHandouts || []).filter(c => c.employeeId === EMP_ID);
+        const advHandoutsAll = (state.data.advances || []).filter(a => a.employeeId === EMP_ID && a.isPurchasingCash);
+        const combinedHandouts = [...rawHandoutsAll];
+        advHandoutsAll.forEach(a => {
+          if (!combinedHandouts.find(c => c.id === a.id)) combinedHandouts.push(a);
+        });
+
+        const rawReturnedCash = (state.data.expenses || []).filter(e => e.payerEmployeeId === EMP_ID && (
+          (e.description && e.description.includes('Unspent Cash Returned')) || 
+          e.isPurchasingCashReturn || 
+          Number(e.amount || 0) < 0
+        ));
+
+        const pcashLogs = [
+          ...combinedHandouts.map(c => ({
+            id: c.id,
+            date: c.date || '',
+            kind: 'handout',
+            purpose: c.note || 'Material Purchasing / Errands',
+            source: c.paidBy === 'business' || !c.paidBy ? 'Business Funds' : (partners.find(p => p.id === c.paidBy)?.name || 'Partner'),
+            amount: Number(c.amount || 0),
+            settled: !!c.settled
+          })),
+          ...rawReturnedCash.map(e => ({
+            id: e.id,
+            date: e.date || '',
+            kind: 'returned',
+            purpose: e.description || 'Returned Unspent Cash',
+            source: partners.find(p => p.id === e.paidBy)?.name || 'Business Funds',
+            amount: -Math.abs(Number(e.amount || 0)),
+            settled: !!e.settled
+          }))
+        ].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+        if (pcashLogs.length === 0) {
+          pcashTbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No purchasing cash handouts or returned cash logged yet.</td></tr>`;
+        } else {
+          pcashTbody.innerHTML = pcashLogs.map(log => {
+            if (log.kind === 'handout') {
+              return `
+                <tr>
+                  <td class="mono muted">${log.date}</td>
+                  <td>
+                    <span class="badge bg-warning text-dark me-1">🛍️ Cash Given</span>
+                    <span>${esc(log.purpose)}</span>
+                  </td>
+                  <td class="small">${esc(log.source)}</td>
+                  <td class="mono text-end fw-bold text-amber">+${fmt(log.amount)}</td>
+                  <td>
+                    ${log.settled 
+                      ? `<span class="badge bg-light text-dark border">Settled</span>` 
+                      : `<span class="badge bg-warning text-dark">Active Held</span>`}
+                  </td>
+                  <td class="text-center">
+                    <button class="btn btn-sm btn-outline-primary py-0 px-1 border-0" onclick="editPurchasingCash('${log.id}')" title="Edit Entry">✏️</button>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0" onclick="deletePurchasingCash('${log.id}')" title="Delete Entry">🗑️</button>
+                  </td>
+                </tr>
+              `;
+            } else {
+              return `
+                <tr>
+                  <td class="mono muted">${log.date}</td>
+                  <td>
+                    <span class="badge bg-success me-1">💵 Cash Returned</span>
+                    <span>${esc(log.purpose)}</span>
+                  </td>
+                  <td class="small">${esc(log.source)}</td>
+                  <td class="mono text-end fw-bold text-success">${fmt(log.amount)}</td>
+                  <td><span class="badge bg-success">Returned</span></td>
+                  <td class="text-center">
+                    <button class="btn btn-sm btn-outline-primary py-0 px-1 border-0" onclick="editReturnedCash('${log.id}')" title="Edit Entry">✏️</button>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0" onclick="deleteReturnedCash('${log.id}')" title="Delete Entry">🗑️</button>
+                  </td>
+                </tr>
+              `;
+            }
+          }).join('');
+        }
       }
 
       // Render Work Production Breakthrough Table for Workbased Employees
@@ -991,6 +1094,189 @@ if (!$employee) {
           });
         });
         Swal.fire({ icon: 'success', title: '💵 Cash Returned!', text: 'Unspent cash returned to business/partner.' });
+      }
+    }
+
+    async function deletePurchasingCash(id) {
+      const confirm = await Swal.fire({
+        title: 'Delete Purchasing Cash?',
+        text: "Are you sure you want to delete this purchasing cash record?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!'
+      });
+
+      if (confirm.isConfirmed) {
+        await mutate(() => {
+          if (state.data.cashHandouts) {
+            state.data.cashHandouts = state.data.cashHandouts.filter(c => c.id !== id);
+          }
+          if (state.data.advances) {
+            state.data.advances = state.data.advances.filter(a => a.id !== id);
+          }
+        });
+        Swal.fire({ icon: 'success', title: 'Deleted!', text: 'Purchasing cash record has been deleted.' });
+      }
+    }
+
+    async function editPurchasingCash(id) {
+      let item = (state.data.cashHandouts || []).find(c => c.id === id);
+      if (!item) {
+        item = (state.data.advances || []).find(a => a.id === id);
+      }
+      if (!item) return;
+
+      const partners = state.data.config.partners || [];
+      const partnerOptions = partners.map(p => 
+        `<option value="${p.id}" ${item.paidBy === p.id ? 'selected' : ''}>${esc(p.name)}</option>`
+      ).join('');
+
+      const { value: formValues } = await Swal.fire({
+        title: '✏️ Edit Purchasing Cash Entry',
+        html: `
+          <div style="text-align:left;display:flex;flex-direction:column;gap:10px;">
+            <div>
+              <label style="font-size:12px;font-weight:600;">Date</label>
+              <input id="swal-edit-pcash-date" type="date" class="swal2-input" value="${item.date}" style="margin:4px 0 0 0;width:100%;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;">Amount *</label>
+              <input id="swal-edit-pcash-amount" type="number" class="swal2-input" value="${item.amount}" style="margin:4px 0 0 0;width:100%;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;">Paid By / Source</label>
+              <select id="swal-edit-pcash-paidby" class="swal2-input" style="margin:4px 0 0 0;width:100%;">
+                <option value="business" ${item.paidBy === 'business' || !item.paidBy ? 'selected' : ''}>🏢 Business Funds</option>
+                ${partnerOptions}
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;">Purpose / Note</label>
+              <input id="swal-edit-pcash-note" class="swal2-input" value="${esc(item.note || '')}" placeholder="Purpose (e.g. Buying leather)" style="margin:4px 0 0 0;width:100%;">
+            </div>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonColor: '#0F172A',
+        preConfirm: () => {
+          const date = document.getElementById('swal-edit-pcash-date').value || item.date;
+          const amount = Number(document.getElementById('swal-edit-pcash-amount').value);
+          const paidBy = document.getElementById('swal-edit-pcash-paidby').value;
+          const note = document.getElementById('swal-edit-pcash-note').value.trim() || 'Purchasing Material Cash';
+
+          if (!amount || isNaN(amount) || amount <= 0) {
+            Swal.showValidationMessage('Please enter a valid amount greater than zero.');
+            return false;
+          }
+          return { date, amount, paidBy, note };
+        }
+      });
+
+      if (formValues) {
+        await mutate(() => {
+          let target = (state.data.cashHandouts || []).find(c => c.id === id);
+          if (target) {
+            target.date = formValues.date;
+            target.amount = formValues.amount;
+            target.paidBy = formValues.paidBy;
+            target.note = formValues.note;
+          }
+          let targetAdv = (state.data.advances || []).find(a => a.id === id);
+          if (targetAdv) {
+            targetAdv.date = formValues.date;
+            targetAdv.amount = formValues.amount;
+            targetAdv.paidBy = formValues.paidBy;
+            targetAdv.note = formValues.note;
+          }
+        });
+        Swal.fire({ icon: 'success', title: 'Updated!', text: 'Purchasing cash entry updated successfully.' });
+      }
+    }
+
+    async function deleteReturnedCash(id) {
+      const confirm = await Swal.fire({
+        title: 'Delete Returned Cash Record?',
+        text: "Are you sure you want to delete this returned cash record?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!'
+      });
+
+      if (confirm.isConfirmed) {
+        await mutate(() => {
+          if (state.data.expenses) {
+            state.data.expenses = state.data.expenses.filter(e => e.id !== id);
+          }
+        });
+        Swal.fire({ icon: 'success', title: 'Deleted!', text: 'Returned cash record deleted.' });
+      }
+    }
+
+    async function editReturnedCash(id) {
+      const item = (state.data.expenses || []).find(e => e.id === id);
+      if (!item) return;
+
+      const currentAmt = Math.abs(item.amount);
+      const partners = state.data.config.partners || [];
+      const partnerOptions = partners.map(p => 
+        `<option value="${p.id}" ${item.paidBy === p.id ? 'selected' : ''}>${esc(p.name)}</option>`
+      ).join('');
+
+      const { value: formValues } = await Swal.fire({
+        title: '✏️ Edit Returned Cash Entry',
+        html: `
+          <div style="text-align:left;display:flex;flex-direction:column;gap:10px;">
+            <div>
+              <label style="font-size:12px;font-weight:600;">Return Date</label>
+              <input id="swal-edit-ret-date" type="date" class="swal2-input" value="${item.date}" style="margin:4px 0 0 0;width:100%;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;">Amount Returned *</label>
+              <input id="swal-edit-ret-amount" type="number" class="swal2-input" value="${currentAmt}" style="margin:4px 0 0 0;width:100%;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;">Received By Partner</label>
+              <select id="swal-edit-ret-receiver" class="swal2-input" style="margin:4px 0 0 0;width:100%;">
+                ${partnerOptions}
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;">Note / Description</label>
+              <input id="swal-edit-ret-note" class="swal2-input" value="${esc(item.description || '')}" style="margin:4px 0 0 0;width:100%;">
+            </div>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonColor: '#0F172A',
+        preConfirm: () => {
+          const date = document.getElementById('swal-edit-ret-date').value || item.date;
+          const amount = Number(document.getElementById('swal-edit-ret-amount').value);
+          const receiver = document.getElementById('swal-edit-ret-receiver').value;
+          const note = document.getElementById('swal-edit-ret-note').value.trim();
+
+          if (!amount || isNaN(amount) || amount <= 0) {
+            Swal.showValidationMessage('Please enter a valid amount greater than zero.');
+            return false;
+          }
+          return { date, amount, receiver, note };
+        }
+      });
+
+      if (formValues) {
+        await mutate(() => {
+          const target = (state.data.expenses || []).find(e => e.id === id);
+          if (target) {
+            target.date = formValues.date;
+            target.amount = -Math.abs(formValues.amount);
+            target.paidBy = formValues.receiver;
+            target.description = formValues.note || `Unspent Cash Returned by Worker`;
+          }
+        });
+        Swal.fire({ icon: 'success', title: 'Updated!', text: 'Returned cash entry updated successfully.' });
       }
     }
 
