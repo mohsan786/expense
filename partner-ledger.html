@@ -1309,7 +1309,7 @@ function renderCustomers() {
             ${pendingDue > 0.005 ? `<span class="mono small strong text-danger">Due ${fmt(pendingDue)}</span>` : `<span class="mono small strong text-success">settled</span>`}
             
             <a href="customer_detail.php?id=${c.id}" class="btn btn-sm btn-dark fw-bold px-3 py-1" style="font-size:12px;" title="View Customer Sales & Receivables">👁️ View Details</a>
-            ${c.phone ? `<button class="btn btn-sm btn-success fw-bold px-2 py-1" style="font-size:12px;" data-act="wa-direct" data-phone="${c.phone}" data-name="${c.name}" data-due="${pendingDue}" title="Send WhatsApp Statement">📱 WA</button>` : ''}
+            ${c.phone ? `<button class="btn btn-sm btn-success fw-bold px-2 py-1" style="font-size:12px;" data-act="wa-direct" data-phone="${esc(c.phone)}" data-name="${esc(c.name)}" data-due="${pendingDue}" title="Send WhatsApp Statement">📱 WA</button>` : ''}
             <button class="icon-btn" data-act="edit-customer" data-id="${c.id}" title="Edit Customer">✏️</button>
             <button class="icon-btn" data-act="delete-customer" data-id="${c.id}" style="color:var(--rust);" title="Delete Customer">🗑️</button>
           </div>
