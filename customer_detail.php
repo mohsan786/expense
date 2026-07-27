@@ -302,7 +302,9 @@ if (!$customer) {
 
       sales.forEach(s => {
         const total = Number(s.amount || 0);
-        const paid = s.paidAmount !== undefined ? Number(s.paidAmount) : total;
+        const paid = (s.paidAmount !== undefined && s.paidAmount !== null)
+          ? Number(s.paidAmount)
+          : (Array.isArray(s.payments) ? s.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0) : 0);
         totalSales += total;
         paidSales += paid;
       });
@@ -322,7 +324,9 @@ if (!$customer) {
       } else {
         tbody.innerHTML = sales.map(s => {
           const total = Number(s.amount || 0);
-          const paid = s.paidAmount !== undefined ? Number(s.paidAmount) : total;
+          const paid = (s.paidAmount !== undefined && s.paidAmount !== null)
+            ? Number(s.paidAmount)
+            : (Array.isArray(s.payments) ? s.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0) : 0);
           const due = Math.max(0, total - paid);
           const isSettled = due <= 0;
 
