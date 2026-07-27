@@ -679,8 +679,12 @@ async function showReceiveIncomePaymentModal(id) {
       const amount = Number(document.getElementById('swal-pay-amount').value);
       const receiverVal = document.getElementById('swal-pay-receiver').value;
       const note = document.getElementById('swal-pay-note').value.trim();
-      if (!amount || amount <= 0) {
-        Swal.showValidationMessage('Please enter a valid amount');
+      if (!amount || isNaN(amount) || amount <= 0) {
+        Swal.showValidationMessage('Please enter a valid amount greater than zero.');
+        return false;
+      }
+      if (amount > remaining) {
+        Swal.showValidationMessage(`Payment amount (${state.config.currency}${amount}) cannot exceed remaining balance due (${state.config.currency}${remaining}).`);
         return false;
       }
       return { date, amount, receiverVal, note };
@@ -1605,8 +1609,20 @@ async function showAddSaleModal() {
       const newName = document.getElementById('swal-new-cust-name') ? document.getElementById('swal-new-cust-name').value.trim() : "";
       const newPhone = document.getElementById('swal-new-cust-phone') ? document.getElementById('swal-new-cust-phone').value.trim() : "";
 
-      if (!item || !totalAmount) {
-        Swal.showValidationMessage('Please enter item description and total price');
+      if (!item) {
+        Swal.showValidationMessage('Please enter item description.');
+        return false;
+      }
+      if (!totalAmount || isNaN(totalAmount) || totalAmount <= 0) {
+        Swal.showValidationMessage('Total Sale Price must be greater than zero.');
+        return false;
+      }
+      if (paidAmount < 0) {
+        Swal.showValidationMessage('Paid Amount cannot be negative.');
+        return false;
+      }
+      if (paidAmount > totalAmount) {
+        Swal.showValidationMessage(`Paid Amount (${state.config.currency}${paidAmount}) cannot exceed Total Sale Price (${state.config.currency}${totalAmount}).`);
         return false;
       }
 
@@ -1798,8 +1814,12 @@ async function showAddExpenseModal() {
       const paymentMethod = document.getElementById('swal-exp-pm').value;
       const payerVal = document.getElementById('swal-exp-payer').value;
 
-      if (!description || !amount) {
-        Swal.showValidationMessage('Please enter description and amount');
+      if (!description) {
+        Swal.showValidationMessage('Please enter expense description.');
+        return false;
+      }
+      if (!amount || isNaN(amount) || amount <= 0) {
+        Swal.showValidationMessage('Expense amount must be greater than zero.');
         return false;
       }
 
@@ -3050,7 +3070,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const item = (emp.items || []).find(it => it.id === itemId);
       const quantity = Number(document.getElementById(`work-qty-${empId}`).value);
       const note = document.getElementById(`work-note-${empId}`).value.trim();
-      if (!quantity || !item) return;
+      if (!item) {
+        swalAlert("⚠️ No Item Selected", "Please select a piece-rate work item.", "warning");
+        return;
+      }
+      if (!quantity || isNaN(quantity) || quantity <= 0) {
+        swalAlert("⚠️ Invalid Quantity", "Please enter a valid quantity greater than zero.", "warning");
+        return;
+      }
       const amount = quantity * item.rate;
       state.cardTab = state.cardTab || {};
       state.cardTab[empId] = "history";
@@ -3065,7 +3092,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const amount = Number(document.getElementById(`adv-amount-${empId}`).value);
       const paidBy = document.getElementById(`adv-paidby-${empId}`).value;
       const note = document.getElementById(`adv-note-${empId}`).value.trim();
-      if (!amount) return;
+      if (!amount || isNaN(amount) || amount <= 0) {
+        swalAlert("⚠️ Invalid Advance Amount", "Please enter a valid advance amount greater than zero.", "warning");
+        return;
+      }
       state.cardTab = state.cardTab || {};
       state.cardTab[empId] = "history";
       mutate(() => state.advances.unshift({ id: uid(), employeeId: empId, date, amount, paidBy, note, settled: false }));
@@ -3112,7 +3142,19 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!wageAmount && wageAmount !== 0 && !reimbursedAmount) return;
       if (wageAmount === 0 && reimbursedAmount === 0 && (emp.type !== "weekly" && emp.type !== "monthly") && unpaidWorkEarned === 0) return;
       const partialAdvInput = document.getElementById(`pay-adv-deduct-amt-${empId}`)?.value;
-      const advDeductVal = deductAdv ? Math.min(outstandingAdv, Math.max(0, Number(partialAdvInput !== undefined ? partialAdvInput : outstandingAdv))) : 0;
+      let advDeductVal = 0;
+      if (deductAdv) {
+        const rawPartial = partialAdvInput !== undefined ? Number(partialAdvInput) : outstandingAdv;
+        if (isNaN(rawPartial) || rawPartial < 0) {
+          swalAlert("⚠️ Invalid Advance Deduction", "Advance deduction amount cannot be negative.", "warning");
+          return;
+        }
+        if (rawPartial > outstandingAdv) {
+          swalAlert("⚠️ Advance Deduction Limit Exceeded", `Cannot deduct ${state.config.currency}${rawPartial.toFixed(2)}. The employee's total outstanding advance balance is only ${state.config.currency}${outstandingAdv.toFixed(2)}.`, "warning");
+          return;
+        }
+        advDeductVal = rawPartial;
+      }
 
       state.cardTab = state.cardTab || {};
       state.cardTab[empId] = "history";
@@ -3189,7 +3231,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const description = document.getElementById(`vp-desc-${vendorId}`).value.trim();
       const amount = Number(document.getElementById(`vp-amount-${vendorId}`).value);
       const paymentVal = document.getElementById(`vp-payment-${vendorId}`).value;
-      if (!description || !amount) return;
+      if (!description) {
+        swalAlert("⚠️ Missing Description", "Please enter a purchase description.", "warning");
+        return;
+      }
+      if (!amount || isNaN(amount) || amount <= 0) {
+        swalAlert("⚠️ Invalid Amount", "Please enter a valid purchase amount greater than zero.", "warning");
+        return;
+      }
       const entry = { id: uid(), date, description, amount, vendorId };
       if (paymentVal === "credit") { entry.onCredit = true; }
       else { const [, partnerId] = paymentVal.split(":"); entry.paidBy = partnerId; entry.onCredit = false; }
@@ -3207,7 +3256,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const amount = amountInput ? Number(amountInput) : outstanding;
       const paidBy = document.getElementById(`vpay-paidby-${vendorId}`).value;
       const note = document.getElementById(`vpay-note-${vendorId}`).value.trim();
-      if (!amount) return;
+      if (!amount || isNaN(amount) || amount <= 0) {
+        swalAlert("⚠️ Invalid Payment Amount", "Please enter a valid vendor payment amount greater than zero.", "warning");
+        return;
+      }
+      if (amount > outstanding && outstanding > 0) {
+        swalAlert("⚠️ Exceeds Outstanding Balance", `Payment amount (${state.config.currency}${amount.toFixed(2)}) exceeds the vendor's total outstanding balance of ${state.config.currency}${outstanding.toFixed(2)}.`, "warning");
+        return;
+      }
       state.cardTab = state.cardTab || {};
       state.cardTab[vendorId] = "history";
       mutate(() => state.vendorPayments.unshift({ id: uid(), vendorId, date, amount, paidBy, note }));
