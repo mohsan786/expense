@@ -1869,7 +1869,7 @@ function renderIncome() {
     if (balance <= 0) {
       statusTag = `<span class="badge bg-success">Paid</span>`;
     } else if (paidAmt > 0) {
-      statusTag = `<span class="badge bg-warning text-dark" title="Paid ${fmt(paidAmt)} / Total ${fmt(totalAmt)}">Advance (${fmt(balance)} due)</span>`;
+      statusTag = `<span class="badge bg-warning text-dark" title="Paid ${fmt(paidAmt)} / Total ${fmt(totalAmt)}">Partial (${fmt(balance)} due)</span>`;
     } else {
       statusTag = `<span class="badge bg-danger">Unpaid (${fmt(balance)} due)</span>`;
     }

@@ -350,7 +350,7 @@ if (!$customer) {
       const quantity = document.getElementById('ns-qty').value ? Number(document.getElementById('ns-qty').value) : null;
       const totalAmount = Number(document.getElementById('ns-total').value);
       const paidInput = document.getElementById('ns-paid').value;
-      const paidAmount = paidInput !== "" ? Number(paidInput) : totalAmount;
+      const paidAmount = paidInput !== "" ? Number(paidInput) : 0;
       const receiverVal = document.getElementById('ns-receiver').value;
       const note = document.getElementById('ns-note').value.trim();
 
