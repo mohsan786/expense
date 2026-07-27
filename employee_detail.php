@@ -238,6 +238,8 @@ if (!$employee) {
             </table>
           </div>
 
+          </div>
+
           <button class="btn btn-outline-dark btn-sm fw-bold" onclick="toggleAdvForm()">➕ Log New Weekly Advance (Kharcha)</button>
 
           <!-- Hidden Form for Logging Advance -->
@@ -257,6 +259,32 @@ if (!$employee) {
               <div class="col-md-3 col-6"><input id="adv-note" class="form-control form-control-sm" placeholder="Note (optional)"></div>
             </div>
             <button class="btn btn-dark btn-sm fw-bold mt-2" onclick="saveAdvance()">Submit Advance</button>
+          </div>
+        </div>
+
+        <!-- Attendance & Leave Log Breakthrough Card -->
+        <div class="content-panel">
+          <div class="panel-header">
+            <span>📅 Attendance &amp; Leave Log Breakthrough</span>
+            <span class="badge bg-danger text-white mono fs-6" id="badge-unsettled-abs">—</span>
+          </div>
+
+          <div class="table-responsive mb-3">
+            <table class="table table-sm table-hover table-bordered align-middle mb-0" style="font-size:12px;">
+              <thead class="table-dark mono" style="font-size:11px;">
+                <tr>
+                  <th>DATE</th>
+                  <th>ABSENCE TYPE</th>
+                  <th>SALARY RULE</th>
+                  <th class="text-end">PENALTY (-)</th>
+                  <th>REASON / NOTE</th>
+                  <th>STATUS / ACTION</th>
+                </tr>
+              </thead>
+              <tbody id="att-breakdown-body">
+                <tr><td colspan="6" class="text-center py-3 text-muted">Loading attendance breakthrough…</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -552,6 +580,39 @@ if (!$employee) {
             <td>${ev.settled ? `<span class="badge bg-light text-dark border">Settled</span>` : `<span class="badge bg-warning text-dark">Active Due</span>`}</td>
           </tr>
         `).join('');
+      }
+
+      // Render Attendance Breakthrough Table
+      if (document.getElementById('badge-unsettled-abs')) {
+        document.getElementById('badge-unsettled-abs').innerText = unsettledAbs.length > 0 ? `${unsettledAbs.length} Unsettled (${fmt(absenceDeductionVal)})` : 'All Settled';
+      }
+      const attTbody = document.getElementById('att-breakdown-body');
+      if (attTbody) {
+        if (attLogs.length === 0) {
+          attTbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No absences or leave records logged yet.</td></tr>`;
+        } else {
+          attTbody.innerHTML = attLogs.map(att => {
+            const isDeduct = att.deductSalary !== false;
+            const lossVal = isDeduct ? dailyRate * (att.status === 'halfday' ? 0.5 : 1) : 0;
+            const statusLabel = att.status === 'halfday' ? 'Half Day' : 'Full Day Absent';
+            
+            return `
+              <tr>
+                <td class="mono muted">${att.date}</td>
+                <td><span class="badge ${isDeduct ? 'bg-danger' : 'bg-success'}">${statusLabel}</span></td>
+                <td>${isDeduct ? `<span class="badge bg-danger">Unpaid Leave (Salary Deducted)</span>` : `<span class="badge bg-success">Paid Leave</span>`}</td>
+                <td class="mono text-end ${isDeduct ? 'fw-bold text-danger' : 'text-muted'}">${isDeduct ? '-' + fmt(lossVal) : 'Rs.0.00'}</td>
+                <td class="small">${att.note ? esc(att.note) : '—'}</td>
+                <td>
+                  <div class="d-flex align-items-center gap-1">
+                    ${att.settled ? `<span class="badge bg-light text-dark border">Settled on Payday</span>` : `<span class="badge bg-warning text-dark">Active Unsettled</span>`}
+                    <button class="btn btn-sm btn-outline-danger py-0 px-1 ms-1" style="font-size:10px;" onclick="deleteAttendance('${att.id}')" title="Delete Log">🗑️</button>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
       }
 
       // Render Payday Settlement Box
@@ -888,7 +949,18 @@ if (!$employee) {
       const wDays = emp.workingDays || defaultWD;
       const baseRate = emp.type === "monthly" ? Number(emp.monthlyRate || 0) : Number(emp.weeklyRate || 0);
 
-      const suggestedWage = Math.max(0, baseRate - advDeductVal - actualCashHeldDeducted + actualReimbAdded);
+      const attLogs = (state.data.attendanceLogs || []).filter(a => a.employeeId === EMP_ID);
+      const unsettledAbs = attLogs.filter(a => !a.settled && a.status !== 'present');
+      const dailyRate = baseRate / (wDays > 0 ? wDays : defaultWD);
+      let absenceDeductionVal = 0;
+      unsettledAbs.forEach(a => {
+        if (a.deductSalary !== false) {
+          absenceDeductionVal += dailyRate * (a.status === 'halfday' ? 0.5 : 1);
+        }
+      });
+
+      const actualAbsDeducted = state.deductAtt ? absenceDeductionVal : 0;
+      const suggestedWage = Math.max(0, baseRate - advDeductVal - actualCashHeldDeducted + actualReimbAdded - actualAbsDeducted);
       const wageAmount = amountInput !== "" ? Number(amountInput) : suggestedWage;
 
       if (isNaN(wageAmount) || wageAmount < 0) {
@@ -907,8 +979,16 @@ if (!$employee) {
           note,
           deductedAdvances: advDeductVal,
           deductedHeld: actualCashHeldDeducted,
-          deductedAbsences: 0
+          deductedAbsences: actualAbsDeducted
         });
+
+        if (state.deductAtt) {
+          (state.data.attendanceLogs || []).forEach(a => {
+            if (a.employeeId === EMP_ID && !a.settled && a.status !== 'present') {
+              a.settled = true;
+            }
+          });
+        }
 
         if (actualReimbAdded > 0) {
           (state.data.expenses || []).forEach(e => {
@@ -937,7 +1017,24 @@ if (!$employee) {
         }
       });
 
-      Swal.fire({ icon: 'success', title: '🎉 Payday Settled!', text: 'Salary payment, advance deductions, and expense reimbursements recorded successfully.' });
+      Swal.fire({ icon: 'success', title: '🎉 Payday Settled!', text: 'Salary payment, advance deductions, absence penalties, and expense reimbursements recorded successfully.' });
+    }
+
+    async function deleteAttendance(attId) {
+      const confirm = await Swal.fire({
+        title: 'Delete Attendance Log?',
+        text: 'Are you sure you want to remove this attendance record?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#FF3B30',
+        confirmButtonText: 'Yes, Delete'
+      });
+      if (confirm.isConfirmed) {
+        await mutate(() => {
+          state.data.attendanceLogs = (state.data.attendanceLogs || []).filter(a => a.id !== attId);
+        });
+        Swal.fire({ toast: true, icon: 'success', title: 'Record deleted!', timer: 1500, showConfirmButton: false });
+      }
     }
 
     async function showEditModal() {
