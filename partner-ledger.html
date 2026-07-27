@@ -1285,26 +1285,35 @@ function renderCustomers() {
       `;
     }
 
+  const rows = paged.map(c => {
+    const custSales = state.income.filter(s => s.customerId === c.id || (c.phone && s.customerPhone === c.phone) || (s.customerName && s.customerName.toLowerCase() === c.name.toLowerCase()));
+    let totalOrd = 0, totalPaid = 0;
+    custSales.forEach(s => {
+      const tot = Number(s.amount || 0);
+      const pd = getIncomePaid(s);
+      totalOrd += tot;
+      totalPaid += pd;
+    });
+    const pendingDue = Math.max(0, totalOrd - totalPaid);
+
     return `
-      <div class="panel emp-card" style="margin-bottom:10px;padding:0;overflow:hidden;">
-        <div class="p-3" style="cursor:pointer;" data-act="toggle-customer" data-id="${c.id}">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-            <div>
-              <span class="fw-bold" style="font-size:16px;">${expanded ? "▾" : "▸"} 👤 ${esc(c.name)}</span>
-              ${c.phone ? `<span class="muted small" style="margin-left:6px;">📞 ${esc(c.phone)}</span>` : ""}
-              ${c.address ? `<span class="muted small" style="margin-left:6px;">📍 ${esc(c.address)}</span>` : ""}
-            </div>
-            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-              <div class="mono small">Orders: <strong>${custSales.length}</strong></div>
-              <div class="mono small text-success">Paid: <strong>${fmt(totalPaid)}</strong></div>
-              <div class="mono small ${pendingDue>0?'text-danger':'text-muted'}">Due: <strong>${fmt(pendingDue)}</strong></div>
-              ${c.phone ? `<button class="btn btn-sm btn-outline-dark fw-semibold" style="padding:2px 8px;font-size:12px;" data-act="wa-direct" data-phone="${c.phone}" data-name="${c.name}" data-due="${pendingDue}">📲 WhatsApp</button>` : ''}
-              <button class="icon-btn" data-act="edit-customer" data-id="${c.id}" title="Edit Customer">✏️</button>
-              <button class="icon-btn" data-act="delete-customer" data-id="${c.id}" style="color:var(--rust);" title="Delete Customer">🗑️</button>
-            </div>
+      <div class="panel emp-card mb-2" style="padding:14px 18px;">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="serif strong" style="font-size:16px;">${esc(c.name)}</span>
+            ${c.phone ? `<span class="muted small">📞 ${esc(c.phone)}</span>` : ""}
+            ${c.address ? `<span class="badge bg-light text-dark border">📍 ${esc(c.address)}</span>` : ""}
+            <span class="badge bg-light text-dark border">— ${custSales.length} order${custSales.length !== 1 ? 's' : ''} (${fmt(totalOrd)})</span>
+          </div>
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            ${pendingDue > 0.005 ? `<span class="mono small strong text-danger">Due ${fmt(pendingDue)}</span>` : `<span class="mono small strong text-success">settled</span>`}
+            
+            <a href="customer_detail.php?id=${c.id}" class="btn btn-sm btn-dark fw-bold px-3 py-1" style="font-size:12px;" title="View Customer Sales & Receivables">👁️ View Details</a>
+            ${c.phone ? `<button class="btn btn-sm btn-success fw-bold px-2 py-1" style="font-size:12px;" data-act="wa-direct" data-phone="${c.phone}" data-name="${c.name}" data-due="${pendingDue}" title="Send WhatsApp Statement">📱 WA</button>` : ''}
+            <button class="icon-btn" data-act="edit-customer" data-id="${c.id}" title="Edit Customer">✏️</button>
+            <button class="icon-btn" data-act="delete-customer" data-id="${c.id}" style="color:var(--rust);" title="Delete Customer">🗑️</button>
           </div>
         </div>
-        ${statementBody}
       </div>
     `;
   }).join("");
