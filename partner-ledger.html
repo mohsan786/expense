@@ -673,6 +673,7 @@ async function showReceiveIncomePaymentModal(id) {
 async function showEditEmployeeModal(id) {
   const emp = state.config.employees.find(e => e.id === id);
   if (!emp) return;
+  const partners = state.config.partners;
   const { value: formValues } = await Swal.fire({
     title: 'Edit Employee Profile',
     html:
@@ -683,6 +684,7 @@ async function showEditEmployeeModal(id) {
       `<div><label style="font-size:12px;font-weight:600;">Weekly Rate (if applicable)</label><input id="swal-emp-weekly" type="number" class="swal2-input" value="${emp.weeklyRate||0}" style="margin:4px 0 0 0;width:100%;"></div>` +
       `<div><label style="font-size:12px;font-weight:600;">Monthly Base Rate (if applicable)</label><input id="swal-emp-monthly" type="number" class="swal2-input" value="${emp.monthlyRate||0}" style="margin:4px 0 0 0;width:100%;"></div>` +
       `<div><label style="font-size:12px;font-weight:600;">Joining Advance / Peshgi Amount</label><input id="swal-emp-joining-adv" type="number" class="swal2-input" value="${emp.joiningAdvance||0}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Peshgi Paid Source</label><select id="swal-emp-joining-paidby" class="swal2-input" style="margin:4px 0 0 0;width:100%;"><option value="business" ${(emp.joiningPaidBy||'business')==='business'?'selected':''}>🏢 Business Funds (Shared by Ratio)</option>${partners.map(p=>`<option value="${p.id}" ${emp.joiningPaidBy===p.id?'selected':''}>Given by ${esc(p.name)} individually</option>`).join("")}</select></div>` +
       `<div><label style="font-size:12px;font-weight:600;">Working Days / Cycle (6/wk or 26/mo)</label><input id="swal-emp-workdays" type="number" class="swal2-input" value="${emp.workingDays||(emp.type==='monthly'?26:6)}" style="margin:4px 0 0 0;width:100%;"></div>` +
       `</div>`,
     focusConfirm: false,
@@ -697,12 +699,13 @@ async function showEditEmployeeModal(id) {
       const weeklyRate = Number(document.getElementById('swal-emp-weekly').value || 0);
       const monthlyRate = Number(document.getElementById('swal-emp-monthly').value || 0);
       const joiningAdvance = Number(document.getElementById('swal-emp-joining-adv').value || 0);
+      const joiningPaidBy = document.getElementById('swal-emp-joining-paidby').value || 'business';
       const workingDays = Number(document.getElementById('swal-emp-workdays').value || (type === 'monthly' ? 26 : 6));
       if (!name) {
         Swal.showValidationMessage('Please enter employee name');
         return false;
       }
-      return { name, phone, type, weeklyRate, monthlyRate, joiningAdvance, workingDays };
+      return { name, phone, type, weeklyRate, monthlyRate, joiningAdvance, joiningPaidBy, workingDays };
     }
   });
 
@@ -714,8 +717,26 @@ async function showEditEmployeeModal(id) {
       emp.weeklyRate = formValues.weeklyRate;
       emp.monthlyRate = formValues.monthlyRate;
       emp.joiningAdvance = formValues.joiningAdvance;
+      emp.joiningPaidBy = formValues.joiningPaidBy;
       emp.workingDays = formValues.workingDays;
       if (emp.type === 'workbased' && !emp.items) emp.items = [];
+
+      const joiningAdvEntry = state.advances.find(a => a.employeeId === emp.id && (a.isJoiningAdvance || (a.note && a.note.toLowerCase().includes("joining"))));
+      if (joiningAdvEntry) {
+        joiningAdvEntry.amount = formValues.joiningAdvance;
+        joiningAdvEntry.paidBy = formValues.joiningPaidBy;
+      } else if (formValues.joiningAdvance > 0) {
+        state.advances.unshift({
+          id: uid(),
+          employeeId: emp.id,
+          date: today(),
+          amount: formValues.joiningAdvance,
+          paidBy: formValues.joiningPaidBy,
+          note: "Joining Advance (Peshgi)",
+          settled: false,
+          isJoiningAdvance: true
+        });
+      }
     });
   }
 }
