@@ -214,10 +214,11 @@ if (!$vendor) {
                   <th class="text-end">PURCHASE (+)</th>
                   <th class="text-end">PAID (-)</th>
                   <th>PAYMENT METHOD</th>
+                  <th class="text-center" style="width:90px;">ACTION</th>
                 </tr>
               </thead>
               <tbody id="vendor-breakdown-body">
-                <tr><td colspan="6" class="text-center py-3 text-muted">Loading vendor ledger…</td></tr>
+                <tr><td colspan="7" class="text-center py-3 text-muted">Loading vendor ledger…</td></tr>
               </tbody>
             </table>
           </div>
@@ -286,6 +287,10 @@ if (!$vendor) {
     const VENDOR_ID = <?php echo json_encode($vendor_id); ?>;
     let state = { data: null };
 
+    function esc(s) {
+      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    }
+
     function fmt(n) {
       const c = state.data ? state.data.config.currency : 'Rs.';
       return `${c}${Number(n || 0).toFixed(2)}`;
@@ -340,6 +345,8 @@ if (!$vendor) {
             pm = `Paid by ${p ? p.name : 'Partner'}`;
           }
           return {
+            id: e.id,
+            kind: 'purchase',
             date: e.date,
             type: e.onCredit ? 'Credit Purchase (+)' : 'Direct Purchase',
             note: e.description,
@@ -351,6 +358,8 @@ if (!$vendor) {
         ...vPayments.map(p => {
           const pt = partners.find(x => x.id === p.paidBy);
           return {
+            id: p.id,
+            kind: 'payment',
             date: p.date,
             type: 'Payment to Vendor (-)',
             note: p.note ? `Vendor Payment: ${p.note}` : 'Vendor Payment',
@@ -363,16 +372,24 @@ if (!$vendor) {
 
       const tbody = document.getElementById('vendor-breakdown-body');
       if (historyItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No purchases or payments logged for this vendor yet.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No purchases or payments logged for this vendor yet.</td></tr>`;
       } else {
         tbody.innerHTML = historyItems.map(ev => `
           <tr>
             <td class="mono muted">${ev.date}</td>
             <td><span class="badge ${ev.purchase > 0 ? 'bg-secondary' : 'bg-success'}">${ev.type}</span></td>
-            <td>${ev.note}</td>
+            <td>${esc(ev.note)}</td>
             <td class="mono text-end ${ev.purchase > 0 ? 'fw-bold text-danger' : 'text-muted'}">${ev.purchase > 0 ? fmt(ev.purchase) : '—'}</td>
             <td class="mono text-end ${ev.paid > 0 ? 'fw-bold text-success' : 'text-muted'}">${ev.paid > 0 ? fmt(ev.paid) : '—'}</td>
-            <td class="small">${ev.pm}</td>
+            <td class="small">${esc(ev.pm)}</td>
+            <td class="text-center">
+              ${ev.kind === 'purchase'
+                ? `<button class="btn btn-sm btn-outline-primary py-0 px-1 border-0" onclick="editVendorPurchase('${ev.id}')" title="Edit Purchase">✏️</button>
+                   <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0" onclick="deleteVendorPurchase('${ev.id}')" title="Delete Purchase">🗑️</button>`
+                : `<button class="btn btn-sm btn-outline-primary py-0 px-1 border-0" onclick="editVendorPayment('${ev.id}')" title="Edit Payment">✏️</button>
+                   <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0" onclick="deleteVendorPayment('${ev.id}')" title="Delete Payment">🗑️</button>`
+              }
+            </td>
           </tr>
         `).join('');
       }
@@ -484,6 +501,186 @@ if (!$vendor) {
           vendor.phone = formValues.phone;
           vendor.note = formValues.note;
         });
+      }
+    }
+
+    async function deleteVendorPurchase(id) {
+      const confirm = await Swal.fire({
+        title: 'Delete Purchase Record?',
+        text: "Are you sure you want to delete this purchase record?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!'
+      });
+
+      if (confirm.isConfirmed) {
+        await mutate(() => {
+          if (state.data.expenses) {
+            state.data.expenses = state.data.expenses.filter(e => e.id !== id);
+          }
+        });
+        Swal.fire({ icon: 'success', title: 'Deleted!', text: 'Purchase record deleted.' });
+      }
+    }
+
+    async function editVendorPurchase(id) {
+      const exp = (state.data.expenses || []).find(e => e.id === id);
+      if (!exp) return;
+
+      const partners = state.data.config.partners || [];
+      const partnerOptions = partners.map(p => 
+        `<option value="partner:${p.id}" ${exp.paidBy === p.id ? 'selected' : ''}>Paid by ${esc(p.name)} directly</option>`
+      ).join('');
+
+      const { value: formValues } = await Swal.fire({
+        title: '✏️ Edit Material Purchase',
+        html: `
+          <div style="text-align:left;display:flex;flex-direction:column;gap:10px;">
+            <div>
+              <label style="font-size:12px;font-weight:600;">Date</label>
+              <input id="swal-vp-date" type="date" class="swal2-input" value="${exp.date}" style="margin:4px 0 0 0;width:100%;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;">Amount *</label>
+              <input id="swal-vp-amount" type="number" class="swal2-input" value="${exp.amount}" style="margin:4px 0 0 0;width:100%;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;">Item Description *</label>
+              <input id="swal-vp-desc" class="swal2-input" value="${esc(exp.description || '')}" placeholder="e.g. Leather soles" style="margin:4px 0 0 0;width:100%;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;">Payment Method</label>
+              <select id="swal-vp-payment" class="swal2-input" style="margin:4px 0 0 0;width:100%;">
+                <option value="credit" ${exp.onCredit ? 'selected' : ''}>💳 On Credit (Add to Vendor Balance)</option>
+                ${partnerOptions}
+              </select>
+            </div>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonColor: '#0F172A',
+        preConfirm: () => {
+          const date = document.getElementById('swal-vp-date').value || exp.date;
+          const amount = Number(document.getElementById('swal-vp-amount').value);
+          const description = document.getElementById('swal-vp-desc').value.trim();
+          const paymentVal = document.getElementById('swal-vp-payment').value;
+
+          if (!description) {
+            Swal.showValidationMessage('Please enter a description.');
+            return false;
+          }
+          if (!amount || isNaN(amount) || amount <= 0) {
+            Swal.showValidationMessage('Please enter a valid amount greater than zero.');
+            return false;
+          }
+          return { date, amount, description, paymentVal };
+        }
+      });
+
+      if (formValues) {
+        await mutate(() => {
+          const target = (state.data.expenses || []).find(e => e.id === id);
+          if (target) {
+            target.date = formValues.date;
+            target.amount = formValues.amount;
+            target.description = formValues.description;
+            if (formValues.paymentVal === 'credit') {
+              target.onCredit = true;
+              delete target.paidBy;
+            } else {
+              target.onCredit = false;
+              const [, partnerId] = formValues.paymentVal.split(':');
+              target.paidBy = partnerId;
+            }
+          }
+        });
+        Swal.fire({ icon: 'success', title: 'Updated!', text: 'Purchase record updated successfully.' });
+      }
+    }
+
+    async function deleteVendorPayment(id) {
+      const confirm = await Swal.fire({
+        title: 'Delete Payment Record?',
+        text: "Are you sure you want to delete this vendor payment record?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!'
+      });
+
+      if (confirm.isConfirmed) {
+        await mutate(() => {
+          if (state.data.vendorPayments) {
+            state.data.vendorPayments = state.data.vendorPayments.filter(p => p.id !== id);
+          }
+        });
+        Swal.fire({ icon: 'success', title: 'Deleted!', text: 'Vendor payment record deleted.' });
+      }
+    }
+
+    async function editVendorPayment(id) {
+      const pmt = (state.data.vendorPayments || []).find(p => p.id === id);
+      if (!pmt) return;
+
+      const partners = state.data.config.partners || [];
+      const partnerOptions = partners.map(p => 
+        `<option value="${p.id}" ${pmt.paidBy === p.id ? 'selected' : ''}>Paid by ${esc(p.name)}</option>`
+      ).join('');
+
+      const { value: formValues } = await Swal.fire({
+        title: '✏️ Edit Vendor Payment',
+        html: `
+          <div style="text-align:left;display:flex;flex-direction:column;gap:10px;">
+            <div>
+              <label style="font-size:12px;font-weight:600;">Payment Date</label>
+              <input id="swal-vpay-date" type="date" class="swal2-input" value="${pmt.date}" style="margin:4px 0 0 0;width:100%;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;">Amount Paid *</label>
+              <input id="swal-vpay-amount" type="number" class="swal2-input" value="${pmt.amount}" style="margin:4px 0 0 0;width:100%;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;">Paid By Partner</label>
+              <select id="swal-vpay-paidby" class="swal2-input" style="margin:4px 0 0 0;width:100%;">
+                ${partnerOptions}
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;">Note / Cheque Ref</label>
+              <input id="swal-vpay-note" class="swal2-input" value="${esc(pmt.note || '')}" style="margin:4px 0 0 0;width:100%;">
+            </div>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonColor: '#0F172A',
+        preConfirm: () => {
+          const date = document.getElementById('swal-vpay-date').value || pmt.date;
+          const amount = Number(document.getElementById('swal-vpay-amount').value);
+          const paidBy = document.getElementById('swal-vpay-paidby').value;
+          const note = document.getElementById('swal-vpay-note').value.trim();
+
+          if (!amount || isNaN(amount) || amount <= 0) {
+            Swal.showValidationMessage('Please enter a valid amount greater than zero.');
+            return false;
+          }
+          return { date, amount, paidBy, note };
+        }
+      });
+
+      if (formValues) {
+        await mutate(() => {
+          const target = (state.data.vendorPayments || []).find(p => p.id === id);
+          if (target) {
+            target.date = formValues.date;
+            target.amount = formValues.amount;
+            target.paidBy = formValues.paidBy;
+            target.note = formValues.note;
+          }
+        });
+        Swal.fire({ icon: 'success', title: 'Updated!', text: 'Vendor payment updated successfully.' });
       }
     }
 
