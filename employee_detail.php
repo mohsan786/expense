@@ -796,7 +796,8 @@ if (!$employee) {
             <td>${ev.settled ? `<span class="badge bg-light text-dark border">Settled</span>` : `<span class="badge bg-warning text-dark">Active Due</span>`}</td>
             <td class="text-center">
               ${ev.objType === 'advance' 
-                ? `<button class="btn btn-sm btn-outline-danger py-0 px-2 border-0" onclick="deleteAdvance('${ev.id}')" title="Delete Advance">🗑️</button>`
+                ? `<button class="btn btn-sm btn-outline-primary py-0 px-1 border-0 me-1" onclick="editAdvance('${ev.id}')" title="Edit Advance">✏️</button>
+                   <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0" onclick="deleteAdvance('${ev.id}')" title="Delete Advance">🗑️</button>`
                 : `<span class="text-muted small" title="Delete Payday Deduction from Salary Settlement panel">-</span>`
               }
             </td>
@@ -1002,6 +1003,86 @@ if (!$employee) {
           state.data.advances = state.data.advances.filter(a => a.id !== id);
         });
         Swal.fire({ icon: 'success', title: 'Deleted!', text: 'The advance has been deleted.' });
+      }
+    }
+
+    async function editAdvance(id) {
+      const adv = (state.data.advances || []).find(a => a.id === id);
+      if (!adv) return;
+
+      const partners = state.data.config.partners || [];
+      const partnerOptions = partners.map(p => 
+        `<option value="${p.id}" ${adv.paidBy === p.id ? 'selected' : ''}>Given by ${esc(p.name)} individually</option>`
+      ).join('');
+
+      const isJoining = adv.isJoiningAdvance || (adv.note && adv.note.toLowerCase().includes("joining"));
+
+      const { value: formValues } = await Swal.fire({
+        title: '✏️ Edit Advance Record',
+        html: `
+          <div style="text-align:left;display:flex;flex-direction:column;gap:10px;">
+            <div>
+              <label style="font-size:12px;font-weight:600;">Advance Type / Category</label>
+              <select id="swal-adv-type" class="swal2-input" style="margin:4px 0 0 0;width:100%;">
+                <option value="joining" ${isJoining ? 'selected' : ''}>🤝 Joining Advance (Peshgi)</option>
+                <option value="weekly" ${!isJoining ? 'selected' : ''}>💵 Weekly Advance (Kharcha)</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;">Date</label>
+              <input id="swal-adv-date" type="date" class="swal2-input" value="${adv.date}" style="margin:4px 0 0 0;width:100%;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;">Amount *</label>
+              <input id="swal-adv-amount" type="number" class="swal2-input" value="${adv.amount}" style="margin:4px 0 0 0;width:100%;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;">Paid By / Source</label>
+              <select id="swal-adv-paidby" class="swal2-input" style="margin:4px 0 0 0;width:100%;">
+                <option value="business" ${adv.paidBy === 'business' || !adv.paidBy ? 'selected' : ''}>🏢 Business Funds (Shared by Ratio)</option>
+                ${partnerOptions}
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;">Note / Description</label>
+              <input id="swal-adv-note" class="swal2-input" value="${esc(adv.note || '')}" placeholder="Advance details..." style="margin:4px 0 0 0;width:100%;">
+            </div>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonColor: '#0F172A',
+        preConfirm: () => {
+          const type = document.getElementById('swal-adv-type').value;
+          const date = document.getElementById('swal-adv-date').value || adv.date;
+          const amount = Number(document.getElementById('swal-adv-amount').value);
+          const paidBy = document.getElementById('swal-adv-paidby').value;
+          const note = document.getElementById('swal-adv-note').value.trim();
+
+          if (!amount || isNaN(amount) || amount <= 0) {
+            Swal.showValidationMessage('Please enter a valid amount greater than zero.');
+            return false;
+          }
+          return { type, date, amount, paidBy, note };
+        }
+      });
+
+      if (formValues) {
+        await mutate(() => {
+          const target = (state.data.advances || []).find(a => a.id === id);
+          if (target) {
+            target.date = formValues.date;
+            target.amount = formValues.amount;
+            target.paidBy = formValues.paidBy;
+            target.note = formValues.note || (formValues.type === 'joining' ? 'Joining Advance (Peshgi)' : 'Weekly Advance');
+            target.isJoiningAdvance = formValues.type === 'joining';
+          }
+          const emp = state.data.config.employees.find(e => e.id === EMP_ID);
+          if (emp && formValues.type === 'joining') {
+            emp.joiningAdvance = formValues.amount;
+            emp.joiningPaidBy = formValues.paidBy;
+          }
+        });
+        Swal.fire({ icon: 'success', title: 'Updated!', text: 'Advance record updated successfully.' });
       }
     }
 
@@ -1461,15 +1542,25 @@ if (!$employee) {
     async function showEditModal() {
       const emp = state.data.config.employees.find(e => e.id === EMP_ID);
       const partners = state.data.config.partners || [];
+      const partnerOptions = partners.map(p => 
+        `<option value="${p.id}" ${emp.joiningPaidBy === p.id ? 'selected' : ''}>Given by ${esc(p.name)} individually</option>`
+      ).join('');
+
       const { value: formValues } = await Swal.fire({
         title: 'Edit Employee Profile',
         html: `
           <div style="text-align:left;display:flex;flex-direction:column;gap:10px;">
-            <div><label style="font-size:12px;font-weight:600;">Employee Name</label><input id="swal-emp-name" class="swal2-input" value="${emp.name||''}" style="margin:4px 0 0 0;width:100%;"></div>
-            <div><label style="font-size:12px;font-weight:600;">Phone Number</label><input id="swal-emp-phone" class="swal2-input" value="${emp.phone||''}" style="margin:4px 0 0 0;width:100%;"></div>
+            <div><label style="font-size:12px;font-weight:600;">Employee Name</label><input id="swal-emp-name" class="swal2-input" value="${esc(emp.name||'')}" style="margin:4px 0 0 0;width:100%;"></div>
+            <div><label style="font-size:12px;font-weight:600;">Phone Number</label><input id="swal-emp-phone" class="swal2-input" value="${esc(emp.phone||'')}" style="margin:4px 0 0 0;width:100%;"></div>
             <div><label style="font-size:12px;font-weight:600;">Monthly Base Rate</label><input id="swal-emp-monthly" type="number" class="swal2-input" value="${emp.monthlyRate||0}" style="margin:4px 0 0 0;width:100%;"></div>
             <div><label style="font-size:12px;font-weight:600;">Weekly Rate</label><input id="swal-emp-weekly" type="number" class="swal2-input" value="${emp.weeklyRate||0}" style="margin:4px 0 0 0;width:100%;"></div>
-            <div><label style="font-size:12px;font-weight:600;">Joining Advance (Peshgi)</label><input id="swal-emp-joining-adv" type="number" class="swal2-input" value="${emp.joiningAdvance||0}" style="margin:4px 0 0 0;width:100%;"></div>
+            <div><label style="font-size:12px;font-weight:600;">Joining Advance (Peshgi Amount)</label><input id="swal-emp-joining-adv" type="number" class="swal2-input" value="${emp.joiningAdvance||0}" style="margin:4px 0 0 0;width:100%;"></div>
+            <div><label style="font-size:12px;font-weight:600;">Peshgi Paid Source (Given By)</label>
+              <select id="swal-emp-joining-paidby" class="swal2-input" style="margin:4px 0 0 0;width:100%;">
+                <option value="business" ${(emp.joiningPaidBy||'business')==='business'?'selected':''}>🏢 Business Funds (Shared by Ratio)</option>
+                ${partnerOptions}
+              </select>
+            </div>
           </div>
         `,
         showCancelButton: true,
@@ -1480,7 +1571,12 @@ if (!$employee) {
           const monthlyRate = Number(document.getElementById('swal-emp-monthly').value || 0);
           const weeklyRate = Number(document.getElementById('swal-emp-weekly').value || 0);
           const joiningAdvance = Number(document.getElementById('swal-emp-joining-adv').value || 0);
-          return { name, phone, monthlyRate, weeklyRate, joiningAdvance };
+          const joiningPaidBy = document.getElementById('swal-emp-joining-paidby').value || 'business';
+          if (!name) {
+            Swal.showValidationMessage('Please enter employee name.');
+            return false;
+          }
+          return { name, phone, monthlyRate, weeklyRate, joiningAdvance, joiningPaidBy };
         }
       });
 
@@ -1491,6 +1587,25 @@ if (!$employee) {
           emp.monthlyRate = formValues.monthlyRate;
           emp.weeklyRate = formValues.weeklyRate;
           emp.joiningAdvance = formValues.joiningAdvance;
+          emp.joiningPaidBy = formValues.joiningPaidBy;
+
+          const joiningAdvEntry = (state.data.advances || []).find(a => a.employeeId === emp.id && (a.isJoiningAdvance || (a.note && a.note.toLowerCase().includes("joining"))));
+          if (joiningAdvEntry) {
+            joiningAdvEntry.amount = formValues.joiningAdvance;
+            joiningAdvEntry.paidBy = formValues.joiningPaidBy;
+          } else if (formValues.joiningAdvance > 0) {
+            state.data.advances = state.data.advances || [];
+            state.data.advances.unshift({
+              id: 'adv_' + Math.random().toString(36).substr(2, 9),
+              employeeId: emp.id,
+              date: new Date().toISOString().split('T')[0],
+              amount: formValues.joiningAdvance,
+              paidBy: formValues.joiningPaidBy,
+              note: "Joining Advance (Peshgi)",
+              settled: false,
+              isJoiningAdvance: true
+            });
+          }
         });
       }
     }

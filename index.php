@@ -829,6 +829,21 @@ async function showEditEmployeeModal(id) {
   }
 }
 
+async function deleteEmployee(id) {
+  const confirmDelete = await swalConfirm("Delete Employee?", "All work logs, advances, and payment history for this employee will be deleted.");
+  if (!confirmDelete) return;
+  mutate(() => {
+    state.config.employees = state.config.employees.filter(e => e.id !== id);
+    state.workLogs = state.workLogs.filter(w => w.employeeId !== id);
+    state.salaryPayments = state.salaryPayments.filter(s => s.employeeId !== id);
+    state.advances = state.advances.filter(a => a.employeeId !== id);
+    state.attendanceLogs = (state.attendanceLogs || []).filter(a => a.employeeId !== id);
+    state.expenses = state.expenses.map(x => x.payerEmployeeId === id ? { ...x, payerEmployeeId: undefined } : x);
+    state.income = state.income.map(x => x.receivedByEmployeeId === id ? { ...x, receivedByEmployeeId: undefined } : x);
+    if (state.expandedEmp === id) state.expandedEmp = null;
+  });
+}
+
 async function showEditItemModal(empId, itemId) {
   const emp = state.config.employees.find(e => e.id === empId);
   if (!emp || !emp.items) return;
@@ -2238,15 +2253,15 @@ function renderEmployeeCard(emp, partners) {
           ${emp.phone ? `<span class="muted small">📞 ${esc(emp.phone)}</span>` : ""}
           <span class="badge bg-light text-dark border">— ${headSub}</span>
         </div>
-        <div class="d-flex align-items-center gap-2 flex-wrap" onclick="event.stopPropagation()">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
           ${emp.type==="workbased" ? `<span class="mono small strong ${owed>0?'text-danger':'text-success'}">${owed>0?`owes ${fmt(owed)}`:"settled"}</span>` : ""}
           ${unsettledAbs.length>0 ? `<span class="mono small strong text-danger">absent ${unsettledAbs.length}d (${fmt(absenceDeductionVal)})</span>` : ""}
           ${joiningAdvVal>0 ? `<span class="mono small strong text-warning" title="Joining Advance (Peshgi)">Peshgi ${fmt(joiningAdvVal)}</span>` : ""}
           ${weeklyAdvVal>0 ? `<span class="mono small strong gold" title="Weekly Advances (Kharcha)">Kharcha ${fmt(weeklyAdvVal)}</span>` : ""}
           
-          <a href="employee_detail.php?id=${emp.id}" class="btn btn-sm btn-dark fw-bold px-3 py-1" style="font-size:12px;" title="View Employee Ledger & Details">👁️ Full Details</a>
-          <button class="icon-btn" data-act="edit-employee" data-id="${emp.id}" title="Edit Profile">✏️</button>
-          <button class="icon-btn" data-act="delete-employee" data-id="${emp.id}" title="Delete Employee" style="color:var(--rust);margin-left:2px">🗑️</button>
+          <a href="employee_detail.php?id=${emp.id}" class="btn btn-sm btn-dark fw-bold px-3 py-1" style="font-size:12px;" title="View Employee Ledger & Details" onclick="event.stopPropagation()">👁️ Full Details</a>
+          <button class="icon-btn" onclick="event.stopPropagation(); showEditEmployeeModal('${emp.id}')" title="Edit Profile">✏️</button>
+          <button class="icon-btn" onclick="event.stopPropagation(); deleteEmployee('${emp.id}')" title="Delete Employee" style="color:var(--rust);margin-left:2px">🗑️</button>
         </div>
       </div>
 
