@@ -48,45 +48,52 @@ if (!$vendor) {
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     :root {
-      --bg: #F8FAFC;
+      --bg: #F5F5F7;
       --surface: #FFFFFF;
-      --text: #0F172A;
-      --muted: #64748B;
-      --border: #E2E8F0;
-      --primary: #0F172A;
-      --teal: #0D9488;
-      --gold: #D97706;
-      --rust: #DC2626;
-      --card-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
+      --text: #1D1D1F;
+      --muted: #86868B;
+      --border: #E5E5EA;
+      --primary: #000000;
+      --teal: #34C759;
+      --gold: #FF9500;
+      --rust: #FF3B30;
+      --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
     }
     body {
       background-color: var(--bg);
       color: var(--text);
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
       padding-bottom: 60px;
     }
     .mono { font-family: 'JetBrains Mono', monospace; }
     .serif { font-family: 'Newsreader', serif; }
     
     .navbar-custom {
-      background: #090D16;
-      color: #FFF;
+      background: #FFFFFF;
+      color: #1D1D1F;
       padding: 16px 28px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-      border-bottom: 1px solid #1E293B;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+      border-bottom: 1px solid #E5E5EA;
+    }
+    .navbar-custom a {
+      color: #1D1D1F !important;
+      border-color: #E5E5EA !important;
+    }
+    .navbar-custom small {
+      color: #86868B !important;
     }
     
     .kpi-card {
       background: #FFFFFF;
       border: 1px solid var(--border);
-      border-radius: 16px;
+      border-radius: 18px;
       padding: 22px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
       transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease;
     }
     .kpi-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 16px 30px -5px rgba(0, 0, 0, 0.1);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
     }
     .kpi-title {
       font-size: 11px;
@@ -101,11 +108,17 @@ if (!$vendor) {
       font-weight: 800;
       font-family: 'JetBrains Mono', monospace;
       letter-spacing: -0.5px;
+      color: #1D1D1F;
     }
     
     .content-panel {
       background: var(--surface);
       border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: var(--card-shadow);
+      margin-bottom: 24px;
+    }
       border-radius: 16px;
       padding: 24px;
       box-shadow: var(--card-shadow);

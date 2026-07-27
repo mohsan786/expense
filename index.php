@@ -15,19 +15,23 @@ header("Expires: 0");
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>
-  /* Luxury Monochrome / Black & White Executive Theme */
+  /* Apple-Style Clean Light Mode Theme */
   :root {
-    --paper: #F8FAFC;
-    --ink: #000000;
-    --rule: #E2E8F0;
+    --paper: #F5F5F7;
+    --ink: #1D1D1F;
+    --rule: #E5E5EA;
     --panel: #FFFFFF;
-    --muted: #64748B;
-    --dark-surface: #090D16;
+    --muted: #86868B;
+    --accent: #007AFF;
+    --success: #34C759;
+    --danger: #FF3B30;
+    --warning: #FF9500;
   }
   
   body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    color: #0F172A;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+    color: #1D1D1F;
+    background-color: #F5F5F7;
   }
   .mono { font-family: 'JetBrains Mono', monospace; }
   .serif { font-family: 'Newsreader', serif; }
@@ -35,51 +39,51 @@ header("Expires: 0");
   .app-shell {
     display: flex;
     min-height: 100vh;
-    background: #F8FAFC;
+    background: #F5F5F7;
   }
   .app-sidebar {
-    width: 250px;
-    background: #000000;
-    color: #FFFFFF;
+    width: 255px;
+    background: #FFFFFF;
+    color: #1D1D1F;
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
     position: sticky;
     top: 0;
     height: 100vh;
-    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.12);
+    box-shadow: 1px 0 10px rgba(0, 0, 0, 0.03);
     z-index: 100;
-    border-right: 1px solid #18181B;
+    border-right: 1px solid #E5E5EA;
   }
   .sidebar-brand {
     padding: 24px 20px;
     display: flex;
     align-items: center;
     gap: 12px;
-    border-bottom: 1px solid #18181B;
+    border-bottom: 1px solid #E5E5EA;
   }
   .brand-icon {
     font-size: 20px;
-    background: #FFFFFF;
-    color: #000000;
+    background: #000000;
+    color: #FFFFFF;
     font-weight: 800;
     width: 42px;
     height: 42px;
-    border-radius: 10px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
   }
   .brand-title {
     font-size: 18px;
     font-weight: 800;
-    letter-spacing: -0.3px;
-    color: #FFFFFF;
+    letter-spacing: -0.4px;
+    color: #1D1D1F;
   }
   .brand-sub {
     font-size: 11px;
-    color: #A1A1AA;
+    color: #86868B;
     font-weight: 500;
   }
   .sidebar-nav {
@@ -97,45 +101,46 @@ header("Expires: 0");
     padding: 11px 16px;
     border: none;
     background: transparent;
-    color: #A1A1AA;
+    color: #515154;
     font-weight: 600;
     font-size: 14px;
-    border-radius: 10px;
+    border-radius: 12px;
     cursor: pointer;
     text-align: left;
     width: 100%;
-    transition: all 0.2s ease;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
   .sidebar-item:hover {
-    background: #18181B;
-    color: #FFFFFF;
-    transform: translateX(2px);
+    background: #F2F2F7;
+    color: #1D1D1F;
+    transform: translateX(3px);
   }
   .sidebar-item.active {
-    background: #FFFFFF;
-    color: #000000;
+    background: #000000;
+    color: #FFFFFF;
     font-weight: 700;
-    box-shadow: 0 4px 14px rgba(255, 255, 255, 0.25);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
   }
   .sidebar-footer {
     padding: 16px 20px;
-    border-top: 1px solid #18181B;
+    border-top: 1px solid #E5E5EA;
   }
   .logout-btn {
-    background: #18181B;
-    color: #FFFFFF;
-    border: 1px solid #27272A;
+    background: #F2F2F7;
+    color: #1D1D1F;
+    border: 1px solid #E5E5EA;
     width: 100%;
     padding: 9px 12px;
-    border-radius: 8px;
+    border-radius: 10px;
     font-weight: 600;
     font-size: 13px;
     cursor: pointer;
     transition: all 0.2s;
   }
   .logout-btn:hover {
-    background: #E11D48;
+    background: #FF3B30;
     color: #FFFFFF;
+    border-color: #FF3B30;
   }
 
   .main-content {
@@ -147,7 +152,7 @@ header("Expires: 0");
   .app-topbar {
     background: #FFFFFF;
     padding: 16px 28px;
-    border-bottom: 1px solid var(--rule);
+    border-bottom: 1px solid #E5E5EA;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -157,27 +162,27 @@ header("Expires: 0");
     font-size: 20px;
     font-weight: 800;
     margin: 0;
-    color: #000000;
-    letter-spacing: -0.3px;
+    color: #1D1D1F;
+    letter-spacing: -0.4px;
   }
   .topbar-sub {
     font-size: 13px;
-    color: #64748B;
+    color: #86868B;
     margin: 2px 0 0 0;
   }
   .quick-act-btn {
     background: #000000;
     color: #FFFFFF;
-    border: 1px solid #27272A;
-    padding: 8px 18px;
-    border-radius: 10px;
+    border: none;
+    padding: 9px 20px;
+    border-radius: 12px;
     font-weight: 700;
     font-size: 13.5px;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    transition: transform 0.15s;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    transition: transform 0.2s, background 0.2s;
   }
-  .quick-act-btn:hover { transform: scale(1.03); background: #27272A; }
+  .quick-act-btn:hover { transform: translateY(-2px); background: #2C2C2E; }
 
   .view-container {
     padding: 24px 28px;
@@ -191,7 +196,7 @@ header("Expires: 0");
     to { opacity: 1; transform: translateY(0); }
   }
 
-  /* Executive Black KPI Cards */
+  /* Apple-Style KPI Cards */
   .kpi-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -199,35 +204,54 @@ header("Expires: 0");
     margin-bottom: 24px;
   }
   .kpi-card {
-    border-radius: 16px;
+    background: #FFFFFF;
+    border: 1px solid #E5E5EA;
+    border-radius: 18px;
     padding: 22px;
-    color: #FFFFFF;
+    color: #1D1D1F;
     display: flex;
     align-items: center;
     gap: 16px;
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.18);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease;
   }
   .kpi-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 16px 35px -5px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
   }
-  .kpi-income { background: linear-gradient(135deg, #000000 0%, #18181B 100%); border: 1px solid #27272A; }
-  .kpi-expense { background: linear-gradient(135deg, #18181B 0%, #27272A 100%); border: 1px solid #3F3F46; }
-  .kpi-profit { background: linear-gradient(135deg, #090D16 0%, #18181B 100%); border: 1px solid #27272A; }
-  .kpi-due { background: linear-gradient(135deg, #27272A 0%, #3F3F46 100%); border: 1px solid #52525B; }
+  .kpi-income .kpi-icon { background: #E8F5E9; color: #34C759; }
+  .kpi-expense .kpi-icon { background: #FFEBEE; color: #FF3B30; }
+  .kpi-profit .kpi-icon { background: #E3F2FD; color: #007AFF; }
+  .kpi-due .kpi-icon { background: #FFF3E0; color: #FF9500; }
 
   .kpi-icon {
     font-size: 24px;
-    background: rgba(255, 255, 255, 0.1);
     width: 52px;
     height: 52px;
     border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    font-weight: 700;
+  }
+  .kpi-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    color: #86868B;
+    text-transform: uppercase;
+  }
+  .kpi-value {
+    font-size: 25px;
+    font-weight: 800;
+    color: #1D1D1F;
+    font-family: 'JetBrains Mono', monospace;
+    line-height: 1.2;
+  }
+  .kpi-sub {
+    font-size: 11px;
+    color: #86868B;
+    margin-top: 2px;
   }
   .kpi-label {
     font-size: 11px;
