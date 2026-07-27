@@ -501,15 +501,16 @@ if (!$employee) {
       const attLogs = (state.data.attendanceLogs || []).filter(a => a.employeeId === EMP_ID);
       const unsettledAbs = attLogs.filter(a => !a.settled && a.status !== 'present');
 
-      const joiningAdvEntry = advances.find(a => a.isJoiningAdvance || (a.note && a.note.toLowerCase().includes("joining")));
-      const joiningAdvVal = emp.joiningAdvance || (joiningAdvEntry ? joiningAdvEntry.amount : 0);
+      const joiningAdvEntry = advances.find(a => a.employeeId === EMP_ID && (a.isJoiningAdvance || (a.note && a.note.toLowerCase().includes("joining"))));
+      const joiningAdvVal = emp.joiningAdvance || (joiningAdvEntry ? Number(joiningAdvEntry.amount || 0) : 0);
+      const joiningAdvUnsettled = joiningAdvEntry ? (!joiningAdvEntry.settled ? Number(joiningAdvEntry.amount || 0) : 0) : Number(emp.joiningAdvance || 0);
 
-      const weeklyAdvEntries = advances.filter(a => !a.isJoiningAdvance && !(a.note && a.note.toLowerCase().includes("joining")));
+      const weeklyAdvEntries = advances.filter(a => a.employeeId === EMP_ID && !a.isJoiningAdvance && !(a.note && a.note.toLowerCase().includes("joining")) && !a.isPurchasingCash);
 
       const totalWeeklyAdvGiven = weeklyAdvEntries.reduce((s, a) => s + Number(a.amount || 0), 0);
       const totalAdvReturned = payments.reduce((s, p) => s + Number(p.deductedAdvances || 0), 0);
       const weeklyAdvVal = Math.max(0, totalWeeklyAdvGiven - totalAdvReturned);
-      const outstandingAdv = weeklyAdvVal + (joiningAdvEntry && !joiningAdvEntry.settled ? joiningAdvEntry.amount : 0);
+      const outstandingAdv = weeklyAdvVal + joiningAdvUnsettled;
 
       const defaultWD = emp.type === "monthly" ? 26 : 6;
       const wDays = emp.workingDays || defaultWD;
@@ -597,18 +598,14 @@ if (!$employee) {
       if (emp.type === 'workbased') {
         document.getElementById('kpi-base').innerText = fmt(totalEarned);
         document.getElementById('kpi-base-sub').innerText = 'Total Work Production Earned';
-        document.getElementById('kpi-peshgi').innerText = fmt(totalWagePaid);
-        document.getElementById('kpi-peshgi-sub').innerText = 'Wages Paid So Far';
-        document.getElementById('kpi-kharcha').innerText = fmt(outstandingAdv);
-        document.getElementById('kpi-net').innerText = fmt(suggestedWage);
       } else {
         document.getElementById('kpi-base').innerText = fmt(baseRate);
         document.getElementById('kpi-base-sub').innerText = `${emp.type === 'monthly' ? 'Monthly' : 'Weekly'} (${wDays}d)`;
-        document.getElementById('kpi-peshgi').innerText = fmt(joiningAdvVal);
-        document.getElementById('kpi-peshgi-sub').innerText = joiningAdvEntry ? (joiningAdvEntry.paidBy === 'business' ? 'Business Funds' : 'Partner Paid') : 'Peshgi';
-        document.getElementById('kpi-kharcha').innerText = fmt(weeklyAdvVal);
-        document.getElementById('kpi-net').innerText = fmt(suggestedWage);
       }
+      document.getElementById('kpi-peshgi').innerText = fmt(joiningAdvVal);
+      document.getElementById('kpi-peshgi-sub').innerText = joiningAdvEntry ? (joiningAdvEntry.paidBy === 'business' ? 'Business Funds' : 'Partner Paid') : 'Joining Peshgi';
+      document.getElementById('kpi-kharcha').innerText = fmt(weeklyAdvVal);
+      document.getElementById('kpi-net').innerText = fmt(suggestedWage);
       document.getElementById('badge-outstanding').innerText = `Outstanding: ${fmt(outstandingAdv)}`;
 
       if (document.getElementById('box-cash-given')) {

@@ -2328,10 +2328,11 @@ function renderEmployeeCard(emp, partners) {
   const absenceDeductionVal = empAbsenceDeduction(emp);
   const totalEarned = workLogs.reduce((s, w) => s + w.amount, 0);
   const totalWagePaid = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
-  const outstandingAdv = empOutstandingAdvance(emp.id);
-  const joiningAdvEntry = advances.find(a => a.isJoiningAdvance || (a.note && a.note.toLowerCase().includes("joining")));
-  const joiningAdvVal = emp.joiningAdvance || (joiningAdvEntry ? joiningAdvEntry.amount : 0);
-  const weeklyAdvVal = Math.max(0, outstandingAdv - (joiningAdvEntry && !joiningAdvEntry.settled ? joiningAdvEntry.amount : 0));
+  const empAdvs = advances.filter(a => a.employeeId === emp.id);
+  const joiningAdvEntry = empAdvs.find(a => a.isJoiningAdvance || (a.note && a.note.toLowerCase().includes("joining")));
+  const joiningAdvVal = emp.joiningAdvance || (joiningAdvEntry ? Number(joiningAdvEntry.amount || 0) : 0);
+  const joiningAdvUnsettled = joiningAdvEntry ? (!joiningAdvEntry.settled ? Number(joiningAdvEntry.amount || 0) : 0) : Number(emp.joiningAdvance || 0);
+  const weeklyAdvVal = Math.max(0, outstandingAdv - joiningAdvUnsettled);
   const outstandingReimb = empOutstandingReimbursement(emp.id);
   const outstandingHeld = empOutstandingHeldIncome(emp.id);
   const owed = emp.type === "workbased" ? (totalEarned - totalWagePaid - outstandingAdv - outstandingHeld + outstandingReimb) : null;
