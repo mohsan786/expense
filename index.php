@@ -1032,6 +1032,71 @@ async function persist() {
 
 function mutate(fn) { fn(); persist(); render(); }
 
+// ── Employee Card Collapse ────────────────────────────────────────────────────
+function toggleEmpCollapse(safeId) {
+  const body = document.getElementById('emp-collapse-' + safeId);
+  const chevron = document.getElementById('emp-chevron-' + safeId);
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  if (chevron) chevron.textContent = isOpen ? '▶' : '▼';
+}
+
+function calcQuickWorkTotal(safeId) {
+  const qty = Number(document.getElementById('qwl-qty-' + safeId)?.value || 0);
+  const rate = Number(document.getElementById('qwl-rate-' + safeId)?.value || 0);
+  const el = document.getElementById('qwl-total-' + safeId);
+  if (el) el.textContent = fmt(qty * rate);
+}
+
+async function quickSaveWorkLog(empId, safeId) {
+  const dateEl = document.getElementById('qwl-date-' + safeId);
+  const itemEl = document.getElementById('qwl-item-' + safeId);
+  const qtyEl  = document.getElementById('qwl-qty-'  + safeId);
+  const rateEl = document.getElementById('qwl-rate-' + safeId);
+  const noteEl = document.getElementById('qwl-note-' + safeId);
+
+  const date = dateEl?.value || today();
+  const itemLabel = itemEl?.value.trim() || '';
+  const quantity  = Number(qtyEl?.value  || 0);
+  const unitPrice = Number(rateEl?.value || 0);
+  const note      = noteEl?.value.trim() || '';
+
+  if (!itemLabel) { swalAlert('Missing Item', 'Please enter item or operation name.', 'warning'); return; }
+  if (!quantity || quantity <= 0) { swalAlert('Invalid Quantity', 'Enter a valid quantity > 0.', 'warning'); return; }
+  if (!unitPrice || unitPrice <= 0) { swalAlert('Invalid Rate', 'Enter a valid unit rate > 0.', 'warning'); return; }
+
+  mutate(() => {
+    state.workLogs.unshift({
+      id: uid(),
+      employeeId: empId,
+      date,
+      itemLabel,
+      quantity,
+      unitPrice,
+      amount: quantity * unitPrice,
+      note
+    });
+  });
+
+  if (itemEl) itemEl.value = '';
+  if (qtyEl)  qtyEl.value = '';
+  if (rateEl) rateEl.value = '';
+  if (noteEl) noteEl.value = '';
+  const totEl = document.getElementById('qwl-total-' + safeId);
+  if (totEl) totEl.textContent = 'Rs.0.00';
+
+  Swal.fire({ toast: true, icon: 'success', title: `🔨 Work log saved! (${fmt(quantity * unitPrice)})`, timer: 2000, showConfirmButton: false, position: 'top-end' });
+}
+
+async function quickDeleteWorkLog(wlId) {
+  const res = await Swal.fire({ title: 'Delete Work Log?', text: 'Remove this production entry?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#FF3B30', confirmButtonText: 'Delete' });
+  if (res.isConfirmed) {
+    mutate(() => { state.workLogs = state.workLogs.filter(w => w.id !== wlId); });
+    Swal.fire({ toast: true, icon: 'success', title: 'Work log deleted!', timer: 1500, showConfirmButton: false });
+  }
+}
+
 function getPaymentMethodLabel(pm) {
   if (pm === 'bank') return '🏦 Bank';
   if (pm === 'wallet') return '📱 Mobile Wallet';
@@ -1993,28 +2058,118 @@ function renderEmployeeCard(emp, partners) {
       ? `monthly · ${fmt(emp.monthlyRate)} (${wDays}d/mo)`
       : "work-based");
 
+  const safeId = emp.id.replace(/[^a-zA-Z0-9]/g, '_');
+
   return `
-    <div class="panel emp-card mb-2" style="padding:14px 18px;">
-      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="panel emp-card mb-2" style="padding:0;overflow:hidden;">
+      <!-- Header Row -->
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2" style="padding:14px 18px;cursor:pointer;" onclick="toggleEmpCollapse('${safeId}')">
         <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span style="font-size:13px;color:#86868B;transition:transform 0.2s;" id="emp-chevron-${safeId}">▶</span>
           <span class="serif strong" style="font-size:16px;">${esc(emp.name)}</span>
           ${emp.phone ? `<span class="muted small">📞 ${esc(emp.phone)}</span>` : ""}
           <span class="badge bg-light text-dark border">— ${headSub}</span>
         </div>
-        <div class="d-flex align-items-center gap-2 flex-wrap">
+        <div class="d-flex align-items-center gap-2 flex-wrap" onclick="event.stopPropagation()">
           ${emp.type==="workbased" ? `<span class="mono small strong ${owed>0?'text-danger':'text-success'}">${owed>0?`owes ${fmt(owed)}`:"settled"}</span>` : ""}
           ${unsettledAbs.length>0 ? `<span class="mono small strong text-danger">absent ${unsettledAbs.length}d (${fmt(absenceDeductionVal)})</span>` : ""}
           ${joiningAdvVal>0 ? `<span class="mono small strong text-warning" title="Joining Advance (Peshgi)">Peshgi ${fmt(joiningAdvVal)}</span>` : ""}
           ${weeklyAdvVal>0 ? `<span class="mono small strong gold" title="Weekly Advances (Kharcha)">Kharcha ${fmt(weeklyAdvVal)}</span>` : ""}
           
-          <a href="employee_detail.php?id=${emp.id}" class="btn btn-sm btn-dark fw-bold px-3 py-1" style="font-size:12px;" title="View Employee Ledger & Details">👁️ View Details</a>
+          <a href="employee_detail.php?id=${emp.id}" class="btn btn-sm btn-dark fw-bold px-3 py-1" style="font-size:12px;" title="View Employee Ledger & Details">👁️ Full Details</a>
           <button class="icon-btn" data-act="edit-employee" data-id="${emp.id}" title="Edit Profile">✏️</button>
           <button class="icon-btn" data-act="delete-employee" data-id="${emp.id}" title="Delete Employee" style="color:var(--rust);margin-left:2px">🗑️</button>
         </div>
       </div>
+
+      <!-- Collapsible Body -->
+      <div id="emp-collapse-${safeId}" style="display:none;border-top:1px solid #E5E5EA;background:#FAFAFA;">
+
+        ${emp.type === 'workbased' ? `
+        <!-- Piece-Rate Work Log Breakthrough -->
+        <div style="padding:16px 18px;">
+          <div style="font-weight:700;font-size:13px;color:#166534;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">
+            <span>🛠️ Piece-Rate Work Production Log</span>
+            <span class="badge bg-success text-white mono" style="font-size:11px;" id="wl-badge-${safeId}">Total: ${fmt(totalEarned)}</span>
+          </div>
+
+          <div class="table-responsive mb-3">
+            <table class="table table-sm table-hover table-bordered align-middle mb-0 bg-white" style="font-size:11.5px;">
+              <thead class="table-dark mono" style="font-size:10.5px;">
+                <tr>
+                  <th>DATE</th>
+                  <th>ITEM / OPERATION</th>
+                  <th>QTY</th>
+                  <th class="text-end">RATE/PIECE</th>
+                  <th class="text-end">EARNED (+)</th>
+                  <th>NOTE</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                ${workLogs.length === 0
+                  ? `<tr><td colspan="7" class="text-center text-muted py-3" style="font-size:12px;">No work production entries yet. Log one below.</td></tr>`
+                  : workLogs.map(w => `
+                    <tr>
+                      <td class="mono" style="font-size:11px;color:#86868B;">${w.date}</td>
+                      <td style="font-weight:600;">${esc(w.itemLabel || 'Production Item')}</td>
+                      <td class="mono text-center">${w.quantity}</td>
+                      <td class="mono text-end">${fmt(w.unitPrice)}</td>
+                      <td class="mono text-end fw-bold text-success">${fmt(w.amount)}</td>
+                      <td class="small text-muted">${w.note ? esc(w.note) : '—'}</td>
+                      <td><button class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:10px;" onclick="quickDeleteWorkLog('${w.id}')" title="Delete">🗑️</button></td>
+                    </tr>
+                  `).join('')}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Quick Log Work Form -->
+          <div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:10px;padding:14px;">
+            <div style="font-weight:700;font-size:12px;color:#166534;margin-bottom:10px;">🔨 Quick Log Work Production</div>
+            <div class="row g-2">
+              <div class="col-md-2 col-6"><label class="form-label" style="font-size:10px;margin-bottom:2px;">Date</label><input type="date" id="qwl-date-${safeId}" class="form-control form-control-sm" value="${new Date().toISOString().split('T')[0]}"></div>
+              <div class="col-md-4 col-12"><label class="form-label" style="font-size:10px;margin-bottom:2px;">Item / Operation *</label><input id="qwl-item-${safeId}" class="form-control form-control-sm" placeholder="e.g. Leather Upper Stitching"></div>
+              <div class="col-md-2 col-6"><label class="form-label" style="font-size:10px;margin-bottom:2px;">Quantity *</label><input type="number" id="qwl-qty-${safeId}" class="form-control form-control-sm" placeholder="e.g. 50" oninput="calcQuickWorkTotal('${safeId}')"></div>
+              <div class="col-md-2 col-6"><label class="form-label" style="font-size:10px;margin-bottom:2px;">Rate / Piece *</label><input type="number" id="qwl-rate-${safeId}" class="form-control form-control-sm" placeholder="e.g. 120" oninput="calcQuickWorkTotal('${safeId}')"></div>
+              <div class="col-md-2 col-12"><label class="form-label" style="font-size:10px;margin-bottom:2px;">Total</label><div class="form-control form-control-sm mono fw-bold text-success bg-white" id="qwl-total-${safeId}" style="font-size:12px;">Rs.0.00</div></div>
+              <div class="col-md-8 col-12"><input id="qwl-note-${safeId}" class="form-control form-control-sm" placeholder="Note (optional)"></div>
+              <div class="col-md-4 col-12"><button class="btn btn-success btn-sm fw-bold w-100" onclick="quickSaveWorkLog('${emp.id}','${safeId}')">✅ Save Work Entry</button></div>
+            </div>
+          </div>
+        </div>
+        ` : `
+        <!-- Summary for weekly/monthly employees -->
+        <div style="padding:16px 18px;">
+          <div class="row g-3">
+            <div class="col-md-3 col-6 text-center p-2 rounded bg-white border">
+              <div style="font-size:10px;font-weight:700;color:#86868B;">JOINING PESHGI</div>
+              <div class="mono fw-bold ${joiningAdvVal>0?'text-warning':'text-success'}" style="font-size:14px;">${fmt(joiningAdvVal)}</div>
+            </div>
+            <div class="col-md-3 col-6 text-center p-2 rounded bg-white border">
+              <div style="font-size:10px;font-weight:700;color:#86868B;">WEEKLY KHARCHA</div>
+              <div class="mono fw-bold ${weeklyAdvVal>0?'text-danger':'text-success'}" style="font-size:14px;">${fmt(weeklyAdvVal)}</div>
+            </div>
+            <div class="col-md-3 col-6 text-center p-2 rounded bg-white border">
+              <div style="font-size:10px;font-weight:700;color:#86868B;">UNSETTLED ABSENCES</div>
+              <div class="mono fw-bold ${unsettledAbs.length>0?'text-danger':'text-success'}" style="font-size:14px;">${unsettledAbs.length > 0 ? `${unsettledAbs.length}d · ${fmt(absenceDeductionVal)}` : 'None'}</div>
+            </div>
+            <div class="col-md-3 col-6 text-center p-2 rounded bg-white border">
+              <div style="font-size:10px;font-weight:700;color:#86868B;">BASE RATE</div>
+              <div class="mono fw-bold text-dark" style="font-size:14px;">${fmt(baseRate)}</div>
+            </div>
+          </div>
+          <div class="mt-3 text-center">
+            <a href="employee_detail.php?id=${emp.id}" class="btn btn-dark btn-sm fw-bold px-4">📋 Open Full Ledger & Payday Settlement</a>
+          </div>
+        </div>
+        `}
+
+      </div>
     </div>
   `;
 }
+
 
 function renderVendors() {
   const partners = state.config.partners;
