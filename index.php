@@ -724,9 +724,10 @@ async function showEditEmployeeModal(id) {
       `<div style="text-align:left;display:flex;flex-direction:column;gap:10px;">` +
       `<div><label style="font-size:12px;font-weight:600;">Employee Name</label><input id="swal-emp-name" class="swal2-input" value="${esc(emp.name||'')}" style="margin:4px 0 0 0;width:100%;"></div>` +
       `<div><label style="font-size:12px;font-weight:600;">Phone Number</label><input id="swal-emp-phone" class="swal2-input" value="${esc(emp.phone||'')}" placeholder="e.g. 0300-1234567" style="margin:4px 0 0 0;width:100%;"></div>` +
-      `<div><label style="font-size:12px;font-weight:600;">Payment Type</label><select id="swal-emp-type" class="swal2-input" style="margin:4px 0 0 0;width:100%;"><option value="weekly" ${emp.type==='weekly'?'selected':''}>Weekly Rate</option><option value="workbased" ${emp.type==='workbased'?'selected':''}>Piece-Rate (Work Based)</option></select></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Payment Type</label><select id="swal-emp-type" class="swal2-input" style="margin:4px 0 0 0;width:100%;"><option value="weekly" ${emp.type==='weekly'?'selected':''}>Weekly Rate</option><option value="monthly" ${emp.type==='monthly'?'selected':''}>Monthly Base</option><option value="workbased" ${emp.type==='workbased'?'selected':''}>Piece-Rate (Work Based)</option></select></div>` +
       `<div><label style="font-size:12px;font-weight:600;">Weekly Rate (if applicable)</label><input id="swal-emp-weekly" type="number" class="swal2-input" value="${emp.weeklyRate||0}" style="margin:4px 0 0 0;width:100%;"></div>` +
-      `<div><label style="font-size:12px;font-weight:600;">Working Days / Week (for absence deduction)</label><input id="swal-emp-workdays" type="number" class="swal2-input" value="${emp.workingDays||6}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Monthly Base Rate (if applicable)</label><input id="swal-emp-monthly" type="number" class="swal2-input" value="${emp.monthlyRate||0}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Working Days / Cycle (6/wk or 26/mo)</label><input id="swal-emp-workdays" type="number" class="swal2-input" value="${emp.workingDays||(emp.type==='monthly'?26:6)}" style="margin:4px 0 0 0;width:100%;"></div>` +
       `</div>`,
     focusConfirm: false,
     showCancelButton: true,
@@ -738,12 +739,13 @@ async function showEditEmployeeModal(id) {
       const phone = document.getElementById('swal-emp-phone').value.trim();
       const type = document.getElementById('swal-emp-type').value;
       const weeklyRate = Number(document.getElementById('swal-emp-weekly').value || 0);
-      const workingDays = Number(document.getElementById('swal-emp-workdays').value || 6);
+      const monthlyRate = Number(document.getElementById('swal-emp-monthly').value || 0);
+      const workingDays = Number(document.getElementById('swal-emp-workdays').value || (type === 'monthly' ? 26 : 6));
       if (!name) {
         Swal.showValidationMessage('Please enter employee name');
         return false;
       }
-      return { name, phone, type, weeklyRate, workingDays };
+      return { name, phone, type, weeklyRate, monthlyRate, workingDays };
     }
   });
 
@@ -753,6 +755,7 @@ async function showEditEmployeeModal(id) {
       emp.phone = formValues.phone;
       emp.type = formValues.type;
       emp.weeklyRate = formValues.weeklyRate;
+      emp.monthlyRate = formValues.monthlyRate;
       emp.workingDays = formValues.workingDays;
       if (emp.type === 'workbased' && !emp.items) emp.items = [];
     });
@@ -1036,7 +1039,7 @@ function openWa(phone, name, sale) {
   const total = Number(sale.amount || 0);
   const paid = getIncomePaid(sale);
   const due = getIncomeBalance(sale);
-  const msg = `Assalamu Alaikum ${name},\n\nYour order for "${sale.item}" (Qty: ${sale.quantity||1}) is ready.\nTotal Amount: ${state.config.currency}${total}\nPaid Amount: ${state.config.currency}${paid}\nRemaining Balance Due: ${state.config.currency}${due}\n\nThank you!`;
+  const msg = `Assalamu Alaikum ${name},\n\nThis is a payment reminder from *Velto Leather Shoes* regarding your order for "${sale.item}" (Qty: ${sale.quantity||1}).\n\nTotal Amount: ${state.config.currency}${total}\nPaid Amount: ${state.config.currency}${paid}\nRemaining Balance Due: ${state.config.currency}${due}\n\nThank you for choosing Velto Leather Shoes!`;
   const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
   window.open(url, '_blank');
 }
@@ -1124,11 +1127,13 @@ function empAttendanceLogs(id) { return (state.attendanceLogs || []).filter(a =>
 function empUnsettledAbsences(id) { return empAttendanceLogs(id).filter(a => !a.settled); }
 function empAbsenceDeduction(emp) {
   const unsettled = empUnsettledAbsences(emp.id);
-  const wDays = Number(emp.workingDays || 6);
-  const dailyRate = Number(emp.weeklyRate || 0) / (wDays > 0 ? wDays : 6);
+  const defaultWD = emp.type === 'monthly' ? 26 : 6;
+  const wDays = Number(emp.workingDays || defaultWD);
+  const baseRate = emp.type === 'monthly' ? Number(emp.monthlyRate || 0) : Number(emp.weeklyRate || 0);
+  const dailyRate = baseRate / (wDays > 0 ? wDays : defaultWD);
   return unsettled.reduce((sum, a) => {
     if (a.deductSalary === false) return sum;
-    const mult = a.status === 'halfday' ? 0.5 : 1.0;
+    const mult = a.status === 'halfday' ? 0.5 : 1;
     return sum + (dailyRate * mult);
   }, 0);
 }
@@ -1871,19 +1876,26 @@ function renderEmployees() {
   return `
     <div class="panel">
       <div class="serif strong" style="margin-bottom:4px">Add Employee Profile</div>
-      <div class="muted small" style="margin-bottom:12px">Register workers for weekly salary or piece-rate work.</div>
+      <div class="muted small" style="margin-bottom:12px">Register workers for weekly/monthly salary or piece-rate work.</div>
       <div class="row g-2 align-items-center">
         <div class="col-md-4 col-12"><input class="form-control" id="new-emp-name" placeholder="Full Name (e.g. Ali Raza)"></div>
         <div class="col-md-4 col-12"><input class="form-control" id="new-emp-phone" placeholder="Phone (e.g. 0300-1234567)"></div>
         <div class="col-md-4 col-12">
           <select class="form-select" id="new-emp-type" onchange="toggleEmpTypeUI()">
             <option value="weekly">Weekly salary</option>
+            <option value="monthly">Monthly salary</option>
             <option value="workbased">Work-based (piece rate)</option>
           </select>
         </div>
         <div class="col-12" id="new-emp-weekly-wrap">
           <div class="d-flex gap-2 align-items-center mt-1">
             <input class="form-control" id="new-emp-weekly" type="number" placeholder="Weekly salary amount" style="max-width:240px">
+            <button class="btn btn-dark fw-bold px-4" data-act="add-employee">👤 + Add Employee</button>
+          </div>
+        </div>
+        <div class="col-12" id="new-emp-monthly-wrap" style="display:none;">
+          <div class="d-flex gap-2 align-items-center mt-1">
+            <input class="form-control" id="new-emp-monthly" type="number" placeholder="Monthly salary amount" style="max-width:240px">
             <button class="btn btn-dark fw-bold px-4" data-act="add-employee">👤 + Add Employee</button>
           </div>
         </div>
@@ -1921,15 +1933,22 @@ function renderEmployeeCard(emp, partners) {
   const deductAtt = state.deductAttendance[emp.id] !== false;
 
   const unpaidWorkEarned = Math.max(0, totalEarned - totalWagePaid);
-  const suggestedWage = emp.type === "weekly"
-    ? Math.max(emp.weeklyRate - (deductAdv ? outstandingAdv : 0) - (deductHeld ? outstandingHeld : 0) - (deductAtt ? absenceDeductionVal : 0), 0)
+  const defaultWD = emp.type === "monthly" ? 26 : 6;
+  const wDays = emp.workingDays || defaultWD;
+  const baseRate = emp.type === "monthly" ? Number(emp.monthlyRate || 0) : Number(emp.weeklyRate || 0);
+  const dailyRate = baseRate / (wDays > 0 ? wDays : defaultWD);
+
+  const suggestedWage = (emp.type === "weekly" || emp.type === "monthly")
+    ? Math.max(baseRate - (deductAdv ? outstandingAdv : 0) - (deductHeld ? outstandingHeld : 0) - (deductAtt ? absenceDeductionVal : 0), 0)
     : Math.max(unpaidWorkEarned - (deductAdv ? outstandingAdv : 0) - (deductHeld ? outstandingHeld : 0), 0);
   const suggestedTotal = suggestedWage + (includeReimb ? outstandingReimb : 0);
   const items = emp.items || [];
-  const wDays = emp.workingDays || 6;
-  const dailyRate = Number(emp.weeklyRate || 0) / wDays;
 
-  const headSub = emp.type === "weekly" ? `weekly · ${fmt(emp.weeklyRate)} (${wDays}d/wk)` : (items.length ? `work-based · ${items.length} item type${items.length>1?"s":""}` : "work-based · no items yet");
+  const headSub = emp.type === "weekly"
+    ? `weekly · ${fmt(emp.weeklyRate)} (${wDays}d/wk)`
+    : (emp.type === "monthly"
+      ? `monthly · ${fmt(emp.monthlyRate)} (${wDays}d/mo)`
+      : (items.length ? `work-based · ${items.length} item type${items.length>1?"s":""}` : "work-based · no items yet"));
 
   let body = "";
   if (expanded) {
@@ -1960,7 +1979,8 @@ function renderEmployeeCard(emp, partners) {
     }
 
     let attendanceSection = "";
-    if (emp.type === "weekly") {
+    if (emp.type === "weekly" || emp.type === "monthly") {
+      const cycleText = emp.type === "monthly" ? `${wDays} working days/month` : `${wDays} working days/week`;
       const attListHtml = unsettledAbs.length ? `
         <div style="margin:8px 0 12px 0;">
           <div class="muted small strong" style="margin-bottom:4px;">Unsettled Absences Logged:</div>
@@ -1980,7 +2000,7 @@ function renderEmployeeCard(emp, partners) {
 
       attendanceSection = `
         <div class="serif small-title">📅 Attendance &amp; Absences</div>
-        <div class="muted small" style="margin-bottom:8px">Daily Rate: <span class="mono strong">${fmt(dailyRate)}</span> (${wDays} working days/week). Log absent days and choose whether to deduct salary or count as paid leave.</div>
+        <div class="muted small" style="margin-bottom:8px">Daily Rate: <span class="mono strong">${fmt(dailyRate)}</span> (${cycleText}). Log absent days and choose whether to deduct salary or count as paid leave.</div>
         <div class="row g-2 align-items-center mb-2">
           <div class="col-md-2 col-6"><input class="form-control" type="date" id="att-date-${emp.id}" value="${today()}"></div>
           <div class="col-md-3 col-6">
@@ -2027,7 +2047,7 @@ function renderEmployeeCard(emp, partners) {
       <div style="margin-bottom:14px"></div>
     ` : "";
 
-    let deductAttRow = (emp.type === "weekly" && unsettledAbs.length > 0) ? `
+    let deductAttRow = ((emp.type === "weekly" || emp.type === "monthly") && unsettledAbs.length > 0) ? `
       <label class="checkbox-row"><input type="checkbox" ${deductAtt?"checked":""} data-act="toggle-attendance" data-emp="${emp.id}"> Deduct ${fmt(absenceDeductionVal)} for ${unsettledAbs.length} absence record(s)</label>
     ` : "";
     let deductAdvRow = outstandingAdv>0 ? `
@@ -2040,13 +2060,15 @@ function renderEmployeeCard(emp, partners) {
       <label class="checkbox-row"><input type="checkbox" ${includeReimb?"checked":""} data-act="toggle-reimb" data-emp="${emp.id}"> Add the ${fmt(outstandingReimb)} expense reimbursement to this payment</label>
     ` : "";
     let payNote = "";
-    if (emp.type === "weekly") {
-      const parts = [`Weekly rate ${fmt(emp.weeklyRate)}`];
+    if (emp.type === "weekly" || emp.type === "monthly") {
+      const isMonthly = emp.type === "monthly";
+      const rateLabel = isMonthly ? `Monthly rate ${fmt(emp.monthlyRate)}` : `Weekly rate ${fmt(emp.weeklyRate)}`;
+      const parts = [rateLabel];
       if (unsettledAbs.length > 0) parts.push(`${deductAtt ? "− absence penalty " + fmt(absenceDeductionVal) : "(absence penalty waived)"}`);
       if (outstandingAdv>0) parts.push(`${deductAdv?"− advance "+fmt(outstandingAdv):"(advance not deducted)"}`);
       if (outstandingHeld>0) parts.push(`${deductHeld?"− collected "+fmt(outstandingHeld):"(collected cash not deducted)"}`);
       if (outstandingReimb>0) parts.push(`${includeReimb?"+ reimbursement "+fmt(outstandingReimb):"(reimbursement not included)"}`);
-      payNote = `${parts.join(" ")} = <span class="mono strong">${fmt(suggestedTotal)}</span> due today.`;
+      payNote = `${parts.join(" ")} = <span class="mono strong">${fmt(suggestedTotal)}</span> due.`;
     } else {
       const parts = [`Earned ${fmt(totalEarned)}`];
       if (totalWagePaid > 0) parts.push(`(paid ${fmt(totalWagePaid)})`);
@@ -2056,8 +2078,9 @@ function renderEmployeeCard(emp, partners) {
       payNote = `${parts.join(" ")} = <span class="mono strong">${fmt(suggestedTotal)}</span> due today.`;
     }
 
+    const payTitle = emp.type === "weekly" ? "Pay this week" : (emp.type === "monthly" ? "Pay this month" : "Log a payment");
     const paySection = `
-      <div class="serif small-title">${emp.type==="weekly"?"Pay this week":"Log a payment"}</div>
+      <div class="serif small-title">${payTitle}</div>
       <div class="row g-2 align-items-center mb-2">
         <div class="col-md-2 col-6"><input class="form-control" type="date" id="pay-date-${emp.id}" value="${today()}"></div>
         <div class="col-md-2 col-6"><input class="form-control" type="number" id="pay-amount-${emp.id}" placeholder="${suggestedTotal > 0 ? String(suggestedTotal) : 'Amount'}"></div>
@@ -2443,7 +2466,7 @@ function renderReports() {
         ${empReportRows.map(r => `
           <div class="row-line" style="display:grid;grid-template-columns:1fr 110px 110px 110px 130px;gap:8px;align-items:center;">
             <div class="strong">${esc(r.emp.name)} ${r.emp.phone?`<span class="muted small">(${esc(r.emp.phone)})</span>`:''}</div>
-            <div class="small">${r.emp.type==='weekly'?'Weekly Salary':'Piece-Rate'}</div>
+            <div class="small">${r.emp.type==='weekly'?'Weekly Salary':(r.emp.type==='monthly'?'Monthly Salary':'Piece-Rate')}</div>
             <div class="mono strong teal-text">${fmt(r.wagePaid)}</div>
             <div class="mono gold">${fmt(r.advGiven)}</div>
             <div class="mono rust-text">${r.absCount}d (${fmt(r.absLoss)})</div>
@@ -2483,8 +2506,12 @@ function render() {
 
 function toggleEmpTypeUI() {
   const t = document.getElementById("new-emp-type").value;
-  document.getElementById("new-emp-weekly-wrap").style.display = t === "weekly" ? "block" : "none";
-  document.getElementById("new-emp-work-wrap").style.display = t === "workbased" ? "block" : "none";
+  const wWrap = document.getElementById("new-emp-weekly-wrap");
+  const mWrap = document.getElementById("new-emp-monthly-wrap");
+  const kWrap = document.getElementById("new-emp-work-wrap");
+  if (wWrap) wWrap.style.display = t === "weekly" ? "block" : "none";
+  if (mWrap) mWrap.style.display = t === "monthly" ? "block" : "none";
+  if (kWrap) kWrap.style.display = t === "workbased" ? "block" : "none";
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -2639,7 +2666,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const phone = el.dataset.phone.replace(/[^0-9]/g, '');
       const name = el.dataset.name;
       const due = el.dataset.due;
-      const msg = `Assalamu Alaikum ${name},\n\nThis is a friendly reminder regarding your pending balance of ${state.config.currency}${due}.\n\nThank you!`;
+      const msg = `Assalamu Alaikum ${name},\n\nThis is a friendly payment reminder from *Velto Leather Shoes* regarding your pending balance of ${state.config.currency}${due}.\n\nThank you for choosing Velto Leather Shoes!`;
       window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
       return;
     }
@@ -2817,7 +2844,18 @@ document.addEventListener("DOMContentLoaded", () => {
       const type = document.getElementById("new-emp-type").value;
       if (!name) return;
       const weeklyRate = Number(document.getElementById("new-emp-weekly")?.value || 0);
-      const emp = { id: uid(), name, phone, type, weeklyRate, workingDays: 6, items: type === "workbased" ? [] : undefined };
+      const monthlyRate = Number(document.getElementById("new-emp-monthly")?.value || 0);
+      const workingDays = type === 'monthly' ? 26 : 6;
+      const emp = { 
+        id: uid(), 
+        name, 
+        phone, 
+        type, 
+        weeklyRate: type === 'weekly' ? weeklyRate : 0, 
+        monthlyRate: type === 'monthly' ? monthlyRate : 0, 
+        workingDays, 
+        items: type === "workbased" ? [] : undefined 
+      };
       mutate(() => { state.config.employees.push(emp); });
       return;
     }
@@ -2962,8 +3000,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const totalWagePaid = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
       const unpaidWorkEarned = Math.max(0, totalEarned - totalWagePaid);
 
-      const suggestedWage = emp.type === "weekly"
-        ? Math.max(emp.weeklyRate - (deductAdv ? outstandingAdv : 0) - (deductHeld ? outstandingHeld : 0) - (deductAtt ? absenceDeductionVal : 0), 0)
+      const baseRate = emp.type === "monthly" ? Number(emp.monthlyRate || 0) : Number(emp.weeklyRate || 0);
+      const suggestedWage = (emp.type === "weekly" || emp.type === "monthly")
+        ? Math.max(baseRate - (deductAdv ? outstandingAdv : 0) - (deductHeld ? outstandingHeld : 0) - (deductAtt ? absenceDeductionVal : 0), 0)
         : Math.max(unpaidWorkEarned - (deductAdv ? outstandingAdv : 0) - (deductHeld ? outstandingHeld : 0), 0);
 
       let wageAmount, reimbursedAmount;
@@ -2977,7 +3016,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const paidBy = document.getElementById(`pay-paidby-${empId}`).value;
       const note = document.getElementById(`pay-note-${empId}`).value.trim();
       if (!wageAmount && wageAmount !== 0 && !reimbursedAmount) return;
-      if (wageAmount === 0 && reimbursedAmount === 0 && emp.type !== "weekly" && unpaidWorkEarned === 0) return;
+      if (wageAmount === 0 && reimbursedAmount === 0 && (emp.type !== "weekly" && emp.type !== "monthly") && unpaidWorkEarned === 0) return;
       state.cardTab = state.cardTab || {};
       state.cardTab[empId] = "history";
       mutate(() => {
