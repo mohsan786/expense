@@ -2136,6 +2136,7 @@ function renderReports() {
           <div class="muted small">Detailed breakdown of Income, Salaries, Attendance, Expenses, and Profit.</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button class="btn btn-outline-dark btn-sm fw-bold" onclick="window.print()">🖨️ Print / Save PDF Statement</button>
           <select class="form-select" id="rep-range" data-act="set-report-range" style="width:150px;">
             <option value="all" ${range==='all'?'selected':''}>All Time</option>
             <option value="this_month" ${range==='this_month'?'selected':''}>This Month</option>
@@ -2148,6 +2149,8 @@ function renderReports() {
             <span class="muted small">to</span>
             <input class="form-control" type="date" id="rep-end" value="${endDate}" data-act="set-report-end" style="width:140px;">
           ` : ''}
+        </div>
+      </div>
     </div>
 
     <div class="grid3" style="margin-bottom:16px;">
