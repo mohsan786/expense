@@ -2352,11 +2352,13 @@ function renderEmployeeCard(emp, partners) {
 
   return `
     <div class="panel emp-card">
-      <div class="emp-head" data-act="toggle-employee" data-id="${emp.id}">
-        <div class="emp-head-left">
-          <span>${expanded?"▾":"▸"}</span>
-          <span class="serif strong">${esc(emp.name)}</span>
-          ${emp.phone ? `<span class="muted small" style="margin-left:4px;">📞 ${esc(emp.phone)}</span>` : ""}
+      <div class="emp-head" style="cursor:default;">
+        <div class="emp-head-left" style="display:flex;align-items:center;gap:8px;">
+          <button class="btn btn-sm ${expanded?'btn-dark':'btn-outline-dark'} fw-bold" data-act="toggle-employee" data-id="${emp.id}" style="padding:2px 10px;font-size:12px;">
+            ${expanded ? "▾ Close Details" : "▸ Open Details"}
+          </button>
+          <span class="serif strong" style="font-size:16px;">${esc(emp.name)}</span>
+          ${emp.phone ? `<span class="muted small">📞 ${esc(emp.phone)}</span>` : ""}
           <span class="muted small">— ${headSub}</span>
         </div>
         <div class="emp-head-right">
