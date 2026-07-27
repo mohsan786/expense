@@ -419,22 +419,27 @@ if (!$employee) {
       const joiningDeductAmt = state.deductJoiningAdv ? (state.customJoiningDeduct !== null ? Number(state.customJoiningDeduct) : joiningAdvVal) : 0;
       const actualAdvDeducted = Math.min(outstandingAdv, Math.max(0, weeklyDeductAmt + joiningDeductAmt));
 
-      // Calculate Purchasing Cash & Errands Holding
+      // Calculate Purchasing Cash & Errands Holding vs Out-of-Pocket Reimbursement Owed
       const rawCashHandouts = (state.data.cashHandouts || []).concat(purchasingAdv).filter(c => c.employeeId === EMP_ID && !c.settled);
       const uniqueHandouts = Array.from(new Map(rawCashHandouts.map(item => [item.id, item])).values());
       const totalCashHanded = uniqueHandouts.reduce((s, c) => s + Number(c.amount || 0), 0);
       const workerExpenses = (state.data.expenses || []).filter(e => e.payerEmployeeId === EMP_ID && !e.settled);
       const totalWorkerSpent = workerExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
-      const unspentPurchasingCash = Math.max(0, totalCashHanded - totalWorkerSpent);
+      
+      const netPurchasingDiff = totalCashHanded - totalWorkerSpent;
+      const unspentPurchasingCash = netPurchasingDiff > 0 ? netPurchasingDiff : 0;
+      const reimbursementOwed = netPurchasingDiff < 0 ? Math.abs(netPurchasingDiff) : 0;
+
       const actualCashHeldDeducted = (state.deductCashHeld && unspentPurchasingCash > 0) ? unspentPurchasingCash : 0;
+      const actualReimbAdded = (state.includeReimb && reimbursementOwed > 0) ? reimbursementOwed : 0;
 
       const totalEarned = workLogs.reduce((s, w) => s + w.amount, 0);
       const totalWagePaid = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
       const unpaidWorkEarned = Math.max(0, totalEarned - totalWagePaid);
 
       const suggestedWage = (emp.type === "weekly" || emp.type === "monthly")
-        ? Math.max(baseRate - actualAdvDeducted - actualCashHeldDeducted - (state.deductAtt ? absenceDeductionVal : 0), 0)
-        : Math.max(unpaidWorkEarned - actualAdvDeducted - actualCashHeldDeducted, 0);
+        ? Math.max(baseRate - actualAdvDeducted - actualCashHeldDeducted + actualReimbAdded - (state.deductAtt ? absenceDeductionVal : 0), 0)
+        : Math.max(unpaidWorkEarned - actualAdvDeducted - actualCashHeldDeducted + actualReimbAdded, 0);
 
       // Render KPIs & Cash Holding Boxes
       document.getElementById('kpi-base').innerText = fmt(baseRate);
@@ -499,9 +504,9 @@ if (!$employee) {
           <div class="small text-muted mb-2">Calculated from base rate minus advance deductions, unspent purchasing cash &amp; absence penalties.</div>
         </div>
 
-        ${(outstandingAdv > 0 || unspentPurchasingCash > 0) ? `
+        ${(outstandingAdv > 0 || unspentPurchasingCash > 0 || reimbursementOwed > 0) ? `
           <div class="p-3 border rounded bg-white mb-3">
-            <div class="fw-bold small text-dark mb-2">Payday Deductions Control</div>
+            <div class="fw-bold small text-dark mb-2">Payday Deductions &amp; Reimbursements</div>
 
             <!-- Weekly Kharcha Checkbox (Default CHECKED) -->
             ${weeklyAdvVal > 0 ? `
@@ -539,9 +544,25 @@ if (!$employee) {
               </div>
             ` : ''}
 
+            <!-- Out-of-Pocket Expense Reimbursement Checkbox (Default CHECKED) -->
+            ${reimbursementOwed > 0 ? `
+              <div class="p-2 border rounded mb-2 bg-light" style="border-color:#86EFAC !important;background:#F0FDF4 !important;">
+                <div class="d-flex align-items-center justify-content-between gap-2">
+                  <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" id="chk-reimb" ${state.includeReimb ? 'checked' : ''} onchange="state.includeReimb=this.checked;render();">
+                    <label class="form-check-label fw-bold small text-dark" for="chk-reimb">
+                      💼 Add Out-of-Pocket Reimbursement (+${fmt(reimbursementOwed)})
+                    </label>
+                  </div>
+                  <span class="mono fw-bold text-success">+${fmt(reimbursementOwed)}</span>
+                </div>
+                <div class="text-muted small mt-1" style="font-size:11px;margin-left:24px;">Expenses paid out of worker's own pocket added to payday salary.</div>
+              </div>
+            ` : ''}
+
             <!-- Joining Peshgi Checkbox (Default UNCHECKED) -->
             ${joiningAdvVal > 0 ? `
-              <div class="p-2 border rounded bg-light">
+              <div class="p-2 border rounded mb-2 bg-light">
                 <div class="d-flex align-items-center justify-content-between gap-2">
                   <div class="form-check mb-0">
                     <input class="form-check-input" type="checkbox" id="chk-joining-adv" ${state.deductJoiningAdv ? 'checked' : ''} onchange="state.deductJoiningAdv=this.checked;render();">
@@ -560,8 +581,8 @@ if (!$employee) {
             ` : ''}
 
             <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center small">
-              <span class="fw-bold">Total Deducted:</span>
-              <span class="mono fw-bold text-danger">${fmt(actualAdvDeducted + actualCashHeldDeducted)}</span>
+              <span class="fw-bold">Net Settlement Shift:</span>
+              <span class="mono fw-bold ${(actualReimbAdded - actualAdvDeducted - actualCashHeldDeducted) >= 0 ? 'text-success' : 'text-danger'}">${(actualReimbAdded - actualAdvDeducted - actualCashHeldDeducted) >= 0 ? '+' : ''}${fmt(actualReimbAdded - actualAdvDeducted - actualCashHeldDeducted)}</span>
             </div>
           </div>
         ` : ''}
@@ -582,6 +603,7 @@ if (!$employee) {
         ...payments.map(p => ({ ...p, kind: "pay" })),
         ...advances.map(a => ({ ...a, kind: "advance" })),
         ...attLogs.map(a => ({ ...a, kind: "attendance" })),
+        ...workerExpenses.map(e => ({ ...e, kind: "expense" }))
       ].sort((a, b) => b.date.localeCompare(a.date));
 
       const histWrap = document.getElementById('history-container');
@@ -591,7 +613,7 @@ if (!$employee) {
         histWrap.innerHTML = historyItems.map(r => {
           let label = "";
           if (r.kind === "work") label = `Work: ${r.itemLabel||"Work"} × ${r.quantity}${r.note?" — "+r.note:""}`;
-          else if (r.kind === "pay") label = `Salary Payment: Paid by ${partners.find(p=>p.id===r.paidBy)?.name||"—"}${r.deductedAdvances?` (− ${fmt(r.deductedAdvances)} advance)`:""}${r.note?" — "+r.note:""}`;
+          else if (r.kind === "pay") label = `Salary Payment: Paid by ${partners.find(p=>p.id===r.paidBy)?.name||"—"}${r.deductedAdvances?` (− ${fmt(r.deductedAdvances)} advance)`:""}${r.reimbursedAmount?` (+ ${fmt(r.reimbursedAmount)} reimbursed)`:""}${r.note?" — "+r.note:""}`;
           else if (r.kind === "advance") {
             const payerName = r.paidBy === "business" || !r.paidBy ? "Business Funds" : (partners.find(p=>p.id===r.paidBy)?.name || "Business Funds");
             label = `Advance Given: Paid by ${payerName}${r.note?" — "+r.note:""}`;
@@ -599,9 +621,11 @@ if (!$employee) {
             const isD = r.deductSalary !== false;
             const loss = dailyRate * (r.status === 'halfday' ? 0.5 : 1);
             label = `Absence (${r.status === 'halfday' ? 'Half Day' : 'Full Day'}): ${r.note ? r.note + " — " : ""}${isD ? `Salary Deducted (-${fmt(loss)})` : 'Paid Leave'}`;
+          } else if (r.kind === "expense") {
+            label = `Out-of-Pocket Expense Paid by Worker: ${r.description || "Expense"}${r.category ? " (" + r.category + ")" : ""}`;
           }
-          const color = r.kind==="work" ? "var(--teal)" : (r.kind==="advance" ? "var(--gold)" : (r.kind==="attendance" ? "var(--rust)" : "var(--rust)"));
-          const sign = r.kind==="work" ? "+" : "-";
+          const color = r.kind==="work" ? "var(--teal)" : (r.kind==="advance" ? "var(--gold)" : (r.kind==="expense" ? "#16A34A" : "var(--rust)"));
+          const sign = (r.kind==="work" || r.kind==="expense") ? "+" : "-";
           const amt = r.kind==="pay" ? (r.amount + (r.reimbursedAmount||0)) : (r.kind==="attendance" ? (r.deductSalary !== false ? dailyRate * (r.status === 'halfday' ? 0.5 : 1) : 0) : r.amount);
           return `<div class="history-row"><span class="mono text-muted" style="width:95px">${r.date}</span><span style="flex:1">${label}</span><span class="mono strong" style="color:${color}">${sign}${fmt(amt)}</span></div>`;
         }).join('');
@@ -765,17 +789,34 @@ if (!$employee) {
       const emp = state.data.config.employees.find(e => e.id === EMP_ID);
       const advances = (state.data.advances || []).filter(a => a.employeeId === EMP_ID);
       const payments = (state.data.salaryPayments || []).filter(p => p.employeeId === EMP_ID);
-      const totalAdvGiven = advances.reduce((s, a) => s + Number(a.amount || 0), 0);
-      const totalAdvReturned = payments.reduce((s, p) => s + Number(p.deductedAdvances || 0), 0);
-      const outstandingAdv = Math.max(0, totalAdvGiven - totalAdvReturned);
 
       const joiningAdvEntry = advances.find(a => a.isJoiningAdvance || (a.note && a.note.toLowerCase().includes("joining")));
       const joiningAdvVal = emp.joiningAdvance || (joiningAdvEntry ? joiningAdvEntry.amount : 0);
-      const weeklyAdvVal = Math.max(0, outstandingAdv - (joiningAdvEntry && !joiningAdvEntry.settled ? joiningAdvEntry.amount : 0));
+
+      const purchasingAdv = advances.filter(a => a.isPurchasingCash || (a.note && a.note.toLowerCase().includes("purchasing")));
+      const weeklyAdvEntries = advances.filter(a => !a.isJoiningAdvance && !a.isPurchasingCash && !(a.note && a.note.toLowerCase().includes("joining")) && !(a.note && a.note.toLowerCase().includes("purchasing")));
+
+      const totalWeeklyAdvGiven = weeklyAdvEntries.reduce((s, a) => s + Number(a.amount || 0), 0);
+      const totalAdvReturned = payments.reduce((s, p) => s + Number(p.deductedAdvances || 0), 0);
+      const weeklyAdvVal = Math.max(0, totalWeeklyAdvGiven - totalAdvReturned);
+      const outstandingAdv = weeklyAdvVal + (joiningAdvEntry && !joiningAdvEntry.settled ? joiningAdvEntry.amount : 0);
 
       const weeklyDeductAmt = state.deductWeeklyAdv ? (state.customWeeklyDeduct !== null ? Number(state.customWeeklyDeduct) : weeklyAdvVal) : 0;
       const joiningDeductAmt = state.deductJoiningAdv ? (state.customJoiningDeduct !== null ? Number(state.customJoiningDeduct) : joiningAdvVal) : 0;
       const advDeductVal = Math.min(outstandingAdv, Math.max(0, weeklyDeductAmt + joiningDeductAmt));
+
+      const rawCashHandouts = (state.data.cashHandouts || []).concat(purchasingAdv).filter(c => c.employeeId === EMP_ID && !c.settled);
+      const uniqueHandouts = Array.from(new Map(rawCashHandouts.map(item => [item.id, item])).values());
+      const totalCashHanded = uniqueHandouts.reduce((s, c) => s + Number(c.amount || 0), 0);
+      const workerExpenses = (state.data.expenses || []).filter(e => e.payerEmployeeId === EMP_ID && !e.settled);
+      const totalWorkerSpent = workerExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+      
+      const netPurchasingDiff = totalCashHanded - totalWorkerSpent;
+      const unspentPurchasingCash = netPurchasingDiff > 0 ? netPurchasingDiff : 0;
+      const reimbursementOwed = netPurchasingDiff < 0 ? Math.abs(netPurchasingDiff) : 0;
+
+      const actualCashHeldDeducted = (state.deductCashHeld && unspentPurchasingCash > 0) ? unspentPurchasingCash : 0;
+      const actualReimbAdded = (state.includeReimb && reimbursementOwed > 0) ? reimbursementOwed : 0;
 
       const date = document.getElementById('pay-date').value || new Date().toISOString().split('T')[0];
       const amountInput = document.getElementById('pay-amount').value;
@@ -786,7 +827,7 @@ if (!$employee) {
       const wDays = emp.workingDays || defaultWD;
       const baseRate = emp.type === "monthly" ? Number(emp.monthlyRate || 0) : Number(emp.weeklyRate || 0);
 
-      const suggestedWage = Math.max(baseRate - advDeductVal, 0);
+      const suggestedWage = Math.max(0, baseRate - advDeductVal - actualCashHeldDeducted + actualReimbAdded);
       const wageAmount = amountInput !== "" ? Number(amountInput) : suggestedWage;
 
       if (isNaN(wageAmount) || wageAmount < 0) {
@@ -800,18 +841,26 @@ if (!$employee) {
           employeeId: EMP_ID,
           date,
           amount: wageAmount,
-          reimbursedAmount: 0,
+          reimbursedAmount: actualReimbAdded,
           paidBy,
           note,
           deductedAdvances: advDeductVal,
-          deductedHeld: 0,
+          deductedHeld: actualCashHeldDeducted,
           deductedAbsences: 0
         });
+
+        if (actualReimbAdded > 0) {
+          (state.data.expenses || []).forEach(e => {
+            if (e.payerEmployeeId === EMP_ID && !e.settled) {
+              e.settled = true;
+            }
+          });
+        }
 
         if (advDeductVal > 0) {
           let rem = advDeductVal;
           const empAdv = state.data.advances
-            .filter(a => a.employeeId === EMP_ID && !a.settled)
+            .filter(a => a.employeeId === EMP_ID && !a.settled && !a.isPurchasingCash)
             .sort((a, b) => (a.isJoiningAdvance ? 1 : 0) - (b.isJoiningAdvance ? 1 : 0));
 
           for (let a of empAdv) {
@@ -827,7 +876,7 @@ if (!$employee) {
         }
       });
 
-      Swal.fire({ icon: 'success', title: '🎉 Payday Settled!', text: 'Salary payment and advance deductions recorded successfully.' });
+      Swal.fire({ icon: 'success', title: '🎉 Payday Settled!', text: 'Salary payment, advance deductions, and expense reimbursements recorded successfully.' });
     }
 
     async function showEditModal() {
