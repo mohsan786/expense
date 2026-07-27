@@ -1239,53 +1239,6 @@ function renderCustomers() {
   });
 
   const rows = customers.map(c => {
-    const expanded = state.expandedCust === c.id;
-    const custSales = sales.filter(s => s.customerId === c.id || (s.note && s.note.toLowerCase().includes(c.name.toLowerCase())));
-    const totalPaid = custSales.reduce((s, x) => s + getIncomePaid(x), 0);
-    const pendingDue = custSales.reduce((s, x) => s + getIncomeBalance(x), 0);
-
-    let statementBody = "";
-    if (expanded) {
-      const ordersHtml = custSales.length ? custSales.map(s => {
-        const total = Number(s.amount || 0);
-        const paid = getIncomePaid(s);
-        const due = getIncomeBalance(s);
-        let badge = paid >= total ? `<span class="badge bg-success">Paid</span>` : (paid > 0 ? `<span class="badge bg-warning text-dark" title="Paid ${fmt(paid)} / Due ${fmt(due)}">Advance</span>` : `<span class="badge bg-danger">Unpaid</span>`);
-        return `
-          <div class="row-line" style="display:grid;grid-template-columns:95px 1fr 85px 95px 95px 120px 120px;gap:8px;align-items:center;">
-            <div class="mono small">${esc(s.date)}</div>
-            <div>${esc(s.item)}${s.note ? ` <span class="muted small">(${esc(s.note)})</span>` : ""}</div>
-            <div class="mono small">${fmt(total)}</div>
-            <div class="mono small text-success">${fmt(paid)}</div>
-            <div class="mono small ${due>0?'text-danger':''}">${fmt(due)}</div>
-            <div>${badge}</div>
-            <div style="display:flex;gap:4px;justify-content:flex-end;">
-              ${due > 0 ? `<button class="btn btn-sm btn-outline-success fw-semibold" style="padding:2px 6px;font-size:11px;" data-act="pay-income-balance" data-id="${s.id}">💵 Collect</button>` : ""}
-              <button class="btn btn-sm btn-outline-dark fw-semibold" style="padding:2px 6px;font-size:11px;" data-act="wa-sale" data-id="${s.id}">📲 WA</button>
-            </div>
-          </div>
-        `;
-      }).join("") : `<div class="empty-msg">No sales or orders recorded for this customer yet. Log sales from the Sales tab.</div>`;
-
-      statementBody = `
-        <div class="card-body border-top bg-light mt-2 p-3" style="border-radius:0 0 10px 10px;">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <span class="fw-bold small text-dark text-uppercase">📋 Customer Statement &amp; Sales Ledger</span>
-            <div class="d-flex gap-2">
-              ${c.phone ? `<button class="btn btn-sm btn-outline-dark fw-bold" data-act="wa-direct" data-phone="${c.phone}" data-name="${c.name}" data-due="${pendingDue}">📲 Send WhatsApp Statement (${fmt(pendingDue)} Due)</button>` : ''}
-            </div>
-          </div>
-          <div class="table-panel">
-            <div class="mono table-head" style="display:grid;grid-template-columns:95px 1fr 85px 95px 95px 120px 120px;gap:8px;">
-              <div>DATE</div><div>ORDER ITEM</div><div>TOTAL</div><div>PAID</div><div>DUE</div><div>STATUS</div><div></div>
-            </div>
-            ${ordersHtml}
-          </div>
-        </div>
-      `;
-    }
-
-  const rows = paged.map(c => {
     const custSales = state.income.filter(s => s.customerId === c.id || (c.phone && s.customerPhone === c.phone) || (s.customerName && s.customerName.toLowerCase() === c.name.toLowerCase()));
     let totalOrd = 0, totalPaid = 0;
     custSales.forEach(s => {
