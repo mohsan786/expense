@@ -434,10 +434,53 @@ if (!$employee) {
       const joiningDeductAmt = state.deductJoiningAdv ? (state.customJoiningDeduct !== null ? Number(state.customJoiningDeduct) : joiningAdvVal) : 0;
       const actualAdvDeducted = Math.min(outstandingAdv, Math.max(0, weeklyDeductAmt + joiningDeductAmt));
 
-      // Calculate Purchasing Cash & Errands Holding vs Out-of-Pocket Reimbursement Owed
+      // Calculate Customer Sales Cash Collected by Employee
+      let salesCashCollected = 0;
+      const empSalesLogs = [];
+      (state.data.income || []).forEach(s => {
+        const itemTitle = s.item || "Customer Order";
+        const qtyStr = s.quantity ? ` (Qty: ${s.quantity})` : "";
+        const custName = s.customerName || "Customer";
+        
+        if (Array.isArray(s.payments) && s.payments.length > 0) {
+          s.payments.forEach(p => {
+            if (p.receivedByEmployeeId === EMP_ID || p.receiverVal === `employee:${EMP_ID}`) {
+              const amt = Number(p.amount || 0);
+              salesCashCollected += amt;
+              empSalesLogs.push({
+                date: p.date || s.date,
+                kind: "sales_cash",
+                item: itemTitle + qtyStr,
+                customerName: custName,
+                amount: amt,
+                note: p.note || s.note || "Customer payment collected by worker"
+              });
+            }
+          });
+        } else {
+          if (s.receivedByEmployeeId === EMP_ID || (s.receivedByType === 'employee' && s.receivedBy === EMP_ID)) {
+            const amt = Number(s.paidAmount !== undefined ? s.paidAmount : s.amount || 0);
+            if (amt > 0) {
+              salesCashCollected += amt;
+              empSalesLogs.push({
+                date: s.date,
+                kind: "sales_cash",
+                item: itemTitle + qtyStr,
+                customerName: custName,
+                amount: amt,
+                note: s.note || "Customer sale cash collected by worker"
+              });
+            }
+          }
+        }
+      });
+
+      // Calculate Purchasing Cash & Customer Sales Cash Holding vs Out-of-Pocket Reimbursement Owed
       const rawCashHandouts = (state.data.cashHandouts || []).concat(purchasingAdv).filter(c => c.employeeId === EMP_ID && !c.settled);
       const uniqueHandouts = Array.from(new Map(rawCashHandouts.map(item => [item.id, item])).values());
-      const totalCashHanded = uniqueHandouts.reduce((s, c) => s + Number(c.amount || 0), 0);
+      const totalPurchasingHanded = uniqueHandouts.reduce((s, c) => s + Number(c.amount || 0), 0);
+      const totalCashHanded = totalPurchasingHanded + salesCashCollected;
+
       const workerExpenses = (state.data.expenses || []).filter(e => e.payerEmployeeId === EMP_ID && !e.settled);
       const totalWorkerSpent = workerExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
       
@@ -618,8 +661,9 @@ if (!$employee) {
         ...payments.map(p => ({ ...p, kind: "pay" })),
         ...advances.map(a => ({ ...a, kind: "advance" })),
         ...attLogs.map(a => ({ ...a, kind: "attendance" })),
-        ...workerExpenses.map(e => ({ ...e, kind: "expense" }))
-      ].sort((a, b) => b.date.localeCompare(a.date));
+        ...workerExpenses.map(e => ({ ...e, kind: "expense" })),
+        ...empSalesLogs
+      ].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
       const histWrap = document.getElementById('history-container');
       if (historyItems.length === 0) {
@@ -638,11 +682,13 @@ if (!$employee) {
             label = `Absence (${r.status === 'halfday' ? 'Half Day' : 'Full Day'}): ${r.note ? r.note + " — " : ""}${isD ? `Salary Deducted (-${fmt(loss)})` : 'Paid Leave'}`;
           } else if (r.kind === "expense") {
             label = `Out-of-Pocket Expense Paid by Worker: ${r.description || "Expense"}${r.category ? " (" + r.category + ")" : ""}`;
+          } else if (r.kind === "sales_cash") {
+            label = `🛒 Customer Sale Cash Collected: ${r.item} (from ${r.customerName})${r.note ? " — " + r.note : ""}`;
           }
-          const color = r.kind==="work" ? "var(--teal)" : (r.kind==="advance" ? "var(--gold)" : (r.kind==="expense" ? "#16A34A" : "var(--rust)"));
-          const sign = (r.kind==="work" || r.kind==="expense") ? "+" : "-";
+          const color = r.kind==="work" ? "var(--teal)" : (r.kind==="advance" ? "var(--gold)" : (r.kind==="expense" ? "#16A34A" : (r.kind==="sales_cash" ? "#D97706" : "var(--rust)")));
+          const sign = (r.kind==="work" || r.kind==="expense" || r.kind==="sales_cash") ? "+" : "-";
           const amt = r.kind==="pay" ? (r.amount + (r.reimbursedAmount||0)) : (r.kind==="attendance" ? (r.deductSalary !== false ? dailyRate * (r.status === 'halfday' ? 0.5 : 1) : 0) : r.amount);
-          return `<div class="history-row"><span class="mono text-muted" style="width:95px">${r.date}</span><span style="flex:1">${label}</span><span class="mono strong" style="color:${color}">${sign}${fmt(amt)}</span></div>`;
+          return `<div class="history-row" ${r.kind==="sales_cash" ? 'style="background:#FEF3C7;"' : ''}><span class="mono text-muted" style="width:95px">${r.date}</span><span style="flex:1">${label}</span><span class="mono strong" style="color:${color}">${sign}${fmt(amt)}</span></div>`;
         }).join('');
       }
     }
