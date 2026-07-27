@@ -1974,9 +1974,15 @@ function renderEmployeeCard(emp, partners) {
   const baseRate = emp.type === "monthly" ? Number(emp.monthlyRate || 0) : Number(emp.weeklyRate || 0);
   const dailyRate = baseRate / (wDays > 0 ? wDays : defaultWD);
 
+  let partialAdvVal = state.customAdvDeduct?.[emp.id] !== undefined 
+    ? Number(state.customAdvDeduct[emp.id]) 
+    : (weeklyAdvVal > 0 ? weeklyAdvVal : outstandingAdv);
+
+  let actualAdvDeducted = deductAdv ? Math.min(outstandingAdv, Math.max(0, partialAdvVal)) : 0;
+
   const suggestedWage = (emp.type === "weekly" || emp.type === "monthly")
-    ? Math.max(baseRate - (deductAdv ? outstandingAdv : 0) - (deductHeld ? outstandingHeld : 0) - (deductAtt ? absenceDeductionVal : 0), 0)
-    : Math.max(unpaidWorkEarned - (deductAdv ? outstandingAdv : 0) - (deductHeld ? outstandingHeld : 0), 0);
+    ? Math.max(baseRate - actualAdvDeducted - (deductHeld ? outstandingHeld : 0) - (deductAtt ? absenceDeductionVal : 0), 0)
+    : Math.max(unpaidWorkEarned - actualAdvDeducted - (deductHeld ? outstandingHeld : 0), 0);
   const suggestedTotal = suggestedWage + (includeReimb ? outstandingReimb : 0);
   const items = emp.items || [];
 
@@ -2086,8 +2092,39 @@ function renderEmployeeCard(emp, partners) {
     let deductAttRow = ((emp.type === "weekly" || emp.type === "monthly") && unsettledAbs.length > 0) ? `
       <label class="checkbox-row"><input type="checkbox" ${deductAtt?"checked":""} data-act="toggle-attendance" data-emp="${emp.id}"> Deduct ${fmt(absenceDeductionVal)} for ${unsettledAbs.length} absence record(s)</label>
     ` : "";
-    let deductAdvRow = outstandingAdv>0 ? `
-      <label class="checkbox-row"><input type="checkbox" ${deductAdv?"checked":""} data-act="toggle-deduct" data-emp="${emp.id}"> Deduct the ${fmt(outstandingAdv)} advance from this payment</label>
+    let deductAdvRow = outstandingAdv > 0 ? `
+      <div style="background:#F8FAFC;padding:10px 14px;border-radius:10px;border:1px solid #E2E8F0;margin-bottom:10px;">
+        <div class="d-flex gap-3 align-items-center flex-wrap">
+          <label class="checkbox-row mb-0" style="font-weight:600;">
+            <input type="checkbox" ${deductAdv?"checked":""} data-act="toggle-deduct" data-emp="${emp.id}">
+            Deduct Advance from Payment
+          </label>
+          ${deductAdv ? `
+            <div class="d-flex align-items-center gap-2">
+              <span class="small muted">Amount to deduct:</span>
+              <input class="form-control form-control-sm" type="number" id="pay-adv-deduct-amt-${emp.id}" 
+                value="${partialAdvVal}" 
+                placeholder="Amount" 
+                style="max-width:130px;font-weight:700;" 
+                oninput="state.customAdvDeduct=state.customAdvDeduct||{};state.customAdvDeduct['${emp.id}']=this.value;render();">
+              <span class="small muted">(out of ${fmt(outstandingAdv)} total)</span>
+            </div>
+          ` : ''}
+        </div>
+        ${deductAdv && weeklyAdvVal > 0 && joiningAdvVal > 0 ? `
+          <div class="mt-2 pt-1 border-top" style="display:flex;gap:12px;align-items:center;">
+            <button class="btn btn-link btn-sm p-0 text-decoration-none small fw-bold" style="font-size:11.5px;color:var(--teal);" 
+              onclick="state.customAdvDeduct=state.customAdvDeduct||{};state.customAdvDeduct['${emp.id}']='${weeklyAdvVal}';render();">
+              ⚡ Quick Set: Deduct Weekly Kharcha Only (${fmt(weeklyAdvVal)})
+            </button>
+            <span class="muted small">|</span>
+            <button class="btn btn-link btn-sm p-0 text-decoration-none small fw-bold" style="font-size:11.5px;color:var(--teal);" 
+              onclick="state.customAdvDeduct=state.customAdvDeduct||{};state.customAdvDeduct['${emp.id}']='${outstandingAdv}';render();">
+              ⚡ Quick Set: Deduct Full Advance (${fmt(outstandingAdv)})
+            </button>
+          </div>
+        ` : ''}
+      </div>
     ` : "";
     let deductHeldRow = outstandingHeld>0 ? `
       <label class="checkbox-row"><input type="checkbox" ${deductHeld?"checked":""} data-act="toggle-held" data-emp="${emp.id}"> Deduct the ${fmt(outstandingHeld)} they collected from customers from this payment</label>
@@ -2101,7 +2138,7 @@ function renderEmployeeCard(emp, partners) {
       const rateLabel = isMonthly ? `Monthly rate ${fmt(emp.monthlyRate)}` : `Weekly rate ${fmt(emp.weeklyRate)}`;
       const parts = [rateLabel];
       if (unsettledAbs.length > 0) parts.push(`${deductAtt ? "− absence penalty " + fmt(absenceDeductionVal) : "(absence penalty waived)"}`);
-      if (outstandingAdv>0) parts.push(`${deductAdv?"− advance "+fmt(outstandingAdv):"(advance not deducted)"}`);
+      if (outstandingAdv>0) parts.push(`${deductAdv?"− advance "+fmt(actualAdvDeducted):"(advance not deducted)"}`);
       if (outstandingHeld>0) parts.push(`${deductHeld?"− collected "+fmt(outstandingHeld):"(collected cash not deducted)"}`);
       if (outstandingReimb>0) parts.push(`${includeReimb?"+ reimbursement "+fmt(outstandingReimb):"(reimbursement not included)"}`);
       payNote = `${parts.join(" ")} = <span class="mono strong">${fmt(suggestedTotal)}</span> due.`;
@@ -3074,11 +3111,30 @@ document.addEventListener("DOMContentLoaded", () => {
       const note = document.getElementById(`pay-note-${empId}`).value.trim();
       if (!wageAmount && wageAmount !== 0 && !reimbursedAmount) return;
       if (wageAmount === 0 && reimbursedAmount === 0 && (emp.type !== "weekly" && emp.type !== "monthly") && unpaidWorkEarned === 0) return;
+      const partialAdvInput = document.getElementById(`pay-adv-deduct-amt-${empId}`)?.value;
+      const advDeductVal = deductAdv ? Math.min(outstandingAdv, Math.max(0, Number(partialAdvInput !== undefined ? partialAdvInput : outstandingAdv))) : 0;
+
       state.cardTab = state.cardTab || {};
       state.cardTab[empId] = "history";
       mutate(() => {
-        state.salaryPayments.unshift({ id: uid(), employeeId: empId, date, amount: wageAmount, reimbursedAmount, paidBy, note, deductedAdvances: deductAdv ? outstandingAdv : 0, deductedHeld: deductHeld ? outstandingHeld : 0, deductedAbsences: deductAtt ? absenceDeductionVal : 0 });
-        if (deductAdv) state.advances = state.advances.map(a => (a.employeeId === empId && !a.settled ? { ...a, settled: true } : a));
+        state.salaryPayments.unshift({ id: uid(), employeeId: empId, date, amount: wageAmount, reimbursedAmount, paidBy, note, deductedAdvances: advDeductVal, deductedHeld: deductHeld ? outstandingHeld : 0, deductedAbsences: deductAtt ? absenceDeductionVal : 0 });
+        if (advDeductVal > 0) {
+          let rem = advDeductVal;
+          const empAdv = state.advances
+            .filter(a => a.employeeId === empId && !a.settled)
+            .sort((a, b) => (a.isJoiningAdvance ? 1 : 0) - (b.isJoiningAdvance ? 1 : 0));
+
+          for (let a of empAdv) {
+            if (rem <= 0) break;
+            if (rem >= a.amount) {
+              rem -= a.amount;
+              a.settled = true;
+            } else {
+              a.amount -= rem;
+              rem = 0;
+            }
+          }
+        }
         if (includeReimb) state.expenses = state.expenses.map(x => (x.payerEmployeeId === empId && !x.settled ? { ...x, settled: true, settledBy: paidBy } : x));
         if (deductHeld) {
           state.income.forEach(sale => {
