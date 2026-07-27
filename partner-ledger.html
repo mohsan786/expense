@@ -1974,101 +1974,26 @@ function renderVendors() {
 }
 
 function renderVendorCard(vendor, partners) {
-  const expanded = state.expandedVendor === vendor.id;
   const purchases = vendorPurchases(vendor.id);
   const payments = vendorPaymentsFor(vendor.id);
   const outstanding = vendorOutstanding(vendor.id);
 
-  let body = "";
-  if (expanded) {
-    const historyItems = [
-      ...purchases.map(x => ({ ...x, kind: "purchase" })),
-      ...payments.map(x => ({ ...x, kind: "vpay" })),
-    ].sort((a, b) => (a.date < b.date ? 1 : -1));
-
-    const activeTab = (state.cardTab && state.cardTab[vendor.id]) || (historyItems.length ? "history" : "form");
-
-    const tabHeader = `
-      <div style="display:flex;gap:8px;margin-bottom:18px;border-bottom:1px solid var(--rule);padding-bottom:10px;">
-        <button class="tab-btn ${activeTab==='history'?'active':''}" data-act="set-card-tab" data-id="${vendor.id}" data-tab="history">
-          📜 History &amp; Ledger (${historyItems.length})
-        </button>
-        <button class="tab-btn ${activeTab==='form'?'active':''}" data-act="set-card-tab" data-id="${vendor.id}" data-tab="form">
-          ➕ Log Purchase or Payment
-        </button>
-      </div>
-    `;
-
-    const purchaseSection = `
-      <div class="serif small-title">Log a Purchase</div>
-      <div class="form-grid-income" style="grid-template-columns:120px 1fr 100px 150px auto">
-        <input class="led-input" type="date" id="vp-date-${vendor.id}" value="${today()}">
-        <input class="led-input" id="vp-desc-${vendor.id}" placeholder="What was bought (e.g. leather hides)">
-        <input class="led-input" type="number" id="vp-amount-${vendor.id}" placeholder="Amount">
-        <select class="led-input" id="vp-payment-${vendor.id}">
-          ${partners.map(p=>`<option value="partner:${p.id}">Paid now by ${esc(p.name)}</option>`).join("")}
-          <option value="credit">On credit (pay later)</option>
-        </select>
-        <button class="led-btn" data-act="add-purchase" data-vendor="${vendor.id}">+ Log Purchase</button>
-      </div>
-      <div style="margin-bottom:16px"></div>
-    `;
-
-    const paySection = `
-      <div class="serif small-title">Pay this Vendor</div>
-      <div class="form-grid-adv">
-        <input class="led-input" type="date" id="vpay-date-${vendor.id}" value="${today()}">
-        <input class="led-input" type="number" id="vpay-amount-${vendor.id}" placeholder="${outstanding > 0 ? outstanding.toFixed(2) : 'Amount'}">
-        <select class="led-input" id="vpay-paidby-${vendor.id}">${partners.map(p=>`<option value="${p.id}">Paid by ${esc(p.name)}</option>`).join("")}</select>
-        <input class="led-input" id="vpay-note-${vendor.id}" placeholder="Note (optional)">
-        <button class="led-btn" data-act="pay-vendor" data-vendor="${vendor.id}">+ Record Payment</button>
-      </div>
-      ${outstanding > 0.005 ? `<div class="muted small" style="margin-top:6px">Currently owe ${fmt(outstanding)} — leave amount blank for full payment or enter partial amount.</div>` : ''}
-    `;
-
-    const historyHtml = historyItems.length ? `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <span class="mono muted" style="font-size:11.5px;font-weight:700;">TRANSACTION LOG</span>
-        <button class="led-btn secondary" style="font-size:12.5px;padding:4px 12px;" data-act="set-card-tab" data-id="${vendor.id}" data-tab="form">
-          + Log New Purchase / Payment
-        </button>
-      </div>
-      ${historyItems.map(r => {
-        let label, color, sign;
-        if (r.kind === "purchase") {
-          label = `Purchase: ${esc(r.description)}${r.onCredit ? ` <span class="tag tag-wait">on credit</span>` : ` <span class="tag tag-done">paid by ${esc(partners.find(p=>p.id===r.paidBy)?.name||"—")}</span>`}`;
-          color = "var(--rust)"; sign = "-";
-        } else {
-          label = `Payment by ${esc(partners.find(p=>p.id===r.paidBy)?.name||"—")}${r.note?" — "+esc(r.note):""}`;
-          color = "var(--teal)"; sign = "-";
-        }
-        return `<div class="history-row"><span class="mono muted" style="width:95px">${esc(r.date)}</span><span style="flex:1">${label}</span><span class="mono strong" style="color:${color}">${sign}${fmt(r.amount)}</span></div>`;
-      }).join("")}
-    ` : `
-      <div class="empty-msg">No transaction history yet. Use the tab above to log your first purchase or payment.</div>
-    `;
-
-    const tabContent = activeTab === "history" ? historyHtml : `<div style="display:flex;flex-direction:column;gap:14px;">${purchaseSection}${paySection}</div>`;
-
-    body = `<div class="card-body">${tabHeader}${tabContent}</div>`;
-  }
-
   return `
-    <div class="panel emp-card">
-      <div class="emp-head" data-act="toggle-vendor" data-id="${vendor.id}">
-        <div class="emp-head-left">
-          <span>${expanded?"▾":"▸"}</span>
-          <span class="serif strong">${esc(vendor.name)}</span>
-          ${vendor.phone ? `<span class="muted small" style="margin-left:4px;">📞 ${esc(vendor.phone)}</span>` : ""}
-          ${vendor.note ? `<span class="muted small">— ${esc(vendor.note)}</span>` : ""}
+    <div class="panel emp-card mb-2" style="padding:14px 18px;">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span class="serif strong" style="font-size:16px;">${esc(vendor.name)}</span>
+          ${vendor.phone ? `<span class="muted small">📞 ${esc(vendor.phone)}</span>` : ""}
+          ${vendor.note ? `<span class="badge bg-light text-dark border">— ${esc(vendor.note)}</span>` : ""}
         </div>
-        <div class="emp-head-right">
-          ${outstanding>0.005 ? `<span class="mono small strong" style="color:var(--rust)">owe ${fmt(outstanding)}</span>` : `<span class="mono small strong" style="color:var(--teal)">settled</span>`}
-          <button class="icon-btn" data-act="edit-vendor" data-id="${vendor.id}" title="Edit Vendor">✏️</button>
-          <button class="icon-btn" data-act="delete-vendor" data-id="${vendor.id}" title="Delete Vendor" style="color:var(--rust);margin-left:4px">🗑️</button>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          ${outstanding > 0.005 ? `<span class="mono small strong" style="color:var(--rust)">Owe ${fmt(outstanding)}</span>` : `<span class="mono small strong" style="color:var(--teal)">settled</span>`}
+          
+          <a href="vendor_detail.php?id=${vendor.id}" class="btn btn-sm btn-dark fw-bold px-3 py-1" style="font-size:12px;" title="View Vendor Purchases & Payments">👁️ View Details</a>
+          <button class="icon-btn" data-act="edit-vendor" data-id="${vendor.id}" title="Edit Vendor Profile">✏️</button>
+          <button class="icon-btn" data-act="delete-vendor" data-id="${vendor.id}" title="Delete Vendor" style="color:var(--rust);margin-left:2px">🗑️</button>
         </div>
       </div>
-      ${body}
     </div>
   `;
 }
