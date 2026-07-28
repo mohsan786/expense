@@ -1022,6 +1022,7 @@ async function loadData() {
       state.vendorPayments = Array.isArray(d.vendorPayments) ? d.vendorPayments : [];
       state.attendanceLogs = Array.isArray(d.attendanceLogs) ? d.attendanceLogs : [];
       state.partnerTransfers = Array.isArray(d.partnerTransfers) ? d.partnerTransfers : [];
+      state.partnerDrawings = Array.isArray(d.partnerDrawings) ? d.partnerDrawings : [];
 
       state.config.employees = (state.config.employees || []).map(e => {
         if (e && e.type === "workbased" && !e.items) {
@@ -1062,7 +1063,8 @@ async function persist() {
       vendorPayments: state.vendorPayments,
       attendanceLogs: state.attendanceLogs,
       cashHandouts: state.cashHandouts || [],
-      partnerTransfers: state.partnerTransfers || []
+      partnerTransfers: state.partnerTransfers || [],
+      partnerDrawings: state.partnerDrawings || []
     };
     const res = await apiCall('save', { data: payload });
     state.saveErr = !res.success;
@@ -1446,6 +1448,17 @@ function totalOutflow() {
 }
 function netProfit() { return totalIncome() - totalOutflow(); }
 
+function getBusinessCashBalance() {
+  const inc = state.income.reduce((s, sale) => {
+    return s + getSalePayments(sale).filter(p => !p.receivedBy && !p.receivedByEmployeeId).reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  }, 0);
+  const exp = state.expenses.filter(x => x.paidBy === 'business' || !x.paidBy && !x.payerEmployeeId).reduce((s, x) => s + Number(x.amount || 0), 0);
+  const sal = state.salaryPayments.filter(x => x.paidBy === 'business' || !x.paidBy).reduce((s, x) => s + Number(x.amount || 0), 0);
+  const adv = state.advances.filter(x => !isOpeningAdv(x) && (x.paidBy === 'business' || !x.paidBy)).reduce((s, x) => s + Number(x.amount || 0), 0);
+  const vend = state.vendorPayments.filter(x => x.paidBy === 'business' || !x.paidBy).reduce((s, x) => s + Number(x.amount || 0), 0);
+  return inc - (exp + sal + adv + vend);
+}
+
 function partnerStats() {
   const tr = totalRatio();
   const np = netProfit();
@@ -1485,12 +1498,13 @@ function partnerStats() {
 
     const transfersOut = (state.partnerTransfers || []).reduce((s, t) => t.fromPartnerId === p.id ? s + Number(t.amount || 0) : s, 0);
     const transfersIn = (state.partnerTransfers || []).reduce((s, t) => t.toPartnerId === p.id ? s + Number(t.amount || 0) : s, 0);
+    const drawings = (state.partnerDrawings || []).reduce((s, d) => d.partnerId === p.id ? s + Number(d.amount || 0) : s, 0);
 
     const paid = opCap + expPaid + salPaid + advPaid + vendPaid + transfersOut;
     const received = state.income.reduce((s, sale) => {
       const pms = getSalePayments(sale);
       return s + pms.filter(x => x.receivedBy === p.id).reduce((sum, x) => sum + Number(x.amount || 0), 0);
-    }, 0) + transfersIn;
+    }, 0) + transfersIn + drawings;
     const fairShare = tr > 0 ? (np * Number(p.ratio || 0)) / tr : 0;
     const balance = paid - received + fairShare;
     return { ...p, paid, received, fairShare, balance, opCap };
@@ -1735,6 +1749,7 @@ function renderOverview() {
   const inc = totalIncome();
   const out = totalOutflow();
   const np = netProfit();
+  const businessCash = getBusinessCashBalance();
   let settlementHtml = "";
   if (stats.length >= 2) {
     const sorted = [...stats].sort((a, b) => b.balance - a.balance);
@@ -1759,6 +1774,9 @@ function renderOverview() {
       <div class="pc-top">
         <span class="strong" style="font-size:16px;">👤 ${esc(p.name)}</span>
         <span class="mono muted small" style="background:#F1F5F9;padding:2px 8px;border-radius:6px;">Ratio ${p.ratio} (${Math.round((p.ratio/tr)*100)}%)</span>
+      </div>
+      <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-sm btn-outline-dark" style="font-size:11px;padding:3px 8px;" data-act="add-drawing" data-id="${p.id}">💰 Log Personal Drawing</button>
       </div>
       ${p.opCap > 0 ? `<div class="muted small" style="margin-top:6px">Starting capital: <span class="mono strong gold">${fmt(p.opCap)}</span></div>` : ''}
       <div class="stat-mini-grid" style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
@@ -1794,6 +1812,14 @@ function renderOverview() {
           <div class="kpi-label">TOTAL INCOME</div>
           <div class="kpi-value">${fmt(inc)}</div>
           <div class="kpi-sub">Collected from sales</div>
+        </div>
+      </div>
+      <div class="kpi-card" style="background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);">
+        <div class="kpi-icon">🏦</div>
+        <div>
+          <div class="kpi-label">BUSINESS CASH</div>
+          <div class="kpi-value">${fmt(businessCash)}</div>
+          <div class="kpi-sub">Cash-in-hand / Fund</div>
         </div>
       </div>
       <div class="kpi-card kpi-expense">
@@ -2122,6 +2148,116 @@ function renderIncome() {
       ${renderPagination(state.incomePage, totalItems, pageSize, 'set-income-page')}
     </div>
   `;
+}
+
+async function showAddDrawingModal(partnerId) {
+  const p = state.config.partners.find(x => x.id === partnerId);
+  if (!p) return;
+  const { value: formValues } = await Swal.fire({
+    title: '💰 Log Personal Drawing',
+    html:
+      `<div style="text-align:left;display:flex;flex-direction:column;gap:10px;">` +
+      `<div><label style="font-size:12px;font-weight:600;">Date</label><input id="swal-draw-date" class="swal2-input" type="date" value="${today()}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Amount Withdrawn (Rs.)</label><input id="swal-draw-amount" type="number" class="swal2-input" placeholder="e.g. 5000" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Note</label><input id="swal-draw-note" class="swal2-input" placeholder="Personal expense, cash taken..." style="margin:4px 0 0 0;width:100%;"></div>` +
+      `</div>`,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonColor: '#2F6F63',
+    preConfirm: () => {
+      const date = document.getElementById('swal-draw-date').value || today();
+      const amount = Number(document.getElementById('swal-draw-amount').value);
+      const note = document.getElementById('swal-draw-note').value.trim();
+      if (!amount || isNaN(amount) || amount <= 0) {
+        Swal.showValidationMessage('Amount must be greater than zero.');
+        return false;
+      }
+      return { date, amount, note };
+    }
+  });
+  if (formValues) {
+    mutate(() => {
+      state.partnerDrawings = state.partnerDrawings || [];
+      state.partnerDrawings.unshift({
+        id: uid(),
+        partnerId: partnerId,
+        date: formValues.date,
+        amount: formValues.amount,
+        note: formValues.note
+      });
+    });
+    toast('💸 Drawing logged successfully!');
+  }
+}
+
+async function showHandoverCashModal(empId) {
+  const emp = state.config.employees.find(e => e.id === empId);
+  if (!emp) return;
+  const heldIncome = empOutstandingHeldIncome(empId);
+  if (heldIncome <= 0) {
+    swalAlert("No Held Cash", "This employee has no outstanding cash to hand over.", "info");
+    return;
+  }
+  const partners = state.config.partners;
+  const partnerOptions = `<option value="business">🏢 Business Funds</option>` + partners.map(p => `<option value="${p.id}">👤 ${esc(p.name)}</option>`).join('');
+
+  const { value: formValues } = await Swal.fire({
+    title: '🤝 Handover Held Cash',
+    html:
+      `<div style="text-align:left;display:flex;flex-direction:column;gap:10px;">` +
+      `<div style="background:#F1F5F9;padding:10px 12px;border-radius:6px;font-size:13px;" class="mono">` +
+      `<div><strong>Employee:</strong> ${esc(emp.name)}</div>` +
+      `<div><strong>Total Held Cash:</strong> ${fmt(heldIncome)}</div>` +
+      `</div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Date</label><input id="swal-ho-date" class="swal2-input" type="date" value="${today()}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Amount to Handover</label><input id="swal-ho-amount" type="number" class="swal2-input" value="${heldIncome}" max="${heldIncome}" style="margin:4px 0 0 0;width:100%;"></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Handed Over To</label><select id="swal-ho-receiver" class="swal2-input" style="margin:4px 0 0 0;width:100%;">${partnerOptions}</select></div>` +
+      `</div>`,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonColor: '#2F6F63',
+    preConfirm: () => {
+      const date = document.getElementById('swal-ho-date').value || today();
+      const amount = Number(document.getElementById('swal-ho-amount').value);
+      const receiver = document.getElementById('swal-ho-receiver').value;
+      if (!amount || isNaN(amount) || amount <= 0) {
+        Swal.showValidationMessage('Amount must be greater than zero.');
+        return false;
+      }
+      if (amount > heldIncome) {
+        Swal.showValidationMessage(`Amount cannot exceed the total held cash (${fmt(heldIncome)}).`);
+        return false;
+      }
+      return { date, amount, receiver };
+    }
+  });
+
+  if (formValues) {
+    mutate(() => {
+      let rem = formValues.amount;
+      state.income.forEach(sale => {
+        if (sale.payments) {
+          sale.payments.forEach(p => {
+            if (p.receivedByEmployeeId === empId && !p.settled && rem > 0) {
+              if (rem >= p.amount) {
+                rem -= p.amount;
+                p.settled = true;
+                p.receivedByEmployeeId = undefined;
+                if (formValues.receiver === 'business') { p.receivedBy = 'business'; } else { p.receivedBy = formValues.receiver; }
+              } else {
+                // Partial handover: split the payment
+                const newPayment = { ...p, id: uid(), amount: rem, settled: true, receivedByEmployeeId: undefined, receivedBy: formValues.receiver === 'business' ? 'business' : formValues.receiver };
+                p.amount -= rem;
+                sale.payments.push(newPayment);
+                rem = 0;
+              }
+            }
+          });
+        }
+      });
+    });
+    toast('🤝 Cash handover recorded successfully!');
+  }
 }
 
 async function showTransferModal() {
@@ -2603,6 +2739,7 @@ function renderEmployeeCard(emp, partners) {
           ${joiningAdvVal>0 ? `<span class="mono small strong text-warning" title="Joining Advance (Peshgi)">Peshgi ${fmt(joiningAdvVal)}</span>` : ""}
           ${weeklyAdvVal>0 ? `<span class="mono small strong gold" title="Weekly Advances (Kharcha)">Kharcha ${fmt(weeklyAdvVal)}</span>` : ""}
           
+          ${outstandingHeld>0 ? `<button class="btn btn-sm text-dark fw-bold px-3 py-1" style="font-size:12px;background:#FDE68A;border-color:#FCD34D;" onclick="event.stopPropagation()" data-act="handover-cash" data-id="${emp.id}">🤝 Handover ${fmt(outstandingHeld)}</button>` : ""}
           <a href="employee_detail.php?id=${emp.id}" class="btn btn-sm btn-dark fw-bold px-3 py-1" style="font-size:12px;" title="View Employee Ledger & Details" onclick="event.stopPropagation()">👁️ Full Details</a>
           <button class="icon-btn" onclick="event.stopPropagation(); showEditEmployeeModal('${emp.id}')" title="Edit Profile">✏️</button>
           <button class="icon-btn" onclick="event.stopPropagation(); deleteEmployee('${emp.id}')" title="Delete Employee" style="color:var(--rust);margin-left:2px">🗑️</button>
@@ -3161,7 +3298,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const name = document.getElementById("cust-name").value.trim();
       const phone = document.getElementById("cust-phone").value.trim();
       const address = document.getElementById("cust-address").value.trim();
-      if (!name) return;
+      if (!name) { swalAlert("Validation Error", "Please enter a customer name.", "warning"); return; }
       mutate(() => {
         state.config.customers = state.config.customers || [];
         state.config.customers.unshift({ id: uid(), name, phone, address });
@@ -3328,7 +3465,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const name = document.getElementById("new-emp-name").value.trim();
       const phone = document.getElementById("new-emp-phone")?.value.trim() || "";
       const type = document.getElementById("new-emp-type").value;
-      if (!name) return;
+      if (!name) { swalAlert("Validation Error", "Please enter an employee name.", "warning"); return; }
       const weeklyRate = Number(document.getElementById("new-emp-weekly")?.value || 0);
       const monthlyRate = Number(document.getElementById("new-emp-monthly")?.value || 0);
       const joiningAdv = Number(document.getElementById("new-emp-joining-adv")?.value || 0);
@@ -3583,6 +3720,16 @@ document.addEventListener("DOMContentLoaded", () => {
       toast("🎉 Payment recorded successfully!");
       return;
     }
+    if (act === "add-drawing") {
+      const partnerId = el.dataset.id;
+      showAddDrawingModal(partnerId);
+      return;
+    }
+    if (act === "handover-cash") {
+      const empId = el.dataset.id;
+      showHandoverCashModal(empId);
+      return;
+    }
     if (act === "add-transfer") {
       showTransferModal();
       return;
@@ -3604,7 +3751,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const name = document.getElementById("new-vendor-name").value.trim();
       const phone = document.getElementById("new-vendor-phone")?.value.trim() || "";
       const note = document.getElementById("new-vendor-note").value.trim();
-      if (!name) return;
+      if (!name) { swalAlert("Validation Error", "Please enter a vendor name.", "warning"); return; }
       mutate(() => { state.config.vendors.push({ id: uid(), name, phone, note }); });
       toast("Vendor profile created!");
       return;
