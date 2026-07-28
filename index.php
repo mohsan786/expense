@@ -2270,7 +2270,29 @@ async function showEditTransferModal(id) {
 async function showAddExpenseModal() {
   const partners = state.config.partners;
   const employees = state.config.employees;
-  const categories = ["Raw Materials", "Factory Rent", "Shop Rent", "Utilities / Bills", "Packaging", "Worker Food & Tea", "Machinery & Repairs", "Transport", "Miscellaneous"];
+  const categories = [
+    "Raw Materials",
+    "Worker Wages",
+    "Worker Food & Tea",
+    "Factory Rent",
+    "Shop Rent",
+    "Rent & Utilities",
+    "Utilities (Electricity, Gas & Water)",
+    "Packaging",
+    "Machinery Purchase",
+    "Machinery Repair & Maintenance",
+    "Tools & Consumables",
+    "Transport",
+    "Shipping / Delivery",
+    "Office Expenses",
+    "Phone & Internet",
+    "Marketing & Advertising",
+    "Bank Charges",
+    "Taxes & Licenses",
+    "Cleaning & Maintenance",
+    "Safety Equipment",
+    "Miscellaneous"
+  ];
   const optionsPayer = `<optgroup label="Business Funds"><option value="business">&#x1F4BC; Business Funds</option><option value="split_ratio">&#x1F4B8; Split by Partners (Ratio)</option></optgroup>
     <optgroup label="Partner">${partners.map(p=>`<option value="partner:${p.id}">${esc(p.name)}</option>`).join("")}</optgroup>
     ${employees.length ? `<optgroup label="Employee (reimbursable)">${employees.map(emp=>`<option value="employee:${emp.id}">${esc(emp.name)}</option>`).join("")}</optgroup>` : ""}
