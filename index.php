@@ -1869,6 +1869,7 @@ function renderOverview() {
     ` : ""}
     ${settlementHtml}
     ${renderTransferLogs()}
+    ${renderDrawingLogs()}
   `;
 }
 
@@ -1896,6 +1897,37 @@ function renderTransferLogs() {
   return `
     <div class="panel mt-4">
       <div class="serif strong mb-3">Recent Partner Transfers & Settlements</div>
+      <div class="table-container">
+        ${rows}
+      </div>
+    </div>
+  `;
+}
+
+function renderDrawingLogs() {
+  const drawings = state.partnerDrawings || [];
+  if (drawings.length === 0) return "";
+  
+  const getPartnerName = (id) => {
+    const p = state.config.partners.find(x => x.id === id);
+    return p ? esc(p.name) : "Unknown";
+  };
+
+  const rows = drawings.map(d => `
+    <div class="row-line" style="display:grid;grid-template-columns:100px 1fr 100px 60px;align-items:center;font-size:13px;">
+      <div class="mono text-muted">${esc(d.date)}</div>
+      <div><strong>${getPartnerName(d.partnerId)}</strong> withdrew personal drawing${d.note ? ` <span class="text-muted">(${esc(d.note)})</span>` : ''}</div>
+      <div class="mono strong text-danger">-${fmt(d.amount)}</div>
+      <div style="text-align:right;">
+        <button class="icon-btn" data-act="edit-drawing" data-id="${d.id}" title="Edit Drawing">✏️</button>
+        <button class="icon-btn" data-act="delete-drawing" data-id="${d.id}" title="Delete Drawing" style="color:var(--rust)">🗑️</button>
+      </div>
+    </div>
+  `).join("");
+
+  return `
+    <div class="panel mt-4" style="background:#FEF2F2;border-color:#FCA5A5;">
+      <div class="serif strong mb-3" style="color:#991B1B;">💰 Recent Personal Partner Drawings</div>
       <div class="table-container">
         ${rows}
       </div>
@@ -2190,6 +2222,47 @@ async function showAddDrawingModal(partnerId) {
   }
 }
 
+async function showEditDrawingModal(id) {
+  const drawing = (state.partnerDrawings || []).find(d => d.id === id);
+  if (!drawing) return;
+
+  const { value: formValues } = await Swal.fire({
+    title: '✏️ Edit Partner Drawing',
+    html: `
+      <div style="text-align:left;display:flex;flex-direction:column;gap:10px;">
+        <div><label style="font-size:12px;font-weight:600;">Date</label><input id="swal-draw-date" type="date" class="swal2-input" value="${esc(drawing.date)}" style="margin:4px 0 0 0;width:100%;"></div>
+        <div><label style="font-size:12px;font-weight:600;">Drawing Amount *</label><input id="swal-draw-amount" type="number" class="swal2-input" value="${drawing.amount}" style="margin:4px 0 0 0;width:100%;"></div>
+        <div><label style="font-size:12px;font-weight:600;">Note / Reason (optional)</label><input id="swal-draw-note" class="swal2-input" value="${esc(drawing.note)}" style="margin:4px 0 0 0;width:100%;"></div>
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonText: 'Update Drawing',
+    confirmButtonColor: '#0F172A',
+    preConfirm: () => {
+      const date = document.getElementById('swal-draw-date').value || today();
+      const amount = Number(document.getElementById('swal-draw-amount').value);
+      const note = document.getElementById('swal-draw-note').value.trim();
+
+      if (!amount || isNaN(amount) || amount <= 0) {
+        Swal.showValidationMessage('Please enter a valid drawing amount greater than zero.');
+        return false;
+      }
+      return { date, amount, note };
+    }
+  });
+
+  if (formValues) {
+    mutate(() => {
+      const target = state.partnerDrawings.find(d => d.id === id);
+      if (target) {
+        target.date = formValues.date;
+        target.amount = formValues.amount;
+        target.note = formValues.note;
+      }
+    });
+    toast("Drawing updated successfully!");
+  }
+}
 async function showHandoverCashModal(empId) {
   const emp = state.config.employees.find(e => e.id === empId);
   if (!emp) return;
@@ -2739,7 +2812,7 @@ function renderEmployeeCard(emp, partners) {
           ${joiningAdvVal>0 ? `<span class="mono small strong text-warning" title="Joining Advance (Peshgi)">Peshgi ${fmt(joiningAdvVal)}</span>` : ""}
           ${weeklyAdvVal>0 ? `<span class="mono small strong gold" title="Weekly Advances (Kharcha)">Kharcha ${fmt(weeklyAdvVal)}</span>` : ""}
           
-          ${outstandingHeld>0 ? `<button class="btn btn-sm text-dark fw-bold px-3 py-1" style="font-size:12px;background:#FDE68A;border-color:#FCD34D;" onclick="event.stopPropagation()" data-act="handover-cash" data-id="${emp.id}">🤝 Handover ${fmt(outstandingHeld)}</button>` : ""}
+          ${outstandingHeld>0 ? `<button class="btn btn-sm text-dark fw-bold px-3 py-1" style="font-size:12px;background:#FDE68A;border-color:#FCD34D;" onclick="event.stopPropagation(); showHandoverCashModal('${emp.id}')">🤝 Handover ${fmt(outstandingHeld)}</button>` : ""}
           <a href="employee_detail.php?id=${emp.id}" class="btn btn-sm btn-dark fw-bold px-3 py-1" style="font-size:12px;" title="View Employee Ledger & Details" onclick="event.stopPropagation()">👁️ Full Details</a>
           <button class="icon-btn" onclick="event.stopPropagation(); showEditEmployeeModal('${emp.id}')" title="Edit Profile">✏️</button>
           <button class="icon-btn" onclick="event.stopPropagation(); deleteEmployee('${emp.id}')" title="Delete Employee" style="color:var(--rust);margin-left:2px">🗑️</button>
@@ -3744,6 +3817,19 @@ document.addEventListener("DOMContentLoaded", () => {
       if (confirm) {
         mutate(() => { state.partnerTransfers = state.partnerTransfers.filter(x => x.id !== id); });
         toast("Transfer deleted.");
+      }
+      return;
+    }
+    if (act === "edit-drawing") {
+      showEditDrawingModal(el.dataset.id);
+      return;
+    }
+    if (act === "delete-drawing") {
+      const id = el.dataset.id;
+      const confirm = await swalConfirm("Delete Drawing?", "Are you sure you want to delete this personal drawing log?");
+      if (confirm) {
+        mutate(() => { state.partnerDrawings = state.partnerDrawings.filter(x => x.id !== id); });
+        toast("Drawing deleted.");
       }
       return;
     }
