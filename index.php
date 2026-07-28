@@ -595,7 +595,7 @@ header("Expires: 0");
   }
 </style>
 
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/lucide@latest" onload="if(window.lucide) lucide.createIcons();"></script>
   <script>
     function initTheme() {
       const theme = localStorage.getItem('theme') || 'light';
