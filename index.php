@@ -1842,6 +1842,38 @@ function renderOverview() {
       </div>
     ` : ""}
     ${settlementHtml}
+    ${renderTransferLogs()}
+  `;
+}
+
+function renderTransferLogs() {
+  const transfers = state.partnerTransfers || [];
+  if (transfers.length === 0) return "";
+  
+  const getPartnerName = (id) => {
+    const p = state.config.partners.find(x => x.id === id);
+    return p ? esc(p.name) : "Unknown";
+  };
+
+  const rows = transfers.map(t => `
+    <div class="row-line" style="display:grid;grid-template-columns:100px 1fr 100px 60px;align-items:center;font-size:13px;">
+      <div class="mono text-muted">${esc(t.date)}</div>
+      <div><strong>${getPartnerName(t.fromPartnerId)}</strong> paid <strong>${getPartnerName(t.toPartnerId)}</strong>${t.note ? ` <span class="text-muted">(${esc(t.note)})</span>` : ''}</div>
+      <div class="mono strong">${fmt(t.amount)}</div>
+      <div style="text-align:right;">
+        <button class="icon-btn" data-act="edit-transfer" data-id="${t.id}" title="Edit Transfer">✏️</button>
+        <button class="icon-btn" data-act="delete-transfer" data-id="${t.id}" title="Delete Transfer" style="color:var(--rust)">🗑️</button>
+      </div>
+    </div>
+  `).join("");
+
+  return `
+    <div class="panel mt-4">
+      <div class="serif strong mb-3">Recent Partner Transfers & Settlements</div>
+      <div class="table-container">
+        ${rows}
+      </div>
+    </div>
   `;
 }
 
@@ -2162,6 +2194,76 @@ async function showTransferModal() {
       state.partnerTransfers.unshift(entry);
     });
     toast("💱 Transfer logged successfully!");
+  }
+}
+
+async function showEditTransferModal(id) {
+  const tr = state.partnerTransfers.find(x => x.id === id);
+  if (!tr) return;
+  const partners = state.config.partners;
+  const pOptionsFrom = partners.map(p => `<option value="${p.id}" ${p.id === tr.fromPartnerId ? 'selected' : ''}>${esc(p.name)}</option>`).join("");
+  const pOptionsTo = partners.map(p => `<option value="${p.id}" ${p.id === tr.toPartnerId ? 'selected' : ''}>${esc(p.name)}</option>`).join("");
+  
+  const { value: formValues } = await Swal.fire({
+    title: '✏️ Edit Partner Transfer',
+    html: `
+      <div class="text-start d-flex flex-column gap-2">
+        <div>
+          <label class="form-label fw-bold small text-dark mb-1">Date</label>
+          <input id="swal-tr-date" class="form-control" type="date" value="${esc(tr.date)}">
+        </div>
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label fw-bold small text-dark mb-1">From Partner (Paid)</label>
+            <select id="swal-tr-from" class="form-select">${pOptionsFrom}</select>
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-bold small text-dark mb-1">To Partner (Received)</label>
+            <select id="swal-tr-to" class="form-select">${pOptionsTo}</select>
+          </div>
+        </div>
+        <div>
+          <label class="form-label fw-bold small text-dark mb-1">Amount *</label>
+          <input id="swal-tr-amount" class="form-control" type="number" value="${tr.amount}">
+        </div>
+        <div>
+          <label class="form-label fw-bold small text-dark mb-1">Note (Optional)</label>
+          <input id="swal-tr-note" class="form-control" value="${esc(tr.note || '')}">
+        </div>
+      </div>
+    `,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonText: 'Update Transfer',
+    confirmButtonColor: '#000',
+    preConfirm: () => {
+      const date = document.getElementById('swal-tr-date').value || today();
+      const fromP = document.getElementById('swal-tr-from').value;
+      const toP = document.getElementById('swal-tr-to').value;
+      const amount = Number(document.getElementById('swal-tr-amount').value);
+      const note = document.getElementById('swal-tr-note').value.trim();
+
+      if (fromP === toP) {
+        Swal.showValidationMessage('Sender and Receiver must be different partners.');
+        return false;
+      }
+      if (!amount || isNaN(amount) || amount <= 0) {
+        Swal.showValidationMessage('Amount must be greater than zero.');
+        return false;
+      }
+      return { date, fromP, toP, amount, note };
+    }
+  });
+
+  if (formValues) {
+    mutate(() => {
+      tr.date = formValues.date;
+      tr.fromPartnerId = formValues.fromP;
+      tr.toPartnerId = formValues.toP;
+      tr.amount = formValues.amount;
+      tr.note = formValues.note;
+    });
+    toast("💱 Transfer updated!");
   }
 }
 
@@ -3461,6 +3563,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (act === "add-transfer") {
       showTransferModal();
+      return;
+    }
+    if (act === "edit-transfer") {
+      showEditTransferModal(el.dataset.id);
       return;
     }
     if (act === "delete-transfer") {
