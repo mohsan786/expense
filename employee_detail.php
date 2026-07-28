@@ -1912,8 +1912,15 @@ if (!$employee) {
       }
     }
 
-    document.addEventListener('DOMContentLoaded', loadData);
+    document.addEventListener('DOMContentLoaded', () => {
+      loadData();
+      const observer = new MutationObserver(() => {
+        if (window.lucide) {
+          lucide.createIcons();
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    });
   </script>
 </body>
 </html>
-
