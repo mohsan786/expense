@@ -283,13 +283,13 @@ if (!$employee) {
       <div>
         <h4 class="mb-0 fw-bold serif" style="letter-spacing:-0.5px;"><?php echo htmlspecialchars($employee['name']); ?></h4>
         <small class="text-light opacity-75">
-          <?php echo $employee['phone'] ? '<i data-lucide="phone" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> ' . htmlspecialchars($employee['phone']) . ' · ' : ''; ?>
+          <?php echo $employee['phone'] ? '<i data-lucide='phone' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> ' . htmlspecialchars($employee['phone']) . ' · ' : ''; ?>
           <?php echo ucfirst($employee['type']); ?> Salary Model
         </small>
       </div>
     </div>
     <div>
-      <button class="btn btn-sm btn-light fw-bold px-3" onclick="showEditModal()"><i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Edit Profile</button>
+      <button class="btn btn-sm btn-light fw-bold px-3" onclick="showEditModal()"><i data-lucide='edit' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Edit Profile</button>
     </div>
   </header>
 
@@ -335,7 +335,7 @@ if (!$employee) {
         <?php if ($employee['type'] === 'workbased'): ?>
           <div class="content-panel" style="background:#F0FDF4;border-color:#86EFAC;">
             <div class="panel-header" style="color:#166534;">
-              <span><i data-lucide="wrench" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Piece-Rate Production &amp; Work Log Breakthrough</span>
+              <span><i data-lucide='wrench' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Piece-Rate Production &amp; Work Log Breakthrough</span>
               <span class="badge bg-success text-white mono fs-6" id="badge-total-earned">—</span>
             </div>
 
@@ -362,7 +362,7 @@ if (!$employee) {
               </table>
             </div>
 
-            <button class="btn btn-success btn-sm fw-bold shadow-sm" onclick="toggleWorkForm()"><i data-lucide="hammer" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> + Log Work Production Entry</button>
+            <button class="btn btn-success btn-sm fw-bold shadow-sm" onclick="toggleWorkForm()"><i data-lucide='hammer' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> + Log Work Production Entry</button>
 
             <!-- Hidden Form for Logging Work Production -->
             <div id="work-form-wrap" class="mt-3 p-3 border rounded bg-white" style="display:none;">
@@ -379,7 +379,7 @@ if (!$employee) {
         <!-- Advance Breakthrough & Ledger Card -->
         <div class="content-panel">
           <div class="panel-header">
-            <span><i data-lucide="circle-dollar-sign" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Advance Ledger &amp; Return Breakthrough</span>
+            <span><i data-lucide='circle-dollar-sign' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Advance Ledger &amp; Return Breakthrough</span>
             <span class="badge bg-light text-dark border mono fs-6" id="badge-outstanding">—</span>
           </div>
 
@@ -403,7 +403,7 @@ if (!$employee) {
             </table>
           </div>
 
-          <button class="btn btn-outline-dark btn-sm fw-bold" onclick="toggleAdvForm()"><i data-lucide="plus" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Log New Weekly Advance (Kharcha)</button>
+          <button class="btn btn-outline-dark btn-sm fw-bold" onclick="toggleAdvForm()"><i data-lucide='plus' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Log New Weekly Advance (Kharcha)</button>
 
           <!-- Hidden Form for Logging Advance -->
           <div id="adv-form-wrap" class="mt-3 p-3 border rounded bg-light" style="display:none;">
@@ -428,7 +428,7 @@ if (!$employee) {
         <!-- Attendance & Leave Log Breakthrough Card -->
         <div class="content-panel">
           <div class="panel-header">
-            <span><i data-lucide="calendar" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Attendance &amp; Leave Log Breakthrough</span>
+            <span><i data-lucide='calendar' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Attendance &amp; Leave Log Breakthrough</span>
             <span class="badge bg-danger text-white mono fs-6" id="badge-unsettled-abs">—</span>
           </div>
 
@@ -454,7 +454,7 @@ if (!$employee) {
         <!-- Purchasing Cash & Material Errands Ledger Card -->
         <div class="content-panel" style="background:#FFFBEB;border-color:#FCD34D;">
           <div class="panel-header" style="color:#92400E;">
-            <span><i data-lucide="shopping-bag" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Purchasing Cash &amp; Material Errands Ledger</span>
+            <span><i data-lucide='shopping-bag' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Purchasing Cash &amp; Material Errands Ledger</span>
             <span class="badge bg-warning text-dark border mono fs-6" id="badge-unspent-cash">—</span>
           </div>
 
@@ -478,8 +478,8 @@ if (!$employee) {
           </div>
 
           <div class="d-flex gap-2 flex-wrap">
-            <button class="btn btn-warning btn-sm fw-bold text-dark" onclick="togglePurchasingForm()"><i data-lucide="plus" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Hand Cash for Purchases</button>
-            <button class="btn btn-outline-dark btn-sm fw-bold" onclick="showReturnCashModal()"><i data-lucide="banknote" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Record Returned Cash</button>
+            <button class="btn btn-warning btn-sm fw-bold text-dark" onclick="togglePurchasingForm()"><i data-lucide='plus' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Hand Cash for Purchases</button>
+            <button class="btn btn-outline-dark btn-sm fw-bold" onclick="showReturnCashModal()"><i data-lucide='banknote' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Record Returned Cash</button>
           </div>
 
           <!-- Hidden Form for Logging Purchasing Cash Handout -->
@@ -524,7 +524,7 @@ if (!$employee) {
         <!-- Full Transaction History Card -->
         <div class="content-panel">
           <div class="panel-header">
-            <span><i data-lucide="scroll" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Transaction History Log</span>
+            <span><i data-lucide='scroll' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Transaction History Log</span>
           </div>
           <div id="history-container">
             <div class="text-muted small">Loading transaction history…</div>
@@ -539,7 +539,7 @@ if (!$employee) {
         <!-- Payday Settlement Panel -->
         <div class="content-panel" style="background:#FAF5FF;border-color:#E9D5FF;">
           <div class="panel-header" style="color:#6B21A8;">
-            <span><i data-lucide="banknote" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Payday Salary Settlement</span>
+            <span><i data-lucide='banknote' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Payday Salary Settlement</span>
           </div>
 
           <div id="payday-box-wrap">
@@ -550,7 +550,7 @@ if (!$employee) {
         <!-- Attendance Logging Panel -->
         <div class="content-panel">
           <div class="panel-header">
-            <span><i data-lucide="calendar" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Log Attendance / Absence</span>
+            <span><i data-lucide='calendar' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Log Attendance / Absence</span>
           </div>
           <div class="row g-2">
             <div class="col-6"><label class="form-label small mb-1">Date</label><input type="date" id="att-date" class="form-control form-control-sm" value="<?php echo date('Y-m-d'); ?>"></div>
@@ -780,7 +780,7 @@ if (!$employee) {
                 <tr>
                   <td class="mono muted">${log.date}</td>
                   <td>
-                    <span class="badge bg-warning text-dark me-1"><i data-lucide="shopping-bag" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Cash Given</span>
+                    <span class="badge bg-warning text-dark me-1"><i data-lucide='shopping-bag' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Cash Given</span>
                     <span>${esc(log.purpose)}</span>
                   </td>
                   <td class="small">${esc(log.source)}</td>
@@ -791,8 +791,8 @@ if (!$employee) {
                       : `<span class="badge bg-warning text-dark">Active Held</span>`}
                   </td>
                   <td class="text-center">
-                    <button class="btn btn-sm btn-outline-primary py-0 px-1 border-0" onclick="editPurchasingCash('${log.id}')" title="Edit Entry"><i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
-                    <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0" onclick="deletePurchasingCash('${log.id}')" title="Delete Entry"><i data-lucide="trash-2" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
+                    <button class="btn btn-sm btn-outline-primary py-0 px-1 border-0" onclick="editPurchasingCash('${log.id}')" title="Edit Entry"><i data-lucide='edit' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i></button>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0" onclick="deletePurchasingCash('${log.id}')" title="Delete Entry"><i data-lucide='trash-2' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i></button>
                   </td>
                 </tr>
               `;
@@ -801,15 +801,15 @@ if (!$employee) {
                 <tr>
                   <td class="mono muted">${log.date}</td>
                   <td>
-                    <span class="badge bg-success me-1"><i data-lucide="banknote" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Cash Returned</span>
+                    <span class="badge bg-success me-1"><i data-lucide='banknote' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Cash Returned</span>
                     <span>${esc(log.purpose)}</span>
                   </td>
                   <td class="small">${esc(log.source)}</td>
                   <td class="mono text-end fw-bold text-success">${fmt(log.amount)}</td>
                   <td><span class="badge bg-success">Returned</span></td>
                   <td class="text-center">
-                    <button class="btn btn-sm btn-outline-primary py-0 px-1 border-0" onclick="editReturnedCash('${log.id}')" title="Edit Entry"><i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
-                    <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0" onclick="deleteReturnedCash('${log.id}')" title="Delete Entry"><i data-lucide="trash-2" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
+                    <button class="btn btn-sm btn-outline-primary py-0 px-1 border-0" onclick="editReturnedCash('${log.id}')" title="Edit Entry"><i data-lucide='edit' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i></button>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0" onclick="deleteReturnedCash('${log.id}')" title="Delete Entry"><i data-lucide='trash-2' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i></button>
                   </td>
                 </tr>
               `;
@@ -836,8 +836,8 @@ if (!$employee) {
               <td class="mono text-end fw-bold text-success">${fmt(w.amount)}</td>
               <td class="small text-muted">${w.note ? esc(w.note) : '—'}</td>
               <td class="text-center">
-                <button class="btn btn-sm btn-outline-primary py-0 px-1 border-0 me-1" style="font-size:10px;" onclick="editWorkLog('${w.id}')" title="Edit Log"><i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
-                <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0" style="font-size:10px;" onclick="deleteWorkLog('${w.id}')" title="Delete Log"><i data-lucide="trash-2" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
+                <button class="btn btn-sm btn-outline-primary py-0 px-1 border-0 me-1" style="font-size:10px;" onclick="editWorkLog('${w.id}')" title="Edit Log"><i data-lucide='edit' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i></button>
+                <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0" style="font-size:10px;" onclick="deleteWorkLog('${w.id}')" title="Delete Log"><i data-lucide='trash-2' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i></button>
               </td>
             </tr>
           `).join('');
@@ -851,7 +851,7 @@ if (!$employee) {
         if (workItems.length === 0) {
           workFormInner.innerHTML = `
             <div class="alert alert-warning py-2 mb-0" style="font-size:13px;">
-              <i data-lucide="alert-triangle" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> No work items defined yet. Go to the <strong>Employees page → <i data-lucide="wrench" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Work Items Catalog</strong> to add items with rates first.
+              <i data-lucide='alert-triangle' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> No work items defined yet. Go to the <strong>Employees page → <i data-lucide='wrench' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Work Items Catalog</strong> to add items with rates first.
             </div>`;
         } else {
           const opts = workItems.map(wi => `<option value="${wi.id}" data-rate="${wi.unitPrice}" data-label="${esc(wi.name)}">${esc(wi.name)} — ${fmt(wi.unitPrice)} / ${esc(wi.unit||'piece')}</option>`).join('');
@@ -913,8 +913,8 @@ if (!$employee) {
             <td>${ev.settled ? `<span class="badge bg-light text-dark border">Settled</span>` : `<span class="badge bg-warning text-dark">Active Due</span>`}</td>
             <td class="text-center">
               ${ev.objType === 'advance' 
-                ? `<button class="btn btn-sm btn-outline-primary py-0 px-1 border-0 me-1" onclick="editAdvance('${ev.id}')" title="Edit Advance"><i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
-                   <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0" onclick="deleteAdvance('${ev.id}')" title="Delete Advance"><i data-lucide="trash-2" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>`
+                ? `<button class="btn btn-sm btn-outline-primary py-0 px-1 border-0 me-1" onclick="editAdvance('${ev.id}')" title="Edit Advance"><i data-lucide='edit' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i></button>
+                   <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0" onclick="deleteAdvance('${ev.id}')" title="Delete Advance"><i data-lucide='trash-2' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i></button>`
                 : `<span class="text-muted small" title="Delete Payday Deduction from Salary Settlement panel">-</span>`
               }
             </td>
@@ -946,7 +946,7 @@ if (!$employee) {
                 <td>
                   <div class="d-flex align-items-center gap-1">
                     ${att.settled ? `<span class="badge bg-light text-dark border">Settled on Payday</span>` : `<span class="badge bg-warning text-dark">Active Unsettled</span>`}
-                    <button class="btn btn-sm btn-outline-danger py-0 px-1 ms-1" style="font-size:10px;" onclick="deleteAttendance('${att.id}')" title="Delete Log"><i data-lucide="trash-2" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-1 ms-1" style="font-size:10px;" onclick="deleteAttendance('${att.id}')" title="Delete Log"><i data-lucide='trash-2' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i></button>
                   </div>
                 </td>
               </tr>
@@ -974,7 +974,7 @@ if (!$employee) {
                   <div class="form-check mb-0">
                     <input class="form-check-input" type="checkbox" id="chk-weekly-adv" ${state.deductWeeklyAdv ? 'checked' : ''} onchange="state.deductWeeklyAdv=this.checked;render();">
                     <label class="form-check-label fw-bold small text-dark" for="chk-weekly-adv">
-                      <i data-lucide="zap" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Deduct Weekly Kharcha (${fmt(weeklyAdvVal)})
+                      <i data-lucide='zap' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Deduct Weekly Kharcha (${fmt(weeklyAdvVal)})
                     </label>
                   </div>
                   ${state.deductWeeklyAdv ? `
@@ -994,7 +994,7 @@ if (!$employee) {
                   <div class="form-check mb-0">
                     <input class="form-check-input" type="checkbox" id="chk-cash-held" ${state.deductCashHeld ? 'checked' : ''} onchange="state.deductCashHeld=this.checked;render();">
                     <label class="form-check-label fw-bold small text-dark" for="chk-cash-held">
-                      <i data-lucide="shopping-bag" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Deduct Unspent Purchasing Cash (${fmt(unspentPurchasingCash)})
+                      <i data-lucide='shopping-bag' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Deduct Unspent Purchasing Cash (${fmt(unspentPurchasingCash)})
                     </label>
                   </div>
                   <span class="mono fw-bold text-danger">${fmt(unspentPurchasingCash)}</span>
@@ -1053,7 +1053,7 @@ if (!$employee) {
           <div class="col-12"><label class="form-label small mb-1">Payment Note</label><input id="pay-note" class="form-control form-control-sm" placeholder="e.g. Weekly payday salary"></div>
         </div>
 
-        <button class="btn btn-success btn-lg w-100 fw-bold shadow-sm" onclick="savePayday()"><i data-lucide="circle-dollar-sign" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Settle Salary Payday</button>
+        <button class="btn btn-success btn-lg w-100 fw-bold shadow-sm" onclick="savePayday()"><i data-lucide='circle-dollar-sign' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Settle Salary Payday</button>
       `;
 
       // Render Transaction History Log
@@ -1135,14 +1135,14 @@ if (!$employee) {
       const isJoining = adv.isJoiningAdvance || (adv.note && adv.note.toLowerCase().includes("joining"));
 
       const { value: formValues } = await Swal.fire({
-        title: '<i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Edit Advance Record',
+        title: '<i data-lucide='edit' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Edit Advance Record',
         html: `
           <div style="text-align:left;display:flex;flex-direction:column;gap:10px;">
             <div>
               <label style="font-size:12px;font-weight:600;">Advance Type / Category</label>
               <select id="swal-adv-type" class="swal2-input" style="margin:4px 0 0 0;width:100%;">
-                <option value="joining" ${isJoining ? 'selected' : ''}><i data-lucide="handshake" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Joining Advance (Peshgi)</option>
-                <option value="weekly" ${!isJoining ? 'selected' : ''}><i data-lucide="banknote" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Weekly Advance (Kharcha)</option>
+                <option value="joining" ${isJoining ? 'selected' : ''}><i data-lucide='handshake' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Joining Advance (Peshgi)</option>
+                <option value="weekly" ${!isJoining ? 'selected' : ''}><i data-lucide='banknote' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Weekly Advance (Kharcha)</option>
               </select>
             </div>
             <div>
@@ -1210,7 +1210,7 @@ if (!$employee) {
       const note = document.getElementById('pcash-note').value.trim() || 'Purchasing Material Cash';
 
       if (!amount || isNaN(amount) || amount <= 0) {
-        Swal.fire('<i data-lucide="alert-triangle" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Invalid Amount', 'Please enter a valid cash amount greater than zero.', 'warning');
+        Swal.fire('<i data-lucide='alert-triangle' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Invalid Amount', 'Please enter a valid cash amount greater than zero.', 'warning');
         return;
       }
 
@@ -1230,13 +1230,13 @@ if (!$employee) {
       });
 
       document.getElementById('purchasing-form-wrap').style.display = 'none';
-      Swal.fire({ icon: 'success', title: '<i data-lucide="shopping-bag" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Purchasing Cash Given!', text: `Recorded ${fmt(amount)} cash handed to worker for purchases.` });
+      Swal.fire({ icon: 'success', title: '<i data-lucide='shopping-bag' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Purchasing Cash Given!', text: `Recorded ${fmt(amount)} cash handed to worker for purchases.` });
     }
 
     async function showReturnCashModal() {
       const unspentPurchasingCash = window.currentUnspentCash || 0;
       if (!unspentPurchasingCash || unspentPurchasingCash <= 0) {
-        Swal.fire('<i data-lucide="info" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> No Cash Outstanding', 'Worker does not currently hold any unspent purchasing cash.', 'info');
+        Swal.fire('<i data-lucide='info' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> No Cash Outstanding', 'Worker does not currently hold any unspent purchasing cash.', 'info');
         return;
       }
 
@@ -1286,7 +1286,7 @@ if (!$employee) {
             settled: false
           });
         });
-        Swal.fire({ icon: 'success', title: '<i data-lucide="banknote" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Cash Returned!', text: 'Unspent cash returned to business/partner.' });
+        Swal.fire({ icon: 'success', title: '<i data-lucide='banknote' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Cash Returned!', text: 'Unspent cash returned to business/partner.' });
       }
     }
 
@@ -1327,7 +1327,7 @@ if (!$employee) {
       ).join('');
 
       const { value: formValues } = await Swal.fire({
-        title: '<i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Edit Purchasing Cash Entry',
+        title: '<i data-lucide='edit' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Edit Purchasing Cash Entry',
         html: `
           <div style="text-align:left;display:flex;flex-direction:column;gap:10px;">
             <div>
@@ -1420,7 +1420,7 @@ if (!$employee) {
       ).join('');
 
       const { value: formValues } = await Swal.fire({
-        title: '<i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Edit Returned Cash Entry',
+        title: '<i data-lucide='edit' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Edit Returned Cash Entry',
         html: `
           <div style="text-align:left;display:flex;flex-direction:column;gap:10px;">
             <div>
@@ -1480,7 +1480,7 @@ if (!$employee) {
       const note = document.getElementById('adv-note').value.trim();
 
       if (!amount || isNaN(amount) || amount <= 0) {
-        Swal.fire('<i data-lucide="alert-triangle" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Invalid Amount', 'Please enter a valid advance amount greater than zero.', 'warning');
+        Swal.fire('<i data-lucide='alert-triangle' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Invalid Amount', 'Please enter a valid advance amount greater than zero.', 'warning');
         return;
       }
 
@@ -1497,7 +1497,7 @@ if (!$employee) {
       });
 
       document.getElementById('adv-form-wrap').style.display = 'none';
-      Swal.fire({ toast: true, icon: 'success', title: '<i data-lucide="banknote" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Advance recorded!', timer: 2000, showConfirmButton: false });
+      Swal.fire({ toast: true, icon: 'success', title: '<i data-lucide='banknote' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Advance recorded!', timer: 2000, showConfirmButton: false });
     }
 
     async function saveAttendance() {
@@ -1519,7 +1519,7 @@ if (!$employee) {
         });
       });
 
-      Swal.fire({ toast: true, icon: 'success', title: '<i data-lucide="calendar" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Absence recorded!', timer: 2000, showConfirmButton: false });
+      Swal.fire({ toast: true, icon: 'success', title: '<i data-lucide='calendar' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Absence recorded!', timer: 2000, showConfirmButton: false });
     }
 
     async function savePayday() {
@@ -1578,7 +1578,7 @@ if (!$employee) {
       const wageAmount = amountInput !== "" ? Number(amountInput) : suggestedWage;
 
       if (isNaN(wageAmount) || wageAmount < 0) {
-        Swal.fire('<i data-lucide="alert-triangle" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Invalid Payment Amount', 'Payment amount cannot be negative.', 'warning');
+        Swal.fire('<i data-lucide='alert-triangle' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Invalid Payment Amount', 'Payment amount cannot be negative.', 'warning');
         return;
       }
 
@@ -1770,11 +1770,11 @@ if (!$employee) {
       const note = document.getElementById('wl-note')?.value.trim() || '';
 
       if (!workItemId) {
-        Swal.fire('<i data-lucide="alert-triangle" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> No Item Selected', 'Please select a work item from the dropdown.', 'warning');
+        Swal.fire('<i data-lucide='alert-triangle' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> No Item Selected', 'Please select a work item from the dropdown.', 'warning');
         return;
       }
       if (!quantity || isNaN(quantity) || quantity <= 0) {
-        Swal.fire('<i data-lucide="alert-triangle" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Invalid Quantity', 'Please enter a valid quantity greater than zero.', 'warning');
+        Swal.fire('<i data-lucide='alert-triangle' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Invalid Quantity', 'Please enter a valid quantity greater than zero.', 'warning');
         return;
       }
 
@@ -1802,7 +1802,7 @@ if (!$employee) {
       if (noteEl) noteEl.value = '';
       if (document.getElementById('wl-total-preview')) document.getElementById('wl-total-preview').innerText = 'Rs.0.00';
       if (document.getElementById('work-form-wrap')) document.getElementById('work-form-wrap').style.display = 'none';
-      Swal.fire({ icon: 'success', title: '<i data-lucide="hammer" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Work Production Saved!', text: `Recorded ${quantity} × ${itemLabel} = ${fmt(quantity * unitPrice)} earned.` });
+      Swal.fire({ icon: 'success', title: '<i data-lucide='hammer' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Work Production Saved!', text: `Recorded ${quantity} × ${itemLabel} = ${fmt(quantity * unitPrice)} earned.` });
     }
 
     async function deleteWorkLog(wlId) {
@@ -1832,7 +1832,7 @@ if (!$employee) {
       ).join('');
 
       const { value: formValues } = await Swal.fire({
-        title: '<i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Edit Work Production Entry',
+        title: '<i data-lucide='edit' style='width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;'></i> Edit Work Production Entry',
         html: `
           <div style="text-align:left;display:flex;flex-direction:column;gap:10px;">
             <div>
