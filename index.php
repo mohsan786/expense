@@ -934,6 +934,7 @@ let state = {
   advances: [],
   vendorPayments: [],
   attendanceLogs: [],
+  partnerTransfers: [],
   tab: "overview",
   expandedEmp: null,
   deductAdvance: {},
@@ -1020,6 +1021,7 @@ async function loadData() {
 
       state.vendorPayments = Array.isArray(d.vendorPayments) ? d.vendorPayments : [];
       state.attendanceLogs = Array.isArray(d.attendanceLogs) ? d.attendanceLogs : [];
+      state.partnerTransfers = Array.isArray(d.partnerTransfers) ? d.partnerTransfers : [];
 
       state.config.employees = (state.config.employees || []).map(e => {
         if (e && e.type === "workbased" && !e.items) {
@@ -1059,7 +1061,8 @@ async function persist() {
       advances: state.advances,
       vendorPayments: state.vendorPayments,
       attendanceLogs: state.attendanceLogs,
-      cashHandouts: state.cashHandouts || []
+      cashHandouts: state.cashHandouts || [],
+      partnerTransfers: state.partnerTransfers || []
     };
     const res = await apiCall('save', { data: payload });
     state.saveErr = !res.success;
@@ -1480,11 +1483,14 @@ function partnerStats() {
       return s;
     }, 0);
 
-    const paid = opCap + expPaid + salPaid + advPaid + vendPaid;
+    const transfersOut = (state.partnerTransfers || []).reduce((s, t) => t.fromPartnerId === p.id ? s + Number(t.amount || 0) : s, 0);
+    const transfersIn = (state.partnerTransfers || []).reduce((s, t) => t.toPartnerId === p.id ? s + Number(t.amount || 0) : s, 0);
+
+    const paid = opCap + expPaid + salPaid + advPaid + vendPaid + transfersOut;
     const received = state.income.reduce((s, sale) => {
       const pms = getSalePayments(sale);
       return s + pms.filter(x => x.receivedBy === p.id).reduce((sum, x) => sum + Number(x.amount || 0), 0);
-    }, 0);
+    }, 0) + transfersIn;
     const fairShare = tr > 0 ? (np * Number(p.ratio || 0)) / tr : 0;
     const balance = paid - received + fairShare;
     return { ...p, paid, received, fairShare, balance, opCap };
@@ -1735,9 +1741,15 @@ function renderOverview() {
     const creditor = sorted[0], debtor = sorted[sorted.length - 1];
     const amount = Math.abs(creditor.balance);
     if (amount > 0.005) {
-      settlementHtml = `<div class="settle-box">💵 <div><strong>${esc(debtor.name)}</strong> owes <strong>${esc(creditor.name)}</strong> <span class="mono strong">${fmt(amount)}</span> to even out the ${state.config.partners.map(p=>p.ratio).join(":")} split.</div></div>`;
+      settlementHtml = `<div class="settle-box" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div>💵 <strong>${esc(debtor.name)}</strong> owes <strong>${esc(creditor.name)}</strong> <span class="mono strong">${fmt(amount)}</span> to even out the ${state.config.partners.map(p=>p.ratio).join(":")} split.</div>
+        <button class="btn btn-sm btn-dark fw-bold" data-act="add-transfer">💱 Settle Funds</button>
+      </div>`;
     } else {
-      settlementHtml = `<div class="panel settled">Everything's settled — both partners are even on the ${state.config.partners.map(p=>p.ratio).join(":")} split.</div>`;
+      settlementHtml = `<div class="panel settled" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div>Everything's settled — both partners are even on the ${state.config.partners.map(p=>p.ratio).join(":")} split.</div>
+        <button class="btn btn-sm btn-outline-dark fw-bold" data-act="add-transfer">💱 Transfer Funds</button>
+      </div>`;
     }
   }
   const totalPendingDue = state.income.reduce((s, x) => s + getIncomeBalance(x), 0);
@@ -2078,6 +2090,79 @@ function renderIncome() {
       ${renderPagination(state.incomePage, totalItems, pageSize, 'set-income-page')}
     </div>
   `;
+}
+
+async function showTransferModal() {
+  const partners = state.config.partners;
+  const pOptions = partners.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join("");
+  
+  const { value: formValues } = await Swal.fire({
+    title: '💱 Record Partner Transfer',
+    html: `
+      <div class="text-start d-flex flex-column gap-2">
+        <div class="alert alert-info py-2 px-3 small mb-1" style="font-size:12px;">Use this to log when one partner gives money directly to another to settle a ledger debt.</div>
+        <div>
+          <label class="form-label fw-bold small text-dark mb-1">Date</label>
+          <input id="swal-tr-date" class="form-control" type="date" value="${today()}">
+        </div>
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label fw-bold small text-dark mb-1">From Partner (Paid)</label>
+            <select id="swal-tr-from" class="form-select">${pOptions}</select>
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-bold small text-dark mb-1">To Partner (Received)</label>
+            <select id="swal-tr-to" class="form-select">${pOptions}</select>
+          </div>
+        </div>
+        <div>
+          <label class="form-label fw-bold small text-dark mb-1">Amount *</label>
+          <input id="swal-tr-amount" class="form-control" type="number" placeholder="Enter amount transferred">
+        </div>
+        <div>
+          <label class="form-label fw-bold small text-dark mb-1">Note (Optional)</label>
+          <input id="swal-tr-note" class="form-control" placeholder="e.g. Settled July balance">
+        </div>
+      </div>
+    `,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonText: 'Log Transfer',
+    confirmButtonColor: '#000',
+    preConfirm: () => {
+      const date = document.getElementById('swal-tr-date').value || today();
+      const fromP = document.getElementById('swal-tr-from').value;
+      const toP = document.getElementById('swal-tr-to').value;
+      const amount = Number(document.getElementById('swal-tr-amount').value);
+      const note = document.getElementById('swal-tr-note').value.trim();
+
+      if (fromP === toP) {
+        Swal.showValidationMessage('Sender and Receiver must be different partners.');
+        return false;
+      }
+      if (!amount || isNaN(amount) || amount <= 0) {
+        Swal.showValidationMessage('Amount must be greater than zero.');
+        return false;
+      }
+      return { date, fromP, toP, amount, note };
+    }
+  });
+
+  if (formValues) {
+    const entry = {
+      id: uid(),
+      date: formValues.date,
+      fromPartnerId: formValues.fromP,
+      toPartnerId: formValues.toP,
+      amount: formValues.amount,
+      note: formValues.note
+    };
+    mutate(() => {
+      if (!state.partnerTransfers) state.partnerTransfers = [];
+      state.partnerTransfers.unshift(entry);
+    });
+    toast("💱 Transfer logged successfully!");
+  }
 }
 
 async function showAddExpenseModal() {
@@ -2874,7 +2959,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (act === "export-data") {
-      const payload = JSON.stringify({ config: state.config, expenses: state.expenses, income: state.income, workLogs: state.workLogs, salaryPayments: state.salaryPayments, advances: state.advances, vendorPayments: state.vendorPayments }, null, 2);
+      const payload = JSON.stringify({ config: state.config, expenses: state.expenses, income: state.income, workLogs: state.workLogs, salaryPayments: state.salaryPayments, advances: state.advances, vendorPayments: state.vendorPayments, cashHandouts: state.cashHandouts, attendanceLogs: state.attendanceLogs, partnerTransfers: state.partnerTransfers }, null, 2);
       const blob = new Blob([payload], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -3374,6 +3459,19 @@ document.addEventListener("DOMContentLoaded", () => {
       toast("🎉 Payment recorded successfully!");
       return;
     }
+    if (act === "add-transfer") {
+      showTransferModal();
+      return;
+    }
+    if (act === "delete-transfer") {
+      const id = el.dataset.id;
+      const confirm = await swalConfirm("Delete Transfer?", "Are you sure you want to delete this partner transfer log?");
+      if (confirm) {
+        mutate(() => { state.partnerTransfers = state.partnerTransfers.filter(x => x.id !== id); });
+        toast("Transfer deleted.");
+      }
+      return;
+    }
     if (act === "add-vendor") {
       const name = document.getElementById("new-vendor-name").value.trim();
       const phone = document.getElementById("new-vendor-phone")?.value.trim() || "";
@@ -3555,6 +3653,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (d.advances) state.advances = d.advances;
                 if (d.vendorPayments) state.vendorPayments = d.vendorPayments;
                 if (d.attendanceLogs) state.attendanceLogs = d.attendanceLogs;
+                if (d.cashHandouts) state.cashHandouts = d.cashHandouts;
+                if (d.partnerTransfers) state.partnerTransfers = d.partnerTransfers;
               });
               swalAlert("Import Successful!", "Backup restored successfully.", "success");
             }
