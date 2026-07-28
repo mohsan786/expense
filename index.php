@@ -1814,12 +1814,12 @@ function renderOverview() {
           <div class="kpi-sub">Collected from sales</div>
         </div>
       </div>
-      <div class="kpi-card" style="background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);">
+      <div class="kpi-card" style="background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%); color: white;">
         <div class="kpi-icon">🏦</div>
         <div>
-          <div class="kpi-label">BUSINESS CASH</div>
-          <div class="kpi-value">${fmt(businessCash)}</div>
-          <div class="kpi-sub">Cash-in-hand / Fund</div>
+          <div class="kpi-label" style="color: #E0F2FE;">BUSINESS CASH</div>
+          <div class="kpi-value" style="color: white;">${fmt(businessCash)}</div>
+          <div class="kpi-sub" style="color: #BAE6FD;">Cash-in-hand / Fund</div>
         </div>
       </div>
       <div class="kpi-card kpi-expense">
