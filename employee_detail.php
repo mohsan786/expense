@@ -361,7 +361,7 @@ if (!$employee) {
 
           <div class="d-flex gap-2 flex-wrap">
             <button class="btn btn-warning btn-sm fw-bold text-dark" onclick="togglePurchasingForm()">➕ Hand Cash for Purchases</button>
-            <button class="btn btn-outline-dark btn-sm fw-bold" onclick="showReturnCashModal(${unspentPurchasingCash})">💵 Record Returned Cash</button>
+            <button class="btn btn-outline-dark btn-sm fw-bold" onclick="showReturnCashModal()">💵 Record Returned Cash</button>
           </div>
 
           <!-- Hidden Form for Logging Purchasing Cash Handout -->
@@ -582,6 +582,7 @@ if (!$employee) {
       const netPurchasingDiff = totalCashHanded - totalWorkerSpent;
       const unspentPurchasingCash = netPurchasingDiff > 0 ? netPurchasingDiff : 0;
       const reimbursementOwed = netPurchasingDiff < 0 ? Math.abs(netPurchasingDiff) : 0;
+      window.currentUnspentCash = unspentPurchasingCash;
 
       const actualCashHeldDeducted = (state.deductCashHeld && unspentPurchasingCash > 0) ? unspentPurchasingCash : 0;
       const actualReimbAdded = (state.includeReimb && reimbursementOwed > 0) ? reimbursementOwed : 0;
@@ -1114,7 +1115,8 @@ if (!$employee) {
       Swal.fire({ icon: 'success', title: '🛍️ Purchasing Cash Given!', text: `Recorded ${fmt(amount)} cash handed to worker for purchases.` });
     }
 
-    async function showReturnCashModal(unspentPurchasingCash) {
+    async function showReturnCashModal() {
+      const unspentPurchasingCash = window.currentUnspentCash || 0;
       if (!unspentPurchasingCash || unspentPurchasingCash <= 0) {
         Swal.fire('ℹ️ No Cash Outstanding', 'Worker does not currently hold any unspent purchasing cash.', 'info');
         return;
