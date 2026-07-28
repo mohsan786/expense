@@ -295,7 +295,7 @@ if (!$employee) {
               <div class="col-md-3 col-6"><input type="number" id="adv-amount" class="form-control form-control-sm" placeholder="Amount"></div>
               <div class="col-md-3 col-6">
                 <select id="adv-paidby" class="form-select form-select-sm">
-                  <option value="business" selected>🏢 Business Funds</option>
+                  <option value="business" selected>🏢 Business Funds</option><option value="split_ratio">&#x1F4B8; Split by Partners (Ratio)</option>
                   <?php foreach ($partners as $p): ?>
                     <option value="<?php echo htmlspecialchars($p['id']); ?>"><?php echo htmlspecialchars($p['name']); ?></option>
                   <?php endforeach; ?>
@@ -372,7 +372,7 @@ if (!$employee) {
               <div class="col-md-3 col-6"><input type="number" id="pcash-amount" class="form-control form-control-sm" placeholder="Amount (e.g. 8000)"></div>
               <div class="col-md-3 col-6">
                 <select id="pcash-paidby" class="form-select form-select-sm">
-                  <option value="business" selected>🏢 Business Funds</option>
+                  <option value="business" selected>🏢 Business Funds</option><option value="split_ratio">&#x1F4B8; Split by Partners (Ratio)</option>
                   <?php foreach ($partners as $p): ?>
                     <option value="<?php echo htmlspecialchars($p['id']); ?>"><?php echo htmlspecialchars($p['name']); ?></option>
                   <?php endforeach; ?>
@@ -930,7 +930,7 @@ if (!$employee) {
         <div class="row g-2 mb-3">
           <div class="col-6"><label class="form-label small mb-1">Pay Date</label><input type="date" id="pay-date" class="form-control form-control-sm" value="<?php echo date('Y-m-d'); ?>"></div>
           <div class="col-6"><label class="form-label small mb-1">Custom Wage Override</label><input type="number" id="pay-amount" class="form-control form-control-sm" placeholder="${suggestedWage}"></div>
-          <div class="col-12"><label class="form-label small mb-1">Paid By Partner</label><select id="pay-paidby" class="form-select form-select-sm">${partners.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</select></div>
+          <div class="col-12"><label class="form-label small mb-1">Paid By Partner</label><select id="pay-paidby" class="form-select form-select-sm"><option value="business">&#x1F4BC; Business Funds</option><option value="split_ratio">&#x1F4B8; Split by Partners (Ratio)</option>${partners.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</select></div>
           <div class="col-12"><label class="form-label small mb-1">Payment Note</label><input id="pay-note" class="form-control form-control-sm" placeholder="e.g. Weekly payday salary"></div>
         </div>
 
@@ -1037,7 +1037,7 @@ if (!$employee) {
             <div>
               <label style="font-size:12px;font-weight:600;">Paid By / Source</label>
               <select id="swal-adv-paidby" class="swal2-input" style="margin:4px 0 0 0;width:100%;">
-                <option value="business" ${adv.paidBy === 'business' || !adv.paidBy ? 'selected' : ''}>🏢 Business Funds (Shared by Ratio)</option>
+                <option value="business" ${adv.paidBy === 'business' || !adv.paidBy ? 'selected' : ''}>🏢 Business Funds (Shared by Ratio)</option><option value="split_ratio">&#x1F4B8; Split by Partners (Ratio)</option>
                 ${partnerOptions}
               </select>
             </div>
@@ -1227,7 +1227,7 @@ if (!$employee) {
             <div>
               <label style="font-size:12px;font-weight:600;">Paid By / Source</label>
               <select id="swal-edit-pcash-paidby" class="swal2-input" style="margin:4px 0 0 0;width:100%;">
-                <option value="business" ${item.paidBy === 'business' || !item.paidBy ? 'selected' : ''}>🏢 Business Funds</option>
+                <option value="business" ${item.paidBy === 'business' || !item.paidBy ? 'selected' : ''}>🏢 Business Funds</option><option value="split_ratio">&#x1F4B8; Split by Partners (Ratio)</option>
                 ${partnerOptions}
               </select>
             </div>
@@ -1558,7 +1558,7 @@ if (!$employee) {
             <div><label style="font-size:12px;font-weight:600;">Joining Advance (Peshgi Amount)</label><input id="swal-emp-joining-adv" type="number" class="swal2-input" value="${emp.joiningAdvance||0}" style="margin:4px 0 0 0;width:100%;"></div>
             <div><label style="font-size:12px;font-weight:600;">Peshgi Paid Source (Given By)</label>
               <select id="swal-emp-joining-paidby" class="swal2-input" style="margin:4px 0 0 0;width:100%;">
-                <option value="business" ${(emp.joiningPaidBy||'business')==='business'?'selected':''}>🏢 Business Funds (Shared by Ratio)</option>
+                <option value="business" ${(emp.joiningPaidBy||'business')==='business'?'selected':''}>🏢 Business Funds (Shared by Ratio)</option><option value="split_ratio">&#x1F4B8; Split by Partners (Ratio)</option>
                 ${partnerOptions}
               </select>
             </div>
@@ -1802,3 +1802,4 @@ if (!$employee) {
   </script>
 </body>
 </html>
+

@@ -265,7 +265,7 @@ if (!$vendor) {
             <div class="col-6"><label class="form-label small mb-1">Payment Date</label><input type="date" id="vpay-date" class="form-control form-control-sm" value="<?php echo date('Y-m-d'); ?>"></div>
             <div class="col-6"><label class="form-label small mb-1">Amount Paid *</label><input type="number" id="vpay-amount" class="form-control form-control-sm" placeholder="Amount"></div>
             <div class="col-12"><label class="form-label small mb-1">Paid By Partner</label>
-              <select id="vpay-paidby" class="form-select form-select-sm">
+              <select id="vpay-paidby" class="form-select form-select-sm"><option value="business">&#x1F4BC; Business Funds (Shared by Ratio)</option><option value="split_ratio">&#x1F4B8; Split by Partners (Ratio)</option>
                 <?php foreach ($partners as $p): ?>
                   <option value="<?php echo htmlspecialchars($p['id']); ?>">Paid by <?php echo htmlspecialchars($p['name']); ?></option>
                 <?php endforeach; ?>
@@ -644,7 +644,7 @@ if (!$vendor) {
             </div>
             <div>
               <label style="font-size:12px;font-weight:600;">Paid By Partner</label>
-              <select id="swal-vpay-paidby" class="swal2-input" style="margin:4px 0 0 0;width:100%;">
+              <select id="swal-vpay-paidby" class="swal2-input" style="margin:4px 0 0 0;width:100%;"><option value="business">&#x1F4BC; Business Funds (Shared by Ratio)</option><option value="split_ratio">&#x1F4B8; Split by Partners (Ratio)</option>
                 ${partnerOptions}
               </select>
             </div>
@@ -688,3 +688,4 @@ if (!$vendor) {
   </script>
 </body>
 </html>
+

@@ -91,3 +91,4 @@ function save_ledger_data($data) {
     $stmt = $pdo->prepare("INSERT INTO ledger_store (key_name, data_value) VALUES ('main', ?) ON DUPLICATE KEY UPDATE data_value = VALUES(data_value)");
     return $stmt->execute([$json]);
 }
+

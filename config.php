@@ -28,3 +28,4 @@ function require_auth() {
         exit;
     }
 }
+

@@ -775,7 +775,7 @@ async function showEditEmployeeModal(id) {
       `<div><label style="font-size:12px;font-weight:600;">Weekly Rate (if applicable)</label><input id="swal-emp-weekly" type="number" class="swal2-input" value="${emp.weeklyRate||0}" style="margin:4px 0 0 0;width:100%;"></div>` +
       `<div><label style="font-size:12px;font-weight:600;">Monthly Base Rate (if applicable)</label><input id="swal-emp-monthly" type="number" class="swal2-input" value="${emp.monthlyRate||0}" style="margin:4px 0 0 0;width:100%;"></div>` +
       `<div><label style="font-size:12px;font-weight:600;">Joining Advance / Peshgi Amount</label><input id="swal-emp-joining-adv" type="number" class="swal2-input" value="${emp.joiningAdvance||0}" style="margin:4px 0 0 0;width:100%;"></div>` +
-      `<div><label style="font-size:12px;font-weight:600;">Peshgi Paid Source</label><select id="swal-emp-joining-paidby" class="swal2-input" style="margin:4px 0 0 0;width:100%;"><option value="business" ${(emp.joiningPaidBy||'business')==='business'?'selected':''}>🏢 Business Funds (Shared by Ratio)</option>${partners.map(p=>`<option value="${p.id}" ${emp.joiningPaidBy===p.id?'selected':''}>Given by ${esc(p.name)} individually</option>`).join("")}</select></div>` +
+      `<div><label style="font-size:12px;font-weight:600;">Peshgi Paid Source</label><select id="swal-emp-joining-paidby" class="swal2-input" style="margin:4px 0 0 0;width:100%;"><option value="business" ${(emp.joiningPaidBy||'business')==='business'?'selected':''}>🏢 Business Funds (Shared by Ratio)</option><option value="split_ratio">&#x1F4B8; Split by Partners (Ratio)</option>${partners.map(p=>`<option value="${p.id}" ${emp.joiningPaidBy===p.id?'selected':''}>Given by ${esc(p.name)} individually</option>`).join("")}</select></div>` +
       `<div><label style="font-size:12px;font-weight:600;">Peshgi Outflow Type</label><select id="swal-emp-joining-isopening" class="swal2-input" style="margin:4px 0 0 0;width:100%;"><option value="true" ${isOpeningCurrent?'selected':''}>⏳ Opening / Pre-existing Advance (Exclude from current Outflows)</option><option value="false" ${!isOpeningCurrent?'selected':''}>💸 Current Outflow (Paid out during active period)</option></select></div>` +
       `<div><label style="font-size:12px;font-weight:600;">Working Days / Cycle (6/wk or 26/mo)</label><input id="swal-emp-workdays" type="number" class="swal2-input" value="${emp.workingDays||(emp.type==='monthly'?26:6)}" style="margin:4px 0 0 0;width:100%;"></div>` +
       `</div>`,
@@ -1448,10 +1448,38 @@ function partnerStats() {
   const np = netProfit();
   return state.config.partners.map(p => {
     const opCap = Number(p.openingCapital || 0);
-    const expPaid = state.expenses.filter(x => x.paidBy === p.id).reduce((s, x) => s + Number(x.amount || 0), 0);
-    const salPaid = state.salaryPayments.filter(x => x.paidBy === p.id).reduce((s, x) => s + Number(x.amount || 0) + Number(x.reimbursedAmount || 0), 0);
-    const advPaid = state.advances.filter(x => x.paidBy === p.id && !isOpeningAdv(x)).reduce((s, x) => s + Number(x.amount || 0), 0);
-    const vendPaid = state.vendorPayments.filter(x => x.paidBy === p.id).reduce((s, x) => s + Number(x.amount || 0), 0);
+    const pRatio = Number(p.ratio || 0);
+    const getShare = (amt) => (tr > 0 ? (amt * pRatio / tr) : 0);
+
+    const expPaid = state.expenses.reduce((s, x) => {
+      let a = Number(x.amount || 0);
+      if (x.paidBy === p.id) return s + a;
+      if (x.paidBy === 'split_ratio') return s + getShare(a);
+      return s;
+    }, 0);
+    
+    const salPaid = state.salaryPayments.reduce((s, x) => {
+      let a = Number(x.amount || 0) + Number(x.reimbursedAmount || 0);
+      if (x.paidBy === p.id) return s + a;
+      if (x.paidBy === 'split_ratio') return s + getShare(a);
+      return s;
+    }, 0);
+
+    const advPaid = state.advances.reduce((s, x) => {
+      if (isOpeningAdv(x)) return s;
+      let a = Number(x.amount || 0);
+      if (x.paidBy === p.id) return s + a;
+      if (x.paidBy === 'split_ratio') return s + getShare(a);
+      return s;
+    }, 0);
+
+    const vendPaid = state.vendorPayments.reduce((s, x) => {
+      let a = Number(x.amount || 0);
+      if (x.paidBy === p.id) return s + a;
+      if (x.paidBy === 'split_ratio') return s + getShare(a);
+      return s;
+    }, 0);
+
     const paid = opCap + expPaid + salPaid + advPaid + vendPaid;
     const received = state.income.reduce((s, sale) => {
       const pms = getSalePayments(sale);
@@ -2056,7 +2084,7 @@ async function showAddExpenseModal() {
   const partners = state.config.partners;
   const employees = state.config.employees;
   const categories = ["Raw Materials", "Factory Rent", "Shop Rent", "Utilities / Bills", "Packaging", "Worker Food & Tea", "Machinery & Repairs", "Transport", "Miscellaneous"];
-  const optionsPayer = `
+  const optionsPayer = <optgroup label="Business Funds"><option value="business">&#x1F4BC; Business Funds</option><option value="split_ratio">&#x1F4B8; Split by Partners (Ratio)</option></optgroup>
     <optgroup label="Partner">${partners.map(p=>`<option value="partner:${p.id}">${esc(p.name)}</option>`).join("")}</optgroup>
     ${employees.length ? `<optgroup label="Employee (reimbursable)">${employees.map(emp=>`<option value="employee:${emp.id}">${esc(emp.name)}</option>`).join("")}</optgroup>` : ""}
   `;
@@ -2249,7 +2277,7 @@ function renderEmployees() {
         </div>
         <div class="col-md-6 col-12 mt-2">
           <select class="form-select" id="new-emp-joining-paidby">
-            <option value="business" selected>🏢 Business Funds (Shared by Ratio)</option>
+            <option value="business" selected>🏢 Business Funds (Shared by Ratio)</option><option value="split_ratio">&#x1F4B8; Split by Partners (Ratio)</option>
             ${partners.map(p=>`<option value="${p.id}">Peshgi Given By ${esc(p.name)} individually</option>`).join("")}
           </select>
         </div>
@@ -3568,3 +3596,4 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
