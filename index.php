@@ -2354,6 +2354,7 @@ function renderEmployeeCard(emp, partners) {
   const attLogs = empAttendanceLogs(emp.id);
   const unsettledAbs = empUnsettledAbsences(emp.id);
   const absenceDeductionVal = empAbsenceDeduction(emp);
+  const outstandingAdv = empOutstandingAdvance(emp.id);
   const totalEarned = workLogs.reduce((s, w) => s + w.amount, 0);
   const totalWagePaid = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
   const empAdvs = advances.filter(a => a.employeeId === emp.id);
