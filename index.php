@@ -499,7 +499,125 @@ header("Expires: 0");
     body { background: #fff !important; }
     .panel { box-shadow: none !important; border: 1px solid #ccc !important; page-break-inside: avoid; }
   }
+
+  /* Dark Mode Variables & Transitions */
+  :root {
+    --transition-speed: 0.3s;
+  }
+  
+  [data-theme="dark"] {
+    --paper: #0F172A;
+    --ink: #F8FAFC;
+    --rule: #1E293B;
+    --panel: #1E293B;
+    --muted: #94A3B8;
+    --accent: #3B82F6;
+  }
+  
+  [data-theme="dark"] body {
+    background-color: var(--paper);
+    color: var(--ink);
+  }
+  
+  [data-theme="dark"] .app-sidebar, [data-theme="dark"] .navbar-custom {
+    background-color: var(--panel);
+    border-color: var(--rule);
+    color: var(--ink);
+  }
+  
+  [data-theme="dark"] .app-topbar {
+    background-color: var(--panel);
+    border-color: var(--rule);
+  }
+  
+  [data-theme="dark"] .topbar-title, [data-theme="dark"] .brand-title {
+    color: var(--ink);
+  }
+  
+  [data-theme="dark"] .sidebar-item {
+    color: var(--muted);
+  }
+  
+  [data-theme="dark"] .sidebar-item:hover {
+    background-color: var(--rule);
+    color: var(--ink);
+  }
+  
+  [data-theme="dark"] .panel, [data-theme="dark"] .kpi-card, [data-theme="dark"] .content-panel {
+    background-color: var(--panel);
+    border-color: var(--rule);
+    color: var(--ink);
+  }
+  
+  [data-theme="dark"] .kpi-value {
+    color: var(--ink);
+  }
+  
+  [data-theme="dark"] .table {
+    color: var(--ink);
+    border-color: var(--rule);
+  }
+  
+  [data-theme="dark"] .table th {
+    background-color: #0F172A;
+    color: var(--muted);
+    border-color: var(--rule);
+  }
+  
+  [data-theme="dark"] .table td {
+    background-color: var(--panel);
+    border-color: var(--rule);
+  }
+
+  [data-theme="dark"] .modal-content, [data-theme="dark"] .swal2-popup {
+    background-color: var(--panel);
+    color: var(--ink);
+  }
+
+  [data-theme="dark"] .form-control, [data-theme="dark"] .form-select, [data-theme="dark"] .swal2-input {
+    background-color: #0F172A;
+    border-color: var(--rule);
+    color: var(--ink);
+  }
+
+  [data-theme="dark"] .form-control:focus, [data-theme="dark"] .form-select:focus {
+    background-color: #0F172A;
+    color: var(--ink);
+  }
+
+  /* Smooth Transitions */
+  * {
+    transition: background-color var(--transition-speed), border-color var(--transition-speed), color var(--transition-speed);
+  }
+
+  .sidebar-item, .btn, .icon-btn {
+    transition: all 0.2s;
+  }
 </style>
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    function initTheme() {
+      const theme = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+    initTheme();
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+    }
+    
+    // Override render to always create icons
+    if (typeof render === 'function') {
+      const origRender = render;
+      render = function() {
+        origRender.apply(this, arguments);
+        lucide.createIcons();
+      };
+    }
+  </script>
 </head>
 <body>
 
@@ -572,7 +690,7 @@ async function showEditExpenseModal(id) {
     ${employees.length ? `<optgroup label="Employee (reimbursable)">${employees.map(emp=>`<option value="employee:${emp.id}" ${payerVal==='employee:'+emp.id?'selected':''}>${esc(emp.name)}</option>`).join("")}</optgroup>` : ""}
   `;
   const { value: formValues } = await Swal.fire({
-    title: '✏️ Edit Expense Record',
+    title: '<i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Edit Expense Record',
     html: `
       <div class="text-start d-flex flex-column gap-2">
         <div><label class="form-label fw-bold small text-dark mb-1">Date</label><input id="swal-exp-date" class="form-control" type="date" value="${e.date||today()}"></div>
@@ -627,7 +745,7 @@ async function showEditIncomeModal(id) {
     ${employees.length ? `<optgroup label="Worker (holding cash)">${employees.map(emp=>`<option value="employee:${emp.id}" ${receiverVal==='employee:'+emp.id?'selected':''}>${esc(emp.name)}</option>`).join("")}</optgroup>` : ""}
   `;
   const { value: formValues } = await Swal.fire({
-    title: '✏️ Edit Sale Record',
+    title: '<i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Edit Sale Record',
     html: `
       <div class="text-start d-flex flex-column gap-2">
         <div><label class="form-label fw-bold small text-dark mb-1">Date</label><input id="swal-inc-date" class="form-control" type="date" value="${e.date||today()}"></div>
@@ -754,7 +872,7 @@ async function showReceiveIncomePaymentModal(id) {
         note: formValues.note
       });
     });
-    toast('💵 Payment collected successfully!');
+    toast('<i data-lucide="banknote" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Payment collected successfully!');
   }
 }
 
@@ -1111,7 +1229,7 @@ function addWorkItem() {
   document.getElementById('wi-rate').value = '';
   document.getElementById('wi-unit').value = '';
   document.getElementById('wi-desc').value = '';
-  Swal.fire({ toast: true, icon: 'success', title: `✅ Work item "${name}" added!`, timer: 1800, showConfirmButton: false, position: 'top-end' });
+  Swal.fire({ toast: true, icon: 'success', title: `<i data-lucide="check-circle" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Work item "${name}" added!`, timer: 1800, showConfirmButton: false, position: 'top-end' });
 }
 
 async function deleteWorkItem(wiId) {
@@ -1127,7 +1245,7 @@ async function editWorkItem(wiId) {
   if (!wi) return;
 
   const { value: form } = await Swal.fire({
-    title: '✏️ Edit Work Item',
+    title: '<i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Edit Work Item',
     html: `
       <div style="text-align:left;display:flex;flex-direction:column;gap:10px;">
         <div>
@@ -1156,8 +1274,8 @@ async function editWorkItem(wiId) {
       const rate = Number(document.getElementById('swl-wi-rate').value);
       const unit = document.getElementById('swl-wi-unit').value.trim() || 'piece';
       const desc = document.getElementById('swl-wi-desc').value.trim();
-      if (!name) { Swal.showValidationMessage('⚠️ Item name is required'); return false; }
-      if (!rate || rate <= 0) { Swal.showValidationMessage('⚠️ Rate must be greater than zero'); return false; }
+      if (!name) { Swal.showValidationMessage('<i data-lucide="alert-triangle" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Item name is required'); return false; }
+      if (!rate || rate <= 0) { Swal.showValidationMessage('<i data-lucide="alert-triangle" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Rate must be greater than zero'); return false; }
       return { name, rate, unit, desc };
     }
   });
@@ -1172,7 +1290,7 @@ async function editWorkItem(wiId) {
         item.description = form.desc;
       }
     });
-    Swal.fire({ toast: true, icon: 'success', title: `✅ "${form.name}" updated!`, text: `New rate: ${fmt(form.rate)} / ${form.unit}`, timer: 2500, showConfirmButton: false, position: 'top-end' });
+    Swal.fire({ toast: true, icon: 'success', title: `<i data-lucide="check-circle" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> "${form.name}" updated!`, text: `New rate: ${fmt(form.rate)} / ${form.unit}`, timer: 2500, showConfirmButton: false, position: 'top-end' });
   }
 }
 
@@ -1226,7 +1344,7 @@ async function quickSaveWorkLog(empId, safeId) {
   const totEl = document.getElementById('qwl-total-' + safeId);
   if (totEl) totEl.textContent = 'Rs.0.00';
 
-  Swal.fire({ toast: true, icon: 'success', title: `🔨 Work log saved! (${fmt(quantity * unitPrice)})`, timer: 2000, showConfirmButton: false, position: 'top-end' });
+  Swal.fire({ toast: true, icon: 'success', title: `<i data-lucide="hammer" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Work log saved! (${fmt(quantity * unitPrice)})`, timer: 2000, showConfirmButton: false, position: 'top-end' });
 }
 
 async function quickDeleteWorkLog(wlId) {
@@ -1247,7 +1365,7 @@ async function editWorkLog(wlId) {
   ).join('');
 
   const { value: formValues } = await Swal.fire({
-    title: '✏️ Edit Work Production Entry',
+    title: '<i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Edit Work Production Entry',
     html: `
       <div style="text-align:left;display:flex;flex-direction:column;gap:10px;">
         <div>
@@ -1328,10 +1446,10 @@ async function editWorkLog(wlId) {
 }
 
 function getPaymentMethodLabel(pm) {
-  if (pm === 'bank') return '🏦 Bank';
+  if (pm === 'bank') return '<i data-lucide="landmark" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Bank';
   if (pm === 'wallet') return '📱 Mobile Wallet';
   if (pm === 'card') return '💳 Card';
-  return '💵 Cash';
+  return '<i data-lucide="banknote" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Cash';
 }
 
 function showReceiptModal(expenseId) {
@@ -1564,7 +1682,7 @@ function renderHeader() {
         <button class="btn btn-dark btn-sm text-white border px-3 fw-bold" data-act="toggle-mobile-nav">☰ Menu</button>
         <span class="fw-bold fs-5 text-white">Velto LS</span>
       </div>
-      <button class="btn btn-sm btn-light fw-bold" data-act="quick-add-modal">⚡ Quick</button>
+      <button class="btn btn-sm btn-light fw-bold" data-act="quick-add-modal"><i data-lucide="zap" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Quick</button>
     </div>
     <header class="app-topbar">
       <div>
@@ -1572,10 +1690,10 @@ function renderHeader() {
         <p class="topbar-sub">${getTabSubtitle(state.tab)}</p>
       </div>
       <div style="display:flex;align-items:center;gap:12px;">
-        <button class="quick-act-btn" data-act="quick-add-modal">⚡ Quick Add</button>
+        <button class="quick-act-btn" data-act="quick-add-modal"><i data-lucide="zap" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Quick Add</button>
       </div>
     </header>
-    ${state.saveErr ? `<div class="alert alert-danger py-2 px-3 mb-3 small" style="border-radius:10px;">⚠️ Couldn't connect to MySQL database just now. Check database configuration.</div>` : ""}
+    ${state.saveErr ? `<div class="alert alert-danger py-2 px-3 mb-3 small" style="border-radius:10px;"><i data-lucide="alert-triangle" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Couldn't connect to MySQL database just now. Check database configuration.</div>` : ""}
   `;
 }
 
@@ -1606,13 +1724,13 @@ function getTabSubtitle(tab) {
 function renderTabs() {
   const items = [
     ["overview", "🏠 Dashboard"],
-    ["income", "💵 Income"],
+    ["income", "<i data-lucide="banknote" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Income"],
     ["expenses", "💸 Expenses"],
-    ["employees", "👥 Employees"],
-    ["vendors", "📦 Vendors"],
+    ["employees", "<i data-lucide="users" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Employees"],
+    ["vendors", "<i data-lucide="package" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Vendors"],
     ["customers", "👤 Customers"],
     ["reports", "📊 Reports"],
-    ["settings", "⚙️ Settings"]
+    ["settings", "<i data-lucide="settings" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Settings"]
   ];
   return `
     <div class="sidebar-backdrop ${state.mobileNav ? 'show' : ''}" data-act="close-mobile-nav"></div>
@@ -1634,8 +1752,9 @@ function renderTabs() {
           </button>
         `).join("")}
       </nav>
-      <div class="sidebar-footer">
-        <button class="logout-btn" data-act="logout">🔒 Lock / Exit</button>
+      <div class="sidebar-footer" style="display:flex;gap:8px;">
+        <button class="logout-btn" onclick="toggleTheme()" title="Toggle Dark/Light Mode" style="width:40px;padding:9px 0;display:flex;align-items:center;justify-content:center;"><i data-lucide="moon"></i></button>
+        <button class="logout-btn" data-act="logout" style="flex:1;">🔒 Lock / Exit</button>
       </div>
     </aside>
   `;
@@ -1702,17 +1821,17 @@ function renderCustomers() {
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
           <div class="d-flex align-items-center gap-2 flex-wrap">
             <span class="serif strong" style="font-size:16px;">${esc(c.name)}</span>
-            ${c.phone ? `<span class="muted small">📞 ${esc(c.phone)}</span>` : ""}
+            ${c.phone ? `<span class="muted small"><i data-lucide="phone" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> ${esc(c.phone)}</span>` : ""}
             ${c.address ? `<span class="badge bg-light text-dark border">📍 ${esc(c.address)}</span>` : ""}
             <span class="badge bg-light text-dark border">— ${custSales.length} order${custSales.length !== 1 ? 's' : ''} (${fmt(totalOrd)})</span>
           </div>
           <div class="d-flex align-items-center gap-2 flex-wrap">
             ${pendingDue > 0.005 ? `<span class="mono small strong text-danger">Due ${fmt(pendingDue)}</span>` : `<span class="mono small strong text-success">settled</span>`}
             
-            <a href="customer_detail.php?id=${c.id}" class="btn btn-sm btn-dark fw-bold px-3 py-1" style="font-size:12px;" title="View Customer Sales & Receivables">👁️ View Details</a>
+            <a href="customer_detail.php?id=${c.id}" class="btn btn-sm btn-dark fw-bold px-3 py-1" style="font-size:12px;" title="View Customer Sales & Receivables"><i data-lucide="eye" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> View Details</a>
             ${c.phone ? `<button class="btn btn-sm btn-success fw-bold px-2 py-1" style="font-size:12px;" data-act="wa-direct" data-phone="${esc(c.phone)}" data-name="${esc(c.name)}" data-due="${pendingDue}" title="Send WhatsApp Statement">📱 WA</button>` : ''}
-            <button class="icon-btn" data-act="edit-customer" data-id="${c.id}" title="Edit Customer">✏️</button>
-            <button class="icon-btn" data-act="delete-customer" data-id="${c.id}" style="color:var(--rust);" title="Delete Customer">🗑️</button>
+            <button class="icon-btn" data-act="edit-customer" data-id="${c.id}" title="Edit Customer"><i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
+            <button class="icon-btn" data-act="delete-customer" data-id="${c.id}" style="color:var(--rust);" title="Delete Customer"><i data-lucide="trash-2" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
           </div>
         </div>
       </div>
@@ -1757,7 +1876,7 @@ function renderOverview() {
     const amount = Math.abs(creditor.balance);
     if (amount > 0.005) {
       settlementHtml = `<div class="settle-box" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-        <div>💵 <strong>${esc(debtor.name)}</strong> owes <strong>${esc(creditor.name)}</strong> <span class="mono strong">${fmt(amount)}</span> to even out the ${state.config.partners.map(p=>p.ratio).join(":")} split.</div>
+        <div><i data-lucide="banknote" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> <strong>${esc(debtor.name)}</strong> owes <strong>${esc(creditor.name)}</strong> <span class="mono strong">${fmt(amount)}</span> to even out the ${state.config.partners.map(p=>p.ratio).join(":")} split.</div>
         <button class="btn btn-sm btn-dark fw-bold" data-act="add-transfer">💱 Settle Funds</button>
       </div>`;
     } else {
@@ -1776,7 +1895,7 @@ function renderOverview() {
         <span class="mono muted small" style="background:#F1F5F9;padding:2px 8px;border-radius:6px;">Ratio ${p.ratio} (${Math.round((p.ratio/tr)*100)}%)</span>
       </div>
       <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">
-        <button class="btn btn-sm btn-outline-dark" style="font-size:11px;padding:3px 8px;" data-act="add-drawing" data-id="${p.id}">💰 Log Personal Drawing</button>
+        <button class="btn btn-sm btn-outline-dark" style="font-size:11px;padding:3px 8px;" data-act="add-drawing" data-id="${p.id}"><i data-lucide="circle-dollar-sign" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Log Personal Drawing</button>
       </div>
       ${p.opCap > 0 ? `<div class="muted small" style="margin-top:6px">Starting capital: <span class="mono strong gold">${fmt(p.opCap)}</span></div>` : ''}
       <div class="stat-mini-grid" style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
@@ -1807,7 +1926,7 @@ function renderOverview() {
   return `
     <div class="kpi-grid">
       <div class="kpi-card kpi-income">
-        <div class="kpi-icon">📈</div>
+        <div class="kpi-icon"><i data-lucide="trending-up" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></div>
         <div>
           <div class="kpi-label">TOTAL INCOME</div>
           <div class="kpi-value">${fmt(inc)}</div>
@@ -1815,7 +1934,7 @@ function renderOverview() {
         </div>
       </div>
       <div class="kpi-card" style="background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%); color: white;">
-        <div class="kpi-icon">🏦</div>
+        <div class="kpi-icon"><i data-lucide="landmark" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></div>
         <div>
           <div class="kpi-label" style="color: #E0F2FE;">BUSINESS CASH</div>
           <div class="kpi-value" style="color: white;">${fmt(businessCash)}</div>
@@ -1823,7 +1942,7 @@ function renderOverview() {
         </div>
       </div>
       <div class="kpi-card kpi-expense">
-        <div class="kpi-icon">📉</div>
+        <div class="kpi-icon"><i data-lucide="trending-down" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></div>
         <div>
           <div class="kpi-label">TOTAL OUTFLOWS</div>
           <div class="kpi-value">${fmt(out)}</div>
@@ -1831,7 +1950,7 @@ function renderOverview() {
         </div>
       </div>
       <div class="kpi-card kpi-profit">
-        <div class="kpi-icon">💰</div>
+        <div class="kpi-icon"><i data-lucide="circle-dollar-sign" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></div>
         <div>
           <div class="kpi-label">NET PROFIT</div>
           <div class="kpi-value">${fmt(np)}</div>
@@ -1849,13 +1968,13 @@ function renderOverview() {
     </div>
 
     <div style="margin-bottom:16px;">
-      <div class="serif strong" style="font-size:16px;margin-bottom:8px;">👥 Partner Profit &amp; Expense Shares</div>
+      <div class="serif strong" style="font-size:16px;margin-bottom:8px;"><i data-lucide="users" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Partner Profit &amp; Expense Shares</div>
       <div class="grid2">${cards}</div>
     </div>
 
     <div class="panel">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <span class="strong">⚖️ Partner Ratio Split Scale</span>
+        <span class="strong"><i data-lucide="scale" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Partner Ratio Split Scale</span>
         <span class="mono muted small">Ratio Split ${state.config.partners.map(p=>p.ratio).join(":")}</span>
       </div>
       <div class="scale-bar">${scaleSegs}</div>
@@ -1863,7 +1982,7 @@ function renderOverview() {
 
     ${totalVendorOutstanding() > 0.005 ? `
       <div class="panel" style="display:flex;justify-content:space-between;align-items:center;background:#FFFBEB;border:1px solid #FCD34D;">
-        <span class="muted small" style="color:#92400E;font-weight:600;">📦 Owed to Vendors (Credit Material Purchases)</span>
+        <span class="muted small" style="color:#92400E;font-weight:600;"><i data-lucide="package" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Owed to Vendors (Credit Material Purchases)</span>
         <span class="mono strong" style="color:#B45309;font-size:16px;">${fmt(totalVendorOutstanding())}</span>
       </div>
     ` : ""}
@@ -1888,8 +2007,8 @@ function renderTransferLogs() {
       <div><strong>${getPartnerName(t.fromPartnerId)}</strong> paid <strong>${getPartnerName(t.toPartnerId)}</strong>${t.note ? ` <span class="text-muted">(${esc(t.note)})</span>` : ''}</div>
       <div class="mono strong">${fmt(t.amount)}</div>
       <div style="text-align:right;">
-        <button class="icon-btn" data-act="edit-transfer" data-id="${t.id}" title="Edit Transfer">✏️</button>
-        <button class="icon-btn" data-act="delete-transfer" data-id="${t.id}" title="Delete Transfer" style="color:var(--rust)">🗑️</button>
+        <button class="icon-btn" data-act="edit-transfer" data-id="${t.id}" title="Edit Transfer"><i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
+        <button class="icon-btn" data-act="delete-transfer" data-id="${t.id}" title="Delete Transfer" style="color:var(--rust)"><i data-lucide="trash-2" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
       </div>
     </div>
   `).join("");
@@ -1919,15 +2038,15 @@ function renderDrawingLogs() {
       <div><strong>${getPartnerName(d.partnerId)}</strong> withdrew personal drawing${d.note ? ` <span class="text-muted">(${esc(d.note)})</span>` : ''}</div>
       <div class="mono strong text-danger">-${fmt(d.amount)}</div>
       <div style="text-align:right;">
-        <button class="icon-btn" data-act="edit-drawing" data-id="${d.id}" title="Edit Drawing">✏️</button>
-        <button class="icon-btn" data-act="delete-drawing" data-id="${d.id}" title="Delete Drawing" style="color:var(--rust)">🗑️</button>
+        <button class="icon-btn" data-act="edit-drawing" data-id="${d.id}" title="Edit Drawing"><i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
+        <button class="icon-btn" data-act="delete-drawing" data-id="${d.id}" title="Delete Drawing" style="color:var(--rust)"><i data-lucide="trash-2" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
       </div>
     </div>
   `).join("");
 
   return `
     <div class="panel mt-4" style="background:#FEF2F2;border-color:#FCA5A5;">
-      <div class="serif strong mb-3" style="color:#991B1B;">💰 Recent Personal Partner Drawings</div>
+      <div class="serif strong mb-3" style="color:#991B1B;"><i data-lucide="circle-dollar-sign" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Recent Personal Partner Drawings</div>
       <div class="table-container">
         ${rows}
       </div>
@@ -1967,10 +2086,10 @@ async function showAddSaleModal() {
     <optgroup label="Partner">${partners.map(p=>`<option value="partner:${p.id}">${esc(p.name)}</option>`).join("")}</optgroup>
     ${employees.length ? `<optgroup label="Worker (owes it back)">${employees.map(e=>`<option value="employee:${e.id}">${esc(e.name)}</option>`).join("")}</optgroup>` : ""}
   `;
-  const customerOptions = `<option value="">-- Select Existing Customer (Optional) --</option><option value="__new__">➕ + Create New Customer Profile...</option>${(state.config.customers||[]).map(c=>`<option value="${c.id}">${esc(c.name)}${c.phone?` (${esc(c.phone)})`:''}${c.address?` — ${esc(c.address)}`:''}</option>`).join("")}`;
+  const customerOptions = `<option value="">-- Select Existing Customer (Optional) --</option><option value="__new__"><i data-lucide="plus" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> + Create New Customer Profile...</option>${(state.config.customers||[]).map(c=>`<option value="${c.id}">${esc(c.name)}${c.phone?` (${esc(c.phone)})`:''}${c.address?` — ${esc(c.address)}`:''}</option>`).join("")}`;
 
   const { value: formValues } = await Swal.fire({
-    title: '💵 Log New Sale',
+    title: '<i data-lucide="banknote" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Log New Sale',
     html: `
       <div class="text-start d-flex flex-column gap-2">
         <div class="row g-2">
@@ -2008,7 +2127,7 @@ async function showAddSaleModal() {
           </select>
         </div>
         <div id="swal-new-cust-fields" style="display:none;" class="p-2 border rounded bg-light">
-          <div class="fw-bold small mb-1 text-dark">➕ Create New Customer Profile</div>
+          <div class="fw-bold small mb-1 text-dark"><i data-lucide="plus" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Create New Customer Profile</div>
           <div class="row g-2">
             <div class="col-6"><input id="swal-new-cust-name" class="form-control form-control-sm" placeholder="Customer Name *"></div>
             <div class="col-6"><input id="swal-new-cust-phone" class="form-control form-control-sm" placeholder="WhatsApp / Phone"></div>
@@ -2099,7 +2218,7 @@ async function showAddSaleModal() {
       ]
     };
     mutate(() => state.income.unshift(entry));
-    toast(formValues.paidAmount < formValues.totalAmount ? "💵 Advance sale logged!" : "🎉 Sale logged successfully!");
+    toast(formValues.paidAmount < formValues.totalAmount ? "<i data-lucide="banknote" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Advance sale logged!" : "🎉 Sale logged successfully!");
   }
 }
 
@@ -2156,9 +2275,9 @@ function renderIncome() {
       <div class="small">${uniqueReceivers}</div>
       <div style="display:flex;align-items:center;gap:4px;justify-content:flex-end">
         <button class="btn btn-sm btn-outline-dark fw-semibold" style="padding:2px 6px;font-size:11.5px;" data-act="wa-sale" data-id="${e.id}" title="Send WhatsApp Payment Reminder">📲 WA</button>
-        ${balance > 0 ? `<button class="btn btn-sm btn-outline-success fw-semibold" style="padding:2px 6px;font-size:11.5px;" data-act="pay-income-balance" data-id="${e.id}" title="Collect Remaining Payment">💵 Pay</button>` : ''}
-        <button class="icon-btn" data-act="edit-income" data-id="${e.id}" title="Edit Sale">✏️</button>
-        <button class="icon-btn" data-act="delete-income" data-id="${e.id}" title="Delete Sale" style="color:var(--rust)">🗑️</button>
+        ${balance > 0 ? `<button class="btn btn-sm btn-outline-success fw-semibold" style="padding:2px 6px;font-size:11.5px;" data-act="pay-income-balance" data-id="${e.id}" title="Collect Remaining Payment"><i data-lucide="banknote" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Pay</button>` : ''}
+        <button class="icon-btn" data-act="edit-income" data-id="${e.id}" title="Edit Sale"><i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
+        <button class="icon-btn" data-act="delete-income" data-id="${e.id}" title="Delete Sale" style="color:var(--rust)"><i data-lucide="trash-2" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
       </div>
     </div>`;
   }).join("");
@@ -2186,7 +2305,7 @@ async function showAddDrawingModal(partnerId) {
   const p = state.config.partners.find(x => x.id === partnerId);
   if (!p) return;
   const { value: formValues } = await Swal.fire({
-    title: '💰 Log Personal Drawing',
+    title: '<i data-lucide="circle-dollar-sign" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Log Personal Drawing',
     html:
       `<div style="text-align:left;display:flex;flex-direction:column;gap:10px;">` +
       `<div><label style="font-size:12px;font-weight:600;">Date</label><input id="swal-draw-date" class="swal2-input" type="date" value="${today()}" style="margin:4px 0 0 0;width:100%;"></div>` +
@@ -2227,7 +2346,7 @@ async function showEditDrawingModal(id) {
   if (!drawing) return;
 
   const { value: formValues } = await Swal.fire({
-    title: '✏️ Edit Partner Drawing',
+    title: '<i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Edit Partner Drawing',
     html: `
       <div style="text-align:left;display:flex;flex-direction:column;gap:10px;">
         <div><label style="font-size:12px;font-weight:600;">Date</label><input id="swal-draw-date" type="date" class="swal2-input" value="${esc(drawing.date)}" style="margin:4px 0 0 0;width:100%;"></div>
@@ -2275,7 +2394,7 @@ async function showHandoverCashModal(empId) {
   const partnerOptions = `<option value="business">🏢 Business Funds</option>` + partners.map(p => `<option value="${p.id}">👤 ${esc(p.name)}</option>`).join('');
 
   const { value: formValues } = await Swal.fire({
-    title: '🤝 Handover Held Cash',
+    title: '<i data-lucide="handshake" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Handover Held Cash',
     html:
       `<div style="text-align:left;display:flex;flex-direction:column;gap:10px;">` +
       `<div style="background:#F1F5F9;padding:10px 12px;border-radius:6px;font-size:13px;" class="mono">` +
@@ -2329,7 +2448,7 @@ async function showHandoverCashModal(empId) {
         }
       });
     });
-    toast('🤝 Cash handover recorded successfully!');
+    toast('<i data-lucide="handshake" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Cash handover recorded successfully!');
   }
 }
 
@@ -2414,7 +2533,7 @@ async function showEditTransferModal(id) {
   const pOptionsTo = partners.map(p => `<option value="${p.id}" ${p.id === tr.toPartnerId ? 'selected' : ''}>${esc(p.name)}</option>`).join("");
   
   const { value: formValues } = await Swal.fire({
-    title: '✏️ Edit Partner Transfer',
+    title: '<i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Edit Partner Transfer',
     html: `
       <div class="text-start d-flex flex-column gap-2">
         <div>
@@ -2633,8 +2752,8 @@ function renderExpenses() {
       <div class="small">${payerLabel} ${tag}</div>
       <div style="display:flex;align-items:center;gap:4px;justify-content:flex-end">
         ${e.receiptUrl ? `<button class="icon-btn" data-act="view-receipt" data-id="${e.id}" title="View Attached Receipt Bill">🧾</button>` : ''}
-        <button class="icon-btn" data-act="edit-expense" data-id="${e.id}" title="Edit Expense">✏️</button>
-        <button class="icon-btn" data-act="delete-expense" data-id="${e.id}" title="Delete Expense" style="color:var(--rust)">🗑️</button>
+        <button class="icon-btn" data-act="edit-expense" data-id="${e.id}" title="Edit Expense"><i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
+        <button class="icon-btn" data-act="delete-expense" data-id="${e.id}" title="Delete Expense" style="color:var(--rust)"><i data-lucide="trash-2" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
       </div>
     </div>`;
   }).join("");
@@ -2670,8 +2789,8 @@ function renderEmployees() {
         ${wi.description ? `<span class="text-muted small">${esc(wi.description)}</span>` : ''}
       </div>
       <div class="d-flex gap-1">
-        <button class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:11px;" onclick="editWorkItem('${wi.id}')" title="Edit Item">✏️ Edit</button>
-        <button class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:11px;" onclick="deleteWorkItem('${wi.id}')" title="Delete Item">🗑️</button>
+        <button class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:11px;" onclick="editWorkItem('${wi.id}')" title="Edit Item"><i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Edit</button>
+        <button class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:11px;" onclick="deleteWorkItem('${wi.id}')" title="Delete Item"><i data-lucide="trash-2" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
       </div>
     </div>
   `).join('');
@@ -2724,7 +2843,7 @@ function renderEmployees() {
     <div class="panel" style="background:#F0FDF4;border:1px solid #86EFAC;">
       <div class="d-flex align-items-center justify-content-between mb-3">
         <div>
-          <div class="serif strong" style="color:#166534;">🛠️ Work Items Catalog (Piece-Rate Items)</div>
+          <div class="serif strong" style="color:#166534;"><i data-lucide="wrench" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Work Items Catalog (Piece-Rate Items)</div>
           <div class="muted small">Define all work items and their rates here first. Workers select from this list when logging production work.</div>
         </div>
       </div>
@@ -2803,7 +2922,7 @@ function renderEmployeeCard(emp, partners) {
         <div class="d-flex align-items-center gap-2 flex-wrap">
           <span style="font-size:13px;color:#86868B;transition:transform 0.2s;" id="emp-chevron-${safeId}">▶</span>
           <span class="serif strong" style="font-size:16px;">${esc(emp.name)}</span>
-          ${emp.phone ? `<span class="muted small">📞 ${esc(emp.phone)}</span>` : ""}
+          ${emp.phone ? `<span class="muted small"><i data-lucide="phone" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> ${esc(emp.phone)}</span>` : ""}
           <span class="badge bg-light text-dark border">— ${headSub}</span>
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -2812,10 +2931,10 @@ function renderEmployeeCard(emp, partners) {
           ${joiningAdvVal>0 ? `<span class="mono small strong text-warning" title="Joining Advance (Peshgi)">Peshgi ${fmt(joiningAdvVal)}</span>` : ""}
           ${weeklyAdvVal>0 ? `<span class="mono small strong gold" title="Weekly Advances (Kharcha)">Kharcha ${fmt(weeklyAdvVal)}</span>` : ""}
           
-          ${outstandingHeld>0 ? `<button class="btn btn-sm text-dark fw-bold px-3 py-1" style="font-size:12px;background:#FDE68A;border-color:#FCD34D;" onclick="event.stopPropagation(); showHandoverCashModal('${emp.id}')">🤝 Handover ${fmt(outstandingHeld)}</button>` : ""}
-          <a href="employee_detail.php?id=${emp.id}" class="btn btn-sm btn-dark fw-bold px-3 py-1" style="font-size:12px;" title="View Employee Ledger & Details" onclick="event.stopPropagation()">👁️ Full Details</a>
-          <button class="icon-btn" onclick="event.stopPropagation(); showEditEmployeeModal('${emp.id}')" title="Edit Profile">✏️</button>
-          <button class="icon-btn" onclick="event.stopPropagation(); deleteEmployee('${emp.id}')" title="Delete Employee" style="color:var(--rust);margin-left:2px">🗑️</button>
+          ${outstandingHeld>0 ? `<button class="btn btn-sm text-dark fw-bold px-3 py-1" style="font-size:12px;background:#FDE68A;border-color:#FCD34D;" onclick="event.stopPropagation(); showHandoverCashModal('${emp.id}')"><i data-lucide="handshake" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Handover ${fmt(outstandingHeld)}</button>` : ""}
+          <a href="employee_detail.php?id=${emp.id}" class="btn btn-sm btn-dark fw-bold px-3 py-1" style="font-size:12px;" title="View Employee Ledger & Details" onclick="event.stopPropagation()"><i data-lucide="eye" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Full Details</a>
+          <button class="icon-btn" onclick="event.stopPropagation(); showEditEmployeeModal('${emp.id}')" title="Edit Profile"><i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
+          <button class="icon-btn" onclick="event.stopPropagation(); deleteEmployee('${emp.id}')" title="Delete Employee" style="color:var(--rust);margin-left:2px"><i data-lucide="trash-2" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
         </div>
       </div>
 
@@ -2826,7 +2945,7 @@ function renderEmployeeCard(emp, partners) {
         <!-- Piece-Rate Work Log Breakthrough -->
         <div style="padding:16px 18px;">
           <div style="font-weight:700;font-size:13px;color:#166534;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">
-            <span>🛠️ Piece-Rate Work Production Log</span>
+            <span><i data-lucide="wrench" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Piece-Rate Work Production Log</span>
             <span class="badge bg-success text-white mono" style="font-size:11px;" id="wl-badge-${safeId}">Total: ${fmt(totalEarned)}</span>
           </div>
 
@@ -2855,8 +2974,8 @@ function renderEmployeeCard(emp, partners) {
                       <td class="mono text-end fw-bold text-success">${fmt(w.amount)}</td>
                       <td class="small text-muted">${w.note ? esc(w.note) : '—'}</td>
                       <td class="text-center">
-                        <button class="btn btn-sm btn-outline-primary py-0 px-1 border-0 me-1" style="font-size:10px;" onclick="editWorkLog('${w.id}')" title="Edit Work Production Entry">✏️</button>
-                        <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0" style="font-size:10px;" onclick="quickDeleteWorkLog('${w.id}')" title="Delete">🗑️</button>
+                        <button class="btn btn-sm btn-outline-primary py-0 px-1 border-0 me-1" style="font-size:10px;" onclick="editWorkLog('${w.id}')" title="Edit Work Production Entry"><i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
+                        <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0" style="font-size:10px;" onclick="quickDeleteWorkLog('${w.id}')" title="Delete"><i data-lucide="trash-2" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
                       </td>
                     </tr>
                   `).join('')}
@@ -2866,10 +2985,10 @@ function renderEmployeeCard(emp, partners) {
 
           <!-- Quick Log Work Form (Dropdown-Based) -->
           <div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:10px;padding:14px;">
-            <div style="font-weight:700;font-size:12px;color:#166534;margin-bottom:10px;">🔨 Quick Log Work Production</div>
+            <div style="font-weight:700;font-size:12px;color:#166534;margin-bottom:10px;"><i data-lucide="hammer" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Quick Log Work Production</div>
             ${(state.workItems || []).length === 0 ? `
               <div class="text-muted text-center p-2" style="font-size:12px;">
-                ⚠️ No work items defined yet. Go to <strong>🛠️ Work Items Catalog</strong> above to add items first, then come back to log work.
+                <i data-lucide="alert-triangle" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> No work items defined yet. Go to <strong><i data-lucide="wrench" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Work Items Catalog</strong> above to add items first, then come back to log work.
               </div>
             ` : `
             <div class="row g-2">
@@ -2900,7 +3019,7 @@ function renderEmployeeCard(emp, partners) {
                 <input id="qwl-note-${safeId}" class="form-control form-control-sm" placeholder="Note (optional)">
               </div>
               <div class="col-md-4 col-12">
-                <button class="btn btn-success btn-sm fw-bold w-100" onclick="quickSaveWorkLog('${emp.id}','${safeId}')">✅ Save Work Entry</button>
+                <button class="btn btn-success btn-sm fw-bold w-100" onclick="quickSaveWorkLog('${emp.id}','${safeId}')"><i data-lucide="check-circle" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Save Work Entry</button>
               </div>
             </div>
             `}
@@ -2928,7 +3047,7 @@ function renderEmployeeCard(emp, partners) {
             </div>
           </div>
           <div class="mt-3 text-center">
-            <a href="employee_detail.php?id=${emp.id}" class="btn btn-dark btn-sm fw-bold px-4">📋 Open Full Ledger & Payday Settlement</a>
+            <a href="employee_detail.php?id=${emp.id}" class="btn btn-dark btn-sm fw-bold px-4"><i data-lucide="clipboard-list" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Open Full Ledger & Payday Settlement</a>
           </div>
         </div>
         `}
@@ -2966,15 +3085,15 @@ function renderVendorCard(vendor, partners) {
       <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div class="d-flex align-items-center gap-2 flex-wrap">
           <span class="serif strong" style="font-size:16px;">${esc(vendor.name)}</span>
-          ${vendor.phone ? `<span class="muted small">📞 ${esc(vendor.phone)}</span>` : ""}
+          ${vendor.phone ? `<span class="muted small"><i data-lucide="phone" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> ${esc(vendor.phone)}</span>` : ""}
           ${vendor.note ? `<span class="badge bg-light text-dark border">— ${esc(vendor.note)}</span>` : ""}
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
           ${outstanding > 0.005 ? `<span class="mono small strong text-danger">Owe ${fmt(outstanding)}</span>` : `<span class="mono small strong text-success">settled</span>`}
           
-          <a href="vendor_detail.php?id=${vendor.id}" class="btn btn-sm btn-dark fw-bold px-3 py-1" style="font-size:12px;" title="View Vendor Purchases & Payments">👁️ View Details</a>
-          <button class="icon-btn" data-act="edit-vendor" data-id="${vendor.id}" title="Edit Vendor Profile">✏️</button>
-          <button class="icon-btn" data-act="delete-vendor" data-id="${vendor.id}" title="Delete Vendor" style="color:var(--rust);margin-left:2px">🗑️</button>
+          <a href="vendor_detail.php?id=${vendor.id}" class="btn btn-sm btn-dark fw-bold px-3 py-1" style="font-size:12px;" title="View Vendor Purchases & Payments"><i data-lucide="eye" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> View Details</a>
+          <button class="icon-btn" data-act="edit-vendor" data-id="${vendor.id}" title="Edit Vendor Profile"><i data-lucide="edit" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
+          <button class="icon-btn" data-act="delete-vendor" data-id="${vendor.id}" title="Delete Vendor" style="color:var(--rust);margin-left:2px"><i data-lucide="trash-2" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i></button>
         </div>
       </div>
     </div>
@@ -3133,7 +3252,7 @@ function renderReports() {
     </div>
 
     <div class="panel" style="margin-bottom:16px;">
-      <div class="serif strong" style="margin-bottom:10px;">📦 Sales &amp; Item Breakdown</div>
+      <div class="serif strong" style="margin-bottom:10px;"><i data-lucide="package" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Sales &amp; Item Breakdown</div>
       ${sortedItems.length === 0 ? `<div class="empty-msg">No sales found in selected date range.</div>` : `
         <div class="table-panel">
           <div class="mono table-head" style="display:grid;grid-template-columns:1fr 80px 110px 110px 110px;gap:8px;">
@@ -3154,7 +3273,7 @@ function renderReports() {
     </div>
 
     <div class="panel" style="margin-bottom:16px;">
-      <div class="serif strong" style="margin-bottom:10px;">👥 Employee Payroll &amp; Attendance Report</div>
+      <div class="serif strong" style="margin-bottom:10px;"><i data-lucide="users" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Employee Payroll &amp; Attendance Report</div>
       <div class="table-panel">
         <div class="mono table-head" style="display:grid;grid-template-columns:1fr 110px 110px 110px 130px;gap:8px;">
           <div>EMPLOYEE</div><div>TYPE</div><div>WAGES PAID</div><div>ADVANCES</div><div>ABSENCE DEDUCTIONS</div>
@@ -3458,7 +3577,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ]
       };
       mutate(() => state.income.unshift(entry));
-      toast("📦 Customer order logged successfully!");
+      toast("<i data-lucide="package" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Customer order logged successfully!");
       return;
     }
 
@@ -3515,7 +3634,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ]
       };
       mutate(() => state.income.unshift(entry));
-      toast(paidAmount < totalAmount ? "💵 Advance sale logged!" : "🎉 Sale logged successfully!");
+      toast(paidAmount < totalAmount ? "<i data-lucide="banknote" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Advance sale logged!" : "🎉 Sale logged successfully!");
       return;
     }
     if (act === "pay-income-balance") {
@@ -3612,7 +3731,7 @@ document.addEventListener("DOMContentLoaded", () => {
         state.attendanceLogs = state.attendanceLogs || [];
         state.attendanceLogs.unshift({ id: uid(), employeeId: empId, date, status, deductSalary, note, settled: false });
       });
-      toast("📅 Absence logged!");
+      toast("<i data-lucide="calendar" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Absence logged!");
       return;
     }
     if (act === "delete-attendance") {
@@ -3670,18 +3789,18 @@ document.addEventListener("DOMContentLoaded", () => {
       const quantity = Number(document.getElementById(`work-qty-${empId}`).value);
       const note = document.getElementById(`work-note-${empId}`).value.trim();
       if (!item) {
-        swalAlert("⚠️ No Item Selected", "Please select a piece-rate work item.", "warning");
+        swalAlert("<i data-lucide="alert-triangle" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> No Item Selected", "Please select a piece-rate work item.", "warning");
         return;
       }
       if (!quantity || isNaN(quantity) || quantity <= 0) {
-        swalAlert("⚠️ Invalid Quantity", "Please enter a valid quantity greater than zero.", "warning");
+        swalAlert("<i data-lucide="alert-triangle" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Invalid Quantity", "Please enter a valid quantity greater than zero.", "warning");
         return;
       }
       const amount = quantity * item.rate;
       state.cardTab = state.cardTab || {};
       state.cardTab[empId] = "history";
       mutate(() => state.workLogs.unshift({ id: uid(), employeeId: empId, itemId: item.id, itemLabel: item.label, rate: item.rate, date, quantity, note, amount }));
-      toast("🔨 Work logged successfully!");
+      toast("<i data-lucide="hammer" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Work logged successfully!");
       return;
     }
 
@@ -3692,13 +3811,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const paidBy = document.getElementById(`adv-paidby-${empId}`).value;
       const note = document.getElementById(`adv-note-${empId}`).value.trim();
       if (!amount || isNaN(amount) || amount <= 0) {
-        swalAlert("⚠️ Invalid Advance Amount", "Please enter a valid advance amount greater than zero.", "warning");
+        swalAlert("<i data-lucide="alert-triangle" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Invalid Advance Amount", "Please enter a valid advance amount greater than zero.", "warning");
         return;
       }
       state.cardTab = state.cardTab || {};
       state.cardTab[empId] = "history";
       mutate(() => state.advances.unshift({ id: uid(), employeeId: empId, date, amount, paidBy, note, settled: false }));
-      toast("💵 Advance recorded!");
+      toast("<i data-lucide="banknote" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Advance recorded!");
       return;
     }
 
@@ -3745,11 +3864,11 @@ document.addEventListener("DOMContentLoaded", () => {
       if (deductAdv) {
         const rawPartial = partialAdvInput !== undefined ? Number(partialAdvInput) : outstandingAdv;
         if (isNaN(rawPartial) || rawPartial < 0) {
-          swalAlert("⚠️ Invalid Advance Deduction", "Advance deduction amount cannot be negative.", "warning");
+          swalAlert("<i data-lucide="alert-triangle" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Invalid Advance Deduction", "Advance deduction amount cannot be negative.", "warning");
           return;
         }
         if (rawPartial > outstandingAdv) {
-          swalAlert("⚠️ Advance Deduction Limit Exceeded", `Cannot deduct ${state.config.currency}${rawPartial.toFixed(2)}. The employee's total outstanding advance balance is only ${state.config.currency}${outstandingAdv.toFixed(2)}.`, "warning");
+          swalAlert("<i data-lucide="alert-triangle" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Advance Deduction Limit Exceeded", `Cannot deduct ${state.config.currency}${rawPartial.toFixed(2)}. The employee's total outstanding advance balance is only ${state.config.currency}${outstandingAdv.toFixed(2)}.`, "warning");
           return;
         }
         advDeductVal = rawPartial;
@@ -3871,11 +3990,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const amount = Number(document.getElementById(`vp-amount-${vendorId}`).value);
       const paymentVal = document.getElementById(`vp-payment-${vendorId}`).value;
       if (!description) {
-        swalAlert("⚠️ Missing Description", "Please enter a purchase description.", "warning");
+        swalAlert("<i data-lucide="alert-triangle" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Missing Description", "Please enter a purchase description.", "warning");
         return;
       }
       if (!amount || isNaN(amount) || amount <= 0) {
-        swalAlert("⚠️ Invalid Amount", "Please enter a valid purchase amount greater than zero.", "warning");
+        swalAlert("<i data-lucide="alert-triangle" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Invalid Amount", "Please enter a valid purchase amount greater than zero.", "warning");
         return;
       }
       const entry = { id: uid(), date, description, amount, vendorId };
@@ -3884,7 +4003,7 @@ document.addEventListener("DOMContentLoaded", () => {
       state.cardTab = state.cardTab || {};
       state.cardTab[vendorId] = "history";
       mutate(() => state.expenses.unshift(entry));
-      toast("📦 Purchase logged successfully!");
+      toast("<i data-lucide="package" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Purchase logged successfully!");
       return;
     }
     if (act === "pay-vendor") {
@@ -3896,17 +4015,17 @@ document.addEventListener("DOMContentLoaded", () => {
       const paidBy = document.getElementById(`vpay-paidby-${vendorId}`).value;
       const note = document.getElementById(`vpay-note-${vendorId}`).value.trim();
       if (!amount || isNaN(amount) || amount <= 0) {
-        swalAlert("⚠️ Invalid Payment Amount", "Please enter a valid vendor payment amount greater than zero.", "warning");
+        swalAlert("<i data-lucide="alert-triangle" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Invalid Payment Amount", "Please enter a valid vendor payment amount greater than zero.", "warning");
         return;
       }
       if (amount > outstanding && outstanding > 0) {
-        swalAlert("⚠️ Exceeds Outstanding Balance", `Payment amount (${state.config.currency}${amount.toFixed(2)}) exceeds the vendor's total outstanding balance of ${state.config.currency}${outstanding.toFixed(2)}.`, "warning");
+        swalAlert("<i data-lucide="alert-triangle" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Exceeds Outstanding Balance", `Payment amount (${state.config.currency}${amount.toFixed(2)}) exceeds the vendor's total outstanding balance of ${state.config.currency}${outstanding.toFixed(2)}.`, "warning");
         return;
       }
       state.cardTab = state.cardTab || {};
       state.cardTab[vendorId] = "history";
       mutate(() => state.vendorPayments.unshift({ id: uid(), vendorId, date, amount, paidBy, note }));
-      toast("💰 Vendor payment recorded!");
+      toast("<i data-lucide="circle-dollar-sign" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Vendor payment recorded!");
       return;
     }
   });
