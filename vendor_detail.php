@@ -236,6 +236,8 @@ if (!$vendor) {
             <div class="col-12"><label class="form-label small mb-1">Payment Method</label>
               <select id="vp-payment" class="form-select form-select-sm">
                 <option value="credit" selected>💳 On Credit (Add to Vendor Balance)</option>
+                <option value="business">💼 Business Funds (Shared by Ratio)</option>
+                <option value="split_ratio">💸 Split by Partners (Ratio)</option>
                 <?php foreach ($partners as $p): ?>
                   <option value="partner:<?php echo htmlspecialchars($p['id']); ?>">Paid by <?php echo htmlspecialchars($p['name']); ?> directly</option>
                 <?php endforeach; ?>
@@ -420,6 +422,12 @@ if (!$vendor) {
 
       if (paymentVal === 'credit') {
         entry.onCredit = true;
+      } else if (paymentVal === 'business') {
+        entry.onCredit = false;
+        entry.paidBy = 'business';
+      } else if (paymentVal === 'split_ratio') {
+        entry.onCredit = false;
+        entry.paidBy = 'split_ratio';
       } else {
         const [, partnerId] = paymentVal.split(':');
         entry.paidBy = partnerId;
@@ -554,6 +562,8 @@ if (!$vendor) {
               <label style="font-size:12px;font-weight:600;">Payment Method</label>
               <select id="swal-vp-payment" class="swal2-input" style="margin:4px 0 0 0;width:100%;">
                 <option value="credit" ${exp.onCredit ? 'selected' : ''}>💳 On Credit (Add to Vendor Balance)</option>
+                <option value="business" ${exp.paidBy === 'business' ? 'selected' : ''}>💼 Business Funds (Shared by Ratio)</option>
+                <option value="split_ratio" ${exp.paidBy === 'split_ratio' ? 'selected' : ''}>💸 Split by Partners (Ratio)</option>
                 ${partnerOptions}
               </select>
             </div>
@@ -589,6 +599,12 @@ if (!$vendor) {
             if (formValues.paymentVal === 'credit') {
               target.onCredit = true;
               delete target.paidBy;
+            } else if (formValues.paymentVal === 'business') {
+              target.onCredit = false;
+              target.paidBy = 'business';
+            } else if (formValues.paymentVal === 'split_ratio') {
+              target.onCredit = false;
+              target.paidBy = 'split_ratio';
             } else {
               target.onCredit = false;
               const [, partnerId] = formValues.paymentVal.split(':');

@@ -1487,7 +1487,7 @@ function getBusinessCashBalance() {
   const inc = state.income.reduce((s, sale) => {
     return s + getSalePayments(sale).filter(p => !p.receivedBy && !p.receivedByEmployeeId).reduce((sum, p) => sum + Number(p.amount || 0), 0);
   }, 0);
-  const exp = state.expenses.filter(x => x.paidBy === 'business' || !x.paidBy && !x.payerEmployeeId).reduce((s, x) => s + Number(x.amount || 0), 0);
+  const exp = state.expenses.filter(x => !x.onCredit && (x.paidBy === 'business' || (!x.paidBy && !x.payerEmployeeId))).reduce((s, x) => s + Number(x.amount || 0), 0);
   const sal = state.salaryPayments.filter(x => x.paidBy === 'business' || !x.paidBy).reduce((s, x) => s + Number(x.amount || 0), 0);
   const adv = state.advances.filter(x => !isOpeningAdv(x) && (x.paidBy === 'business' || !x.paidBy)).reduce((s, x) => s + Number(x.amount || 0), 0);
   const vend = state.vendorPayments.filter(x => x.paidBy === 'business' || !x.paidBy).reduce((s, x) => s + Number(x.amount || 0), 0);
