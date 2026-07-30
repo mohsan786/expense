@@ -230,6 +230,18 @@ if (!$customer) {
             <div class="col-12"><label class="form-label small mb-1">Item Description *</label><input id="ns-item" class="form-control form-control-sm" placeholder="e.g. Leather shoes (Model #A1)"></div>
             <div class="col-6"><label class="form-label small mb-1">Total Price *</label><input type="number" id="ns-total" class="form-control form-control-sm" placeholder="Total amount"></div>
             <div class="col-6"><label class="form-label small mb-1">Paid Amount</label><input type="number" id="ns-paid" class="form-control form-control-sm" placeholder="Paid amount"></div>
+            <div class="col-12 mt-1">
+              <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="ns-pickup-mode" onchange="
+                  const pEl = document.getElementById('ns-paid');
+                  if (this.checked) { pEl.value = 0; pEl.placeholder = '0 (Pay on pickup)'; }
+                  else { pEl.value = ''; pEl.placeholder = 'Paid amount'; }
+                ">
+                <label class="form-check-label small fw-bold text-dark" for="ns-pickup-mode">
+                  📦 Pickup Order (Zero Advance Deposit)
+                </label>
+              </div>
+            </div>
             <div class="col-12"><label class="form-label small mb-1">Payment Received By</label>
               <select id="ns-receiver" class="form-select form-select-sm">
                 <optgroup label="Partners">
@@ -302,9 +314,9 @@ if (!$customer) {
 
       sales.forEach(s => {
         const total = Number(s.amount || 0);
-        const paid = (s.paidAmount !== undefined && s.paidAmount !== null)
-          ? Number(s.paidAmount)
-          : (Array.isArray(s.payments) ? s.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0) : 0);
+        const paid = Array.isArray(s.payments)
+          ? s.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0)
+          : ((s.paidAmount !== undefined && s.paidAmount !== null) ? Number(s.paidAmount) : total);
         totalSales += total;
         paidSales += paid;
       });
@@ -324,9 +336,9 @@ if (!$customer) {
       } else {
         tbody.innerHTML = sales.map(s => {
           const total = Number(s.amount || 0);
-          const paid = (s.paidAmount !== undefined && s.paidAmount !== null)
-            ? Number(s.paidAmount)
-            : (Array.isArray(s.payments) ? s.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0) : 0);
+          const paid = Array.isArray(s.payments)
+            ? s.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0)
+            : ((s.paidAmount !== undefined && s.paidAmount !== null) ? Number(s.paidAmount) : total);
           const due = Math.max(0, total - paid);
           const isSettled = due <= 0;
 
@@ -339,7 +351,7 @@ if (!$customer) {
               <td class="mono text-end text-success">${fmt(paid)}</td>
               <td class="mono text-end fw-bold ${due > 0 ? 'text-danger' : 'text-muted'}">${fmt(due)}</td>
               <td>
-                ${due > 0 ? `<button class="btn btn-sm btn-success fw-bold px-2 py-0" style="font-size:11px;" onclick="receivePaymentModal('${s.id}')">💰 Receive Pay</button>` : `<span class="badge bg-light text-dark border">Paid</span>`}
+                ${due > 0 ? `<button class="btn btn-sm ${paid === 0 ? 'btn-success' : 'btn-outline-success'} fw-bold px-2 py-0" style="font-size:11px;" onclick="receivePaymentModal('${s.id}')">${paid === 0 ? '📦 Receive Pickup Pay' : '💰 Receive Pay'}</button>` : `<span class="badge bg-light text-dark border">Paid</span>`}
               </td>
             </tr>
           `;
@@ -353,8 +365,9 @@ if (!$customer) {
       const item = document.getElementById('ns-item').value.trim();
       const quantity = document.getElementById('ns-qty').value ? Number(document.getElementById('ns-qty').value) : null;
       const totalAmount = Number(document.getElementById('ns-total').value);
+      const isPickupMode = document.getElementById('ns-pickup-mode')?.checked;
       const paidInput = document.getElementById('ns-paid').value;
-      const paidAmount = paidInput !== "" ? Number(paidInput) : 0;
+      const paidAmount = (isPickupMode || paidInput === "0") ? 0 : (paidInput !== "" ? Number(paidInput) : 0);
       const receiverVal = document.getElementById('ns-receiver').value;
       const note = document.getElementById('ns-note').value.trim();
 
@@ -408,7 +421,9 @@ if (!$customer) {
       const employees = state.data.config.employees || [];
 
       const totalAmt = Number(sale.amount || 0);
-      const paidAmt = sale.paidAmount !== undefined ? Number(sale.paidAmount) : totalAmt;
+      const paidAmt = Array.isArray(sale.payments)
+        ? sale.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0)
+        : ((sale.paidAmount !== undefined && sale.paidAmount !== null) ? Number(sale.paidAmount) : totalAmt);
       const remaining = Math.max(0, totalAmt - paidAmt);
 
       const optionsHtml = `

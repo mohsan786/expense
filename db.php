@@ -88,6 +88,9 @@ function get_ledger_data() {
 function save_ledger_data($data) {
     $pdo = get_db();
     $json = json_encode($data);
+    if ($json === false) {
+        throw new Exception("Failed to encode JSON data: " . json_last_error_msg());
+    }
     $stmt = $pdo->prepare("INSERT INTO ledger_store (key_name, data_value) VALUES ('main', ?) ON DUPLICATE KEY UPDATE data_value = VALUES(data_value)");
     return $stmt->execute([$json]);
 }

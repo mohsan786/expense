@@ -19,6 +19,7 @@ A single-file web app for a two-partner leather shoe business, built to handle s
 
 - Log each sale: item, quantity, total amount, date, note/customer.
 - Choose who **received the payment** — either partner, or an **employee** if they collected cash directly from a customer.
+- **Pickup Orders (Zero Advance)**: Supports logging orders where the customer pays 0 advance deposit and pays the full amount upon picking up the order. Marked with `📦 Pickup Order` and quick collection buttons.
 - Income collected by an employee shows as cash they're "holding" until it's settled (see Employees below).
 
 ## 3. Expenses
@@ -34,12 +35,17 @@ Two salary types, set per employee:
 - **Weekly salary** — a fixed weekly amount.
 - **Work-based (piece rate)** — supports **multiple work items with different prices** (e.g. Cutting $1.50/pc, Stitching $2/pc, Assembly $3/pc). You log work by item and quantity, and it's totaled automatically.
 
-**Advances (money given mid-week):**
-- Log any cash given to an employee ahead of payday.
+**Advances (money given mid-week & worker-to-worker advances):**
+- Log any cash given to an employee ahead of payday. Supports selecting another **employee** as the payer when employees give funds to each other.
+- When an employee pays another colleague's advance, the payer gets reimbursement credit on their payday.
 - On payday, a checkbox lets you **deduct it automatically** from what's due — or leave it unchecked if they asked to pay it back "next time," and it carries forward untouched.
 
+**Full Salary Tracking & Underpayment Carry-Forward:**
+- Tracks total actual net salary due, given salary, and remaining unpaid salary balance.
+- If an employer pays less than the net calculated wage (underpayment), the remaining balance is carried forward automatically and added to the employee's net due on subsequent paydays until fully settled.
+
 **Expenses they've covered (reimbursement):**
-- If an employee paid a business expense from their own pocket, it shows on their card as owed to them.
+- If an employee paid a business expense or colleague advance from their own pocket, it shows on their card as owed to them.
 - On payday, a checkbox **adds it on top of their wage** in the same payment — or you can leave it out and settle it later.
 
 **Cash they've collected from customers:**

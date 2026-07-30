@@ -328,7 +328,7 @@ if (!$vendor) {
 
       const totalCreditPurchases = purchases.filter(e => e.onCredit).reduce((s, e) => s + Number(e.amount || 0), 0);
       const totalPaid = vPayments.reduce((s, p) => s + Number(p.amount || 0), 0);
-      const outstanding = Math.max(0, totalCreditPurchases - totalPaid);
+      const outstanding = totalCreditPurchases - totalPaid;
 
       // Render KPIs
       document.getElementById('kpi-credit').innerText = fmt(totalCreditPurchases);
@@ -460,7 +460,7 @@ if (!$vendor) {
         Swal.fire('⚠️ Invalid Payment Amount', 'Please enter a valid vendor payment amount greater than zero.', 'warning');
         return;
       }
-      if (amount > outstanding && outstanding > 0) {
+      if (amount > outstanding) {
         Swal.fire('⚠️ Exceeds Outstanding Balance', `Payment amount (${fmt(amount)}) exceeds the vendor's total outstanding balance of ${fmt(outstanding)}.`, 'warning');
         return;
       }

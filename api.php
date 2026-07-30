@@ -48,7 +48,7 @@ try {
 
     if ($action === 'save') {
         $data = $inputData['data'] ?? null;
-        if ($data) {
+        if (is_array($data)) {
             save_ledger_data($data);
             echo json_encode(['success' => true]);
         } else {
